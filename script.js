@@ -171,8 +171,8 @@ function addMeal(time = "", amount = "", fanSpeed = "", direction = "", audioURL
     div.innerHTML = `
         <span class="meal-label"></span> <label>เวลา: <input type="time" value="${time}" class="meal-time"></label>
         <label> ปริมาณ (g): <input type="number" value="${amount}" class="meal-amount" min="1"></label>
-        <label>แรงลม: <input type="number" class="meal-fan" min="1" max="1000" value="${fanSpeed}"></label> <!-- เปลี่ยน max เป็นค่าที่กว้างขึ้น -->
-        <label>ทิศทางลม: <input type="number" class="meal-direction" min="0" max="360" value="${direction}"></label> <!-- เปลี่ยน min/max เป็นค่าที่กว้างขึ้น -->
+        <label>แรงลม (1-3): <input type="number" class="meal-fan" min="1" max="1000" value="${fanSpeed}"></label> <!-- เปลี่ยน max เป็นค่าที่กว้างขึ้น -->
+        <label>ทิศทางลม(60°–120°): <input type="number" class="meal-direction" min="0" max="360" value="${direction}"></label> <!-- เปลี่ยน min/max เป็นค่าที่กว้างขึ้น -->
         <label>เสียง: <input type="file" accept="audio/*" class="meal-audio"> <span class="audio-status" style="color: ${initialAudioStatusColor};">${initialAudioStatusText}</span></label>
         <button class="copy-button"><i class="fa-solid fa-copy"></i></button>
         <button class="delete-button"><i class="fa-solid fa-trash"></i></button>
