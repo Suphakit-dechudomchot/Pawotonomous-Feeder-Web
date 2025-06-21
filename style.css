@@ -1,0 +1,908 @@
+/* =================== BASE STYLES & TYPOGRAPHY =================== */
+:root {
+    --primary-color: #5C6BC0; /* สีน้ำเงินม่วงหลัก */
+    --secondary-color: #8C9EFF; /* สีน้ำเงินม่วงรอง */
+    --accent-color: #FFA726; /* สีส้มสำหรับเน้น */
+    --background-light: #F4F6F9; /* สีพื้นหลังสว่าง */
+    --background-dark: #E0E0E0; /* สีพื้นหลังเข้มขึ้นนิดหน่อย */
+    --text-dark: #333; /* สีข้อความเข้ม */
+    --text-medium: #555; /* สีข้อความกลาง */
+    --text-light: #777; /* สีข้อความอ่อน */
+    --border-color: #ddd; /* สีเส้นขอบ */
+    --shadow-color: rgba(0, 0, 0, 0.1); /* สีเงา */
+    --success-color: #4CAF50; /* สีเขียวสำหรับสำเร็จ (ออนไลน์) */
+    --error-color: #F44336; /* สีแดงสำหรับข้อผิดพลาด (ออฟไลน์) */
+    --warning-color: #FFC107; /* สีเหลืองสำหรับคำเตือน (แบตเตอรี่ต่ำ) */
+    --info-color: #2196F3; /* สีฟ้าสำหรับข้อมูล */
+}
+
+
+body {
+    font-family: 'Kanit', sans-serif;
+    padding: 0;
+    margin: 0;
+    background: var(--background-light);
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--text-dark);
+    box-sizing: border-box;
+}
+
+
+main {
+    max-width: 960px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 15px;
+    box-shadow: 0 8px 25px var(--shadow-color);
+}
+
+
+h2 {
+    color: var(--primary-color);
+    text-align: center;
+    margin-top: 20px;
+    margin-bottom: 25px;
+    font-size: 2em;
+}
+
+
+p.subtitle {
+    text-align: center;
+    color: var(--text-light);
+    margin-bottom: 20px;
+}
+
+
+/* =================== BUTTONS & INPUTS =================== */
+button {
+    margin: 8px;
+    padding: 12px 25px;
+    font-size: 1.05rem;
+    border: none;
+    border-radius: 8px;
+    background-color: var(--background-dark);
+    color: var(--text-dark);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    font-weight: 600;
+    white-space: nowrap; /* ป้องกันข้อความในปุ่มขึ้นบรรทัดใหม่ */
+}
+
+
+button:hover {
+    color: white;
+    background-color: var(--primary-color);
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 119, 255, 0.2);
+}
+
+
+input[type="time"],
+input[type="number"],
+input[type="file"],
+select {
+    font-size: 1rem;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    width: auto;
+    box-sizing: border-box;
+    margin-right: 10px;
+    vertical-align: middle;
+}
+
+
+input[type="file"] {
+    width: fit-content;
+}
+
+
+/* =================== NOTIFICATION AREA & STATUS =================== */
+.notification-area {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 15px 20px 0;
+    gap: 10px;
+}
+
+
+.notification-area button {
+    background-color: var(--accent-color);
+    color: white;
+    font-size: 1.5rem;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+    flex-shrink: 0;
+    white-space: normal; /* อนุญาตให้ข้อความขึ้นบรรทัดใหม่ */
+    line-height: 1.2; /* ปรับ line-height เพื่อให้ข้อความหลายบรรทัดดูดี */
+    font-size: 1rem; /* ลดขนาด font ในปุ่มแจ้งเตือนถ้าข้อความยาว */
+    text-align: center; /* จัดกลางข้อความ */
+    position: relative; /* สำคัญสำหรับ notification-dot */
+}
+
+
+.notification-area button:hover {
+    background-color: var(--accent-color); /* ไม่ต้องใช้ darken ใน CSS ปกติ */
+    transform: scale(1.1);
+}
+
+
+.status-circle {
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    display: inline-block;
+    transition: background-color 0.3s ease;
+    flex-shrink: 0;
+}
+
+
+.status-text {
+    font-size: 0.9em;
+    color: var(--text-medium);
+    margin-right: 5px;
+    flex-shrink: 0;
+}
+
+
+/* สีสถานะต่างๆ */
+.status-circle.online {
+    background-color: var(--success-color);
+}
+
+
+.status-text.online {
+    color: var(--success-color);
+    font-weight: bold;
+}
+
+
+.status-circle.offline {
+    background-color: var(--error-color);
+}
+
+
+.status-text.offline {
+    color: var(--error-color);
+    font-weight: bold;
+}
+
+
+.status-circle.low-battery {
+    background-color: var(--warning-color);
+}
+
+
+.status-text.low-battery {
+    color: var(--warning-color);
+    font-weight: bold;
+}
+
+
+/* ✅ สไตล์สำหรับจุดแจ้งเตือนสีแดงพร้อมตัวเลข */
+#notificationDot {
+    position: absolute;
+    top: -5px; /* ปรับตำแหน่งให้อยู่บนสุดของกระดิ่ง */
+    right: -5px; /* ปรับตำแหน่งให้อยู่ขวาของกระดิ่ง */
+    background-color: red;
+    color: white;
+    border-radius: 10px; /* ใช้ค่าคงที่ หรือ 50% สำหรับวงกลม */
+    padding: 2px 6px; /* กำหนด padding ให้พอดีกับตัวเลข */
+    font-size: 0.7em; /* ขนาดตัวเลข */
+    font-weight: bold;
+    min-width: 15px; /* กำหนดความกว้างขั้นต่ำสำหรับเลข 1-9 */
+    text-align: center;
+    line-height: 1; /* จัดข้อความให้อยู่ตรงกลางแนวตั้ง */
+    display: none; /* ซ่อนไว้ตอนแรก */
+    z-index: 10; /* ให้แสดงทับปุ่ม */
+    border: 1px solid white; /* ขอบขาวเล็กน้อย */
+}
+
+
+/* =================== NOTIFICATIONS (MODAL) =================== */
+.notification {
+    text-align: right;
+    padding: 15px 20px 0;
+}
+
+
+/* .notification button ถูกรวมกับ .notification-area button ด้านบนแล้ว */
+
+
+#notificationModal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+}
+
+
+#notificationModal > div {
+    background: #fff;
+    width: 90%;
+    max-width: 500px;
+    margin: 5vh auto;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    max-height: 85vh;
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+
+
+#notificationModal h2 {
+    font-size: 1.5em;
+    color: var(--primary-color);
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+
+#notificationList {
+    list-style: none;
+    padding-left: 0;
+    font-size: 1rem;
+}
+
+
+#notificationList li {
+    background-color: #f0f8ff;
+    border-left: 5px solid var(--info-color);
+    margin-bottom: 10px;
+    padding: 12px 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+
+#notificationModal button {
+    background-color: var(--primary-color);
+    color: white;
+    width: 100%;
+    margin-top: 20px;
+    padding: 12px;
+}
+
+
+#notificationModal button:hover {
+    background-color: var(--secondary-color);
+}
+
+
+/* ✅ Custom Alert Modal Styles */
+.custom-alert-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000; /* สูงกว่า notification modal */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.custom-alert-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.custom-alert-content {
+    background-color: #fff;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    max-width: 400px;
+    width: 90%;
+    transform: translateY(-20px);
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.custom-alert-overlay.show .custom-alert-content {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.custom-alert-content h3 {
+    color: var(--primary-color);
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 1.6em;
+}
+
+.custom-alert-content p {
+    color: var(--text-dark);
+    margin-bottom: 30px;
+    font-size: 1.1em;
+}
+
+.custom-alert-content button {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 12px 30px;
+    border-radius: 8px;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+    width: auto; /* ไม่ต้องเต็มความกว้าง */
+    display: inline-block; /* ทำให้จัดกลางได้ */
+}
+
+.custom-alert-content button:hover {
+    background-color: var(--secondary-color);
+}
+
+/* Alert types */
+.custom-alert-content.success h3 { color: var(--success-color); }
+.custom-alert-content.error h3 { color: var(--error-color); }
+.custom-alert-content.warning h3 { color: var(--warning-color); }
+.custom-alert-content.info h3 { color: var(--info-color); }
+
+
+/* ✅ New Incoming Notification Toast Styles */
+.new-notification-toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: rgba(92, 107, 192, 0.95); /* primary-color with opacity */
+    color: white;
+    padding: 15px 20px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    max-width: 300px;
+    z-index: 1001; /* สูงกว่า alert modal */
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(100%);
+    transition: opacity 0.5s ease, transform 0.5s ease, visibility 0.5s ease;
+}
+
+.new-notification-toast.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0);
+}
+
+.new-notification-toast i {
+    font-size: 1.2em;
+    flex-shrink: 0;
+}
+
+.new-notification-toast p {
+    margin: 0;
+    font-size: 0.95em;
+    line-height: 1.3;
+    flex-grow: 1;
+}
+
+
+/* =================== FEED NOW BUTTON =================== */
+.feednowdiv {
+    display: flex;
+    justify-content: center;
+    margin: 30px 0;
+}
+
+
+.feednowbutton {
+    /* ใช้ min-width และ min-height เท่ากันเพื่อรักษาสัดส่วน */
+    width: 250px; /* กำหนดความกว้างและสูงที่แน่นอน หรือใช้ max-content เพื่อให้ปรับตามข้อความ */
+    height: 250px; /* กำหนดความกว้างและสูงที่แน่นอน */
+    /* หรือถ้าต้องการให้เป็นวงกลมแม้ข้อความยาว: */
+    /*
+    width: fit-content;
+    height: fit-content;
+    padding: 20px 40px;
+    */
+    font-size: clamp(1.5em); /* ลดขนาด font เล็กน้อยเพื่อให้รองรับข้อความยาว */
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: bold;
+    box-shadow: 0 8px 20px rgba(0, 119, 255, 0.3);
+    display: flex;
+    flex-direction: column; /* จัดข้อความแนวตั้ง (ถ้ามีหลายบรรทัด) */
+    align-items: center;
+    justify-content: center;
+    text-align: center; /* จัดกลางข้อความในปุ่ม */
+    line-height: 2; /* ปรับ line-height */
+    /* เพิ่ม: กำหนด overflow ให้ text ที่เกินซ่อน */
+    overflow: hidden;
+    word-wrap: break-word; /* ให้คำที่ยาวเกินแตกบรรทัดได้ */
+
+
+}
+
+
+@media (max-width: 480px) {
+    .feednowbutton {
+        width: 180px;
+        height: 180px;
+        /* ✅ ปรับ font-size ใน mobile ให้เล็กลงอีก */
+        font-size: clamp(1.2em, 4vw, 1.8em); /* ปรับ 1.2em และ 1.8em ได้ตามต้องการ */
+    }
+}
+
+
+
+
+.feednowbutton:hover {
+    background-color: var(--secondary-color);
+    transform: scale(1.08);
+}
+
+
+
+
+/* =================== MEAL LIST =================== */
+#mealList {
+    margin-top: 20px;
+}
+
+
+.meal {
+    margin-bottom: 25px;
+    padding: 25px;
+    background-color: var(--background-dark);
+    border-radius: 15px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 15px;
+}
+
+
+.meal-label {
+    font-weight: bold;
+    font-size: 1.2em;
+    color: var(--primary-color);
+    margin-right: 15px;
+    min-width: 25px;
+    text-align: right;
+}
+
+
+.meal label {
+    font-weight: normal;
+    color: var(--text-medium);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    flex: 1 1 auto;
+    min-width: 150px;
+}
+
+
+.meal input,
+.meal select {
+    flex-grow: 1;
+    max-width: 200px;
+}
+
+
+.meal .audio-status {
+    font-size: 0.9em;
+    margin-left: 5px;
+    white-space: normal; /* อนุญาตให้ข้อความขึ้นบรรทัดใหม่ */
+    vertical-align: middle;
+    flex-basis: 100%; /* ให้สถานะเสียงอยู่บรรทัดใหม่เมื่อจำเป็น */
+    text-align: left; /* จัดชิดซ้าย */
+}
+
+
+.meal .copy-button,
+.meal .delete-button {
+    background-color: var(--secondary-color);
+    color: white;
+    padding: 8px 12px;
+    font-size: 1em;
+    border-radius: 5px;
+    flex-shrink: 0;
+}
+
+
+.meal .delete-button {
+    background-color: var(--error-color);
+}
+
+
+.meal .copy-button:hover,
+.meal .delete-button:hover {
+    transform: scale(1.05);
+    background-color: var(--primary-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+
+.meal .delete-button:hover {
+    background-color: #E53935; /* ใช้ค่าสีเข้มขึ้นโดยตรง */
+}
+
+
+
+
+/* =================== CALCULATOR SECTION =================== */
+.calculator-section {
+    background-color: #f9f9f9;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    margin-bottom: 30px;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+    font-family: 'Kanit', sans-serif;
+    box-sizing: border-box;
+}
+
+
+.calculator-section h2 {
+    text-align: center;
+    color: var(--primary-color);
+    margin-bottom: 15px;
+    font-size: 1.8em;
+}
+
+
+.calculator-section .subtitle {
+    text-align: center;
+    color: var(--text-light);
+    margin-bottom: 25px;
+    font-size: 0.95em;
+}
+
+
+.input-group {
+    margin-bottom: 20px;
+}
+
+
+.input-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: var(--text-medium);
+    font-size: 1.05em;
+}
+
+
+.input-group select,
+.input-group input[type="number"] {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1em;
+    color: var(--text-dark);
+    background-color: #fff;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+
+.input-group select {
+    background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%235C6BC0%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13%205.4l-118%20118.3L37%2074.8a17.6%2017.6%200%200%200-25%2024.7l130.5%20131.7a17.6%2017.6%200%200%200%2025%200l130.5-131.7c6.7-6.4%206.7-17.6%200-24.7z%22%2F%3E%3C%2Fsvg%3E');
+    background-repeat: no-repeat;
+    background-position: right 15px center;
+    background-size: 12px;
+    padding-right: 35px;
+}
+
+
+.input-group select:focus,
+.input-group input[type="number"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(92, 107, 192, 0.25);
+}
+
+
+.result-display {
+    text-align: center;
+    margin-top: 30px;
+    padding: 15px 20px;
+    background-color: #eaf6ff;
+    border-radius: 8px;
+    border: 1px dashed var(--secondary-color);
+    color: var(--primary-color);
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+
+.result-display .highlight-amount {
+    color: var(--primary-color);
+    font-size: 1.4em;
+    margin-left: 5px;
+}
+
+
+/* =================== CHECK BUTTONS & NOISE SECTION =================== */
+.check {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 30px;
+    margin-bottom: 30px;
+}
+
+
+.check button {
+    flex: 1 1 180px;
+    max-width: 250px;
+    padding: 15px 20px;
+    font-size: 1.1em;
+    background-color: var(--background-dark);
+    color: var(--text-dark);
+}
+
+
+.check button:hover {
+    background-color: var(--primary-color);
+    color: white;
+    transform: scale(1.05);
+}
+
+
+.noise-upload-section {
+    margin: 20px auto;
+    padding: 25px;
+    border: none;
+    border-radius: 15px;
+    background-color: var(--background-dark);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    max-width: 400px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+
+.noise-upload-section h3 {
+    color: var(--primary-color);
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 1.3em;
+}
+
+
+.noise-upload-section label {
+    display: block;
+    margin-bottom: 15px;
+    font-weight: bold;
+    color: var(--text-medium);
+}
+
+
+.noise-upload-section input[type="file"] {
+    width: auto;
+    margin: 0 auto;
+    display: block;
+    border: 1px dashed var(--border-color);
+    padding: 8px 12px;
+    border-radius: 8px;
+    background-color: #fff;
+    color: var(--text-dark);
+}
+
+
+.noise-upload-section .makenoise-audio + #makenoiseAudioStatus {
+    display: block;
+    margin-top: 10px;
+    font-size: 0.9em;
+    color: var(--text-light);
+}
+
+
+.noise-upload-section button {
+    background-color: var(--accent-color);
+    color: white;
+    margin-top: 15px;
+    width: auto;
+    padding: 10px 20px;
+    display: inline-block;
+    box-shadow: 0 2px 8px rgba(255, 167, 38, 0.2);
+}
+
+
+.noise-upload-section button:hover {
+    background-color: #E6911D; /* ใช้ค่าสีเข้มขึ้นโดยตรง */
+    transform: scale(1.05);
+}
+
+
+.noise-upload-section:hover {
+    color: var(--text-dark);
+    background-color: #F0F0F0; /* ใช้ lighten โดยตรง */
+    transform: scale(1.02);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+}
+
+
+.noise-upload-section:hover h3,
+.noise-upload-section:hover label,
+.noise-upload-section:hover span {
+    color: inherit;
+}
+
+
+/* =================== RESPONSIVE ADJUSTMENTS =================== */
+@media (max-width: 768px) {
+    main {
+        padding: 15px;
+        margin: 10px auto;
+    }
+
+
+    h2 {
+        font-size: 1.6em;
+    }
+
+
+    /* feednowbutton ถูกปรับในส่วน .feednowbutton โดยตรงแล้ว */
+    .meal {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 20px;
+        gap: 10px;
+    }
+
+
+    .meal label {
+        width: 100%;
+    }
+
+
+    .meal input,
+    .meal select {
+        max-width: 100%;
+    }
+
+
+    .meal .copy-button,
+    .meal .delete-button {
+        width: 100%;
+    }
+
+
+    .calculator-section,
+    .noise-upload-section {
+        padding: 20px;
+        max-width: 100%;
+    }
+
+
+    .check button {
+        flex: 1 1 100%;
+    }
+}
+
+
+@media (max-width: 480px) {
+    body {
+        font-size: 15px;
+    }
+
+
+    h2 {
+        font-size: 1.4em;
+    }
+
+
+    button {
+        padding: 10px 20px;
+        font-size: 0.95rem;
+    }
+
+
+    .notification-area button { /* ปรับขนาดปุ่มแจ้งเตือนในมือถือ */
+        width: 40px;
+        height: 40px;
+        font-size: 0.9rem; /* เล็กลงอีกนิดเพื่อให้ข้อความไม่ล้น */
+        line-height: 1.1;
+    }
+
+    /* Responsive for toast */
+    .new-notification-toast {
+        top: 10px;
+        right: 10px;
+        left: 10px; /* ยืดเต็มความกว้างในจอเล็ก */
+        max-width: unset;
+    }
+
+
+    /* feednowbutton ถูกปรับในส่วน .feednowbutton โดยตรงแล้ว */
+}
+
+
+/* =================== BUTTON DISABLED & WORKING STATE =================== */
+button:disabled {
+    background-color: #cccccc;
+    color: #666666;
+    cursor: not-allowed;
+    opacity: 0.7;
+    box-shadow: none; /* ไม่มีเงาเมื่อ disabled */
+    transform: none; /* ไม่มี animation เมื่อ disabled */
+}
+
+
+/* เพิ่ม styling สำหรับสถานะ "กำลังทำงาน" */
+button.working-state {
+    background-color: var(--warning-color); /* สีส้มอมเหลือง */
+    color: var(--text-dark); /* ข้อความสีเข้ม */
+    font-weight: bold; /* ตัวหนาขึ้น */
+    animation: pulse-effect 1.5s infinite alternate ease-in-out; /* เพิ่ม animation เพื่อให้ดูว่ากำลังทำงาน */
+    cursor: progress; /* เปลี่ยน cursor เป็นรูปกำลังโหลด */
+    box-shadow: 0 4px 15px rgba(255, 193, 7, 0.4); /* เพิ่มเงาให้เด่นขึ้น */
+}
+
+
+@keyframes pulse-effect {
+    from {
+        opacity: 0.8;
+        transform: scale(1);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1.02);
+    }
+}
+/* ========================================= */
+/* ✅ สำหรับส่วน #mealList ที่ตั้งค่ามื้ออาหาร */
+/* ========================================= */
+#mealList {
+    max-height: 400px; /* กำหนดความสูงสูงสุดที่คุณต้องการ */
+    /* คุณสามารถปรับค่านี้ได้ตามความเหมาะสม เช่น 300px, 500px, 60vh (60% ของ viewport height) */
+    
+    overflow-y: auto; /* ทำให้เกิด Scrollbar แนวตั้งเมื่อเนื้อหาเกินความสูง */
+    
+    border: 1px solid #ddd; /* เพิ่มกรอบเพื่อให้เห็นขอบเขตชัดเจน */
+    padding: 10px;
+    margin-bottom: 20px; /* เพิ่มระยะห่างด้านล่าง */
+    border-radius: 8px; /* เพิ่มความโค้งมน */
+    background-color: #f9f9f9; /* สีพื้นหลังอ่อนๆ */
+}
+
+
+/* Optional: เพื่อให้แต่ละมื้ออาหารมีขอบเขตชัดเจนขึ้น (ถ้ายังไม่มี) */
+.meal {
+    background-color: #fff;
+    border: 1px solid #eee;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+
+.meal:last-child {
+    margin-bottom: 0; /* ลบ margin ล่างของมื้อสุดท้าย */
+}
