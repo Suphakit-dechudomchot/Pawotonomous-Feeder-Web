@@ -147,14 +147,16 @@ function feedNow() {
 }
 
 // ฟังก์ชันสำหรับเพิ่มมื้ออาหารใหม่ (หรือโหลดจาก Firebase)
-function addMeal(time = "", amount = "", fanSpeed = 1, direction = 90, audioURL = "", originalFileName = "", scrollToView = true) {
+// แก้ไข: ไม่ต้อง clamp ค่า fanSpeed และ direction ที่นี่โดยตรงในพารามิเตอร์แล้ว เพราะจะใช้กับค่าที่รับจาก UI โดยตรง
+function addMeal(time = "", amount = "", fanSpeed = "", direction = "", audioURL = "", originalFileName = "", scrollToView = true) { // เปลี่ยนค่าเริ่มต้นเป็น "" เพื่อให้ input ว่างเปล่า
     if (document.querySelectorAll(".meal").length >= 100) {
         showCustomAlert("เกิน 100 มื้อแล้ว!", "warning", "แจ้งเตือน");
         return;
     }
 
-    fanSpeed = clamp(parseInt(fanSpeed), 1, 3);
-    direction = clamp(parseInt(direction), 60, 120);
+    // ลบ clamp ออกจากตรงนี้ เพราะต้องการให้ผู้ใช้ใส่ค่าอะไรก็ได้ใน UI ก่อน
+    // fanSpeed = clamp(parseInt(fanSpeed), 1, 3);
+    // direction = clamp(parseInt(direction), 60, 120);
 
     const div = document.createElement("div");
     div.className = "meal";
@@ -169,8 +171,8 @@ function addMeal(time = "", amount = "", fanSpeed = 1, direction = 90, audioURL 
     div.innerHTML = `
         <span class="meal-label"></span> <label>เวลา: <input type="time" value="${time}" class="meal-time"></label>
         <label> ปริมาณ (g): <input type="number" value="${amount}" class="meal-amount" min="1"></label>
-        <label>แรงลม (1-3): <input type="number" class="meal-fan" min="1" max="3" value="${fanSpeed}"></label>
-        <label>ทิศทางลม (60°–120°): <input type="number" class="meal-direction" min="60" max="120" value="${direction}"></label>
+        <label>แรงลม: <input type="number" class="meal-fan" min="1" max="1000" value="${fanSpeed}"></label> <!-- เปลี่ยน max เป็นค่าที่กว้างขึ้น -->
+        <label>ทิศทางลม: <input type="number" class="meal-direction" min="0" max="360" value="${direction}"></label> <!-- เปลี่ยน min/max เป็นค่าที่กว้างขึ้น -->
         <label>เสียง: <input type="file" accept="audio/*" class="meal-audio"> <span class="audio-status" style="color: ${initialAudioStatusColor};">${initialAudioStatusText}</span></label>
         <button class="copy-button"><i class="fa-solid fa-copy"></i></button>
         <button class="delete-button"><i class="fa-solid fa-trash"></i></button>
@@ -236,17 +238,18 @@ function addMeal(time = "", amount = "", fanSpeed = 1, direction = 90, audioURL 
         }
     });
 
-    div.querySelector(".meal-fan").addEventListener("input", (event) => {
-        let value = parseInt(event.target.value);
-        if (isNaN(value)) value = 1;
-        event.target.value = clamp(value, 1, 3);
-    });
+    // ลบ Event Listener สำหรับ input ที่มีการ clamp ออก เพราะจะ clamp ตอน save แทน
+    // div.querySelector(".meal-fan").addEventListener("input", (event) => {
+    //     let value = parseInt(event.target.value);
+    //     if (isNaN(value)) value = 1;
+    //     event.target.value = clamp(value, 1, 3);
+    // });
 
-    div.querySelector(".meal-direction").addEventListener("input", (event) => {
-        let value = parseInt(event.target.value);
-        if (isNaN(value)) value = 90;
-        event.target.value = clamp(value, 60, 120);
-    });
+    // div.querySelector(".meal-direction").addEventListener("input", (event) => {
+    //     let value = parseInt(event.target.value);
+    //     if (isNaN(value)) value = 90;
+    //     event.target.value = clamp(value, 60, 120);
+    // });
 
     div.querySelector(".copy-button").addEventListener("click", () => {
         copiedMeal = {
@@ -299,9 +302,16 @@ function saveMeals() {
         const time = div.querySelector(".meal-time").value;
         const amount = parseInt(div.querySelector(".meal-amount").value);
 
-        let fan = clamp(parseInt(div.querySelector(".meal-fan").value), 1, 3);
-        let direction = clamp(parseInt(div.querySelector(".meal-direction").value), 60, 120);
+        // ✅ ปรับเปลี่ยนการ clamp ค่า fan และ direction ที่นี่
+        // ดึงค่าจาก input ก่อน
+        let fanInput = parseInt(div.querySelector(".meal-fan").value);
+        let directionInput = parseInt(div.querySelector(".meal-direction").value);
 
+        // ใช้ clamp เพื่อจำกัดค่าให้อยู่ในช่วงที่ Arduino ใช้ได้จริง
+        // ตรวจสอบว่าไม่ใช่ NaN ก่อน clamp เพื่อป้องกันปัญหา
+        let fan = isNaN(fanInput) ? 1 : clamp(fanInput, 1, 3);
+        let direction = isNaN(directionInput) ? 90 : clamp(directionInput, 60, 120);
+        
         const audioUrl = div.dataset.audioUrl || "";
         const originalFileName = div.dataset.originalFileName || "";
 
@@ -451,7 +461,7 @@ function fetchNotifications() {
             const latest10 = entries.slice(0, 10); // แสดงแค่ 10 รายการล่าสุด
             latest10.forEach(notif => {
                 const li = document.createElement("li");
-                li.innerHTML = `<i class="fa-solid fa-bullhorn"></i><strong>   ${notif.message}</strong><br><small>${notif.time || ""}</small>`;
+                li.innerHTML = `<i class="fa-solid fa-bullhorn"></i><strong>   ${notif.message}</strong><br><small>${notif.time || ""}</small>`;
                 li.style.borderBottom = "1px solid #eee";
                 li.style.padding = "5px 0";
                 notificationList.appendChild(li);
@@ -505,7 +515,7 @@ function openNotificationModal() {
             }
         } else {
              // If no notifications, ensure dot is hidden
-            if (notificationDot) notificationDot.style.display = 'none';
+           if (notificationDot) notificationDot.style.display = 'none';
         }
     });
 
@@ -726,106 +736,112 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (error) {
                     showCustomAlert("อัปโหลดไม่สำเร็จ: " + error.message, "error", "❌ ผิดพลาด!");
-                    audioStatusSpan.textContent = "❌ อัปโหลดไม่สำเร็จ: " + error.message;
-                    audioStatusSpan.style.color = "red";
-                    makenoiseUploadedAudioURL = "";
-                    console.error("Supabase makenoise Upload Error:", error);
+                    makenoiseAudioStatusSpan.textContent = "❌ อัปโหลดไม่สำเร็จ: " + error.message;
+                    makenoiseAudioStatusSpan.style.color = "red";
+                    makenoiseUploadedAudioURL = ""; // ตั้งค่าเป็นค่าว่างหากอัปโหลดไม่สำเร็จ
+                    console.error("Supabase Upload Error:", error);
                     return;
                 }
 
                 const { data: publicData } = supabaseClient.storage.from("audio").getPublicUrl(fileName);
-                makenoiseUploadedAudioURL = publicData.publicUrl;
+                makenoiseUploadedAudioURL = publicData.publicUrl; // เก็บ URL ที่ได้มา
 
-                makenoiseAudioStatusSpan.innerHTML = `✅ อัปโหลดแล้ว<br><small>(${file.name})</small>`;
-                audioStatusSpan.style.color = "green";
-                showCustomAlert(`อัปโหลดเสียง "${file.name}" สำหรับเล่นทันทีสำเร็จ!`, "success", "✅ สำเร็จ!");
+                const uploadedFileName = file.name;
+                makenoiseAudioStatusSpan.innerHTML = `✅ อัปโหลดแล้ว<br><small>(${uploadedFileName})</small>`;
+                makenoiseAudioStatusSpan.style.color = "green";
+                showCustomAlert(`อัปโหลดไฟล์เสียง "${file.name}" สำเร็จ!`, "success", "✅ สำเร็จ!");
             } catch (e) {
                 showCustomAlert("เกิดข้อผิดพลาด: " + e.message, "error", "❌ ผิดพลาด!");
-                audioStatusSpan.textContent = "❌ เกิดข้อผิดพลาด: " + e.message;
-                audioStatusSpan.style.color = "red";
-                makenoiseUploadedAudioURL = "";
-                console.error("General makenoise Upload Error:", e);
+                makenoiseAudioStatusSpan.textContent = "❌ เกิดข้อผิดพลาด: " + e.message;
+                makenoiseAudioStatusSpan.style.color = "red";
+                makenoiseUploadedAudioURL = ""; // ตั้งค่าเป็นค่าว่างหากเกิดข้อผิดพลาด
+                console.error("General Upload Error:", e);
             }
         });
     }
 
-    // Event Listeners สำหรับ Calculator Section
-    if (animalTypeSelect) {
-        populateAnimalType(); // เรียกครั้งแรกเพื่อเติมประเภทสัตว์
-        animalTypeSelect.addEventListener("change", () => {
-            updateAnimalSpecies(); // อัปเดตชนิดสัตว์ (จะรีเซ็ต speciesSelect และ lifeStageActivitySelect)
-            // ไม่ต้องเรียก updateRecommendedAmount() ตรงนี้ ให้รอให้เลือกชนิดสัตว์ก่อน
-        });
-    }
-    // เมื่อเลือก 'ชนิดสัตว์' ให้เรียก updateRecommendedAmount เพื่อคำนวณและอัปเดตช่อง 'ช่วงชีวิต/กิจกรรม'
-    if (animalSpeciesSelect) animalSpeciesSelect.addEventListener("change", () => {
-        // เมื่อชนิดสัตว์เปลี่ยน ควรเรียก updateRecommendedAmount() เพื่ออัปเดตการแสดงผลและ Notes
-        // updateAnimalSpecies() จะถูกเรียกที่ animalTypeSelect change และเตรียม options ไว้แล้ว
-        updateRecommendedAmount();
-    });
-    
-    if (animalCountInput) animalCountInput.addEventListener("input", updateRecommendedAmount);
-    // แนบ Event Listener สำหรับ Input/Select ใหม่ของ Calculator
-    if (animalWeightKgInput) animalWeightKgInput.addEventListener("input", updateRecommendedAmount);
-    if (lifeStageActivitySelect) lifeStageActivitySelect.addEventListener("change", updateRecommendedAmount);
 
-    // เรียก updateRecommendedAmount ครั้งแรกเมื่อ DOM โหลด เพื่อให้แสดงผลลัพธ์เริ่มต้น
-    updateRecommendedAmount();
-
-
-    // 5. Listener สำหรับ Firebase Realtime Database (สถานะอุปกรณ์)
-    db.ref('device_status').on('value', (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-            const isOnline = data.online === true;
-            const batteryVoltage = data.battery_voltage || null;
-            updateDeviceStatusUI(isOnline, batteryVoltage);
+    // 5. โหลดมื้ออาหารจาก Firebase และแสดงผล
+    db.ref("meals").on("value", (snapshot) => {
+        mealList.innerHTML = ""; // ล้างรายการเก่าก่อนโหลดใหม่
+        const mealsData = snapshot.val();
+        if (mealsData && Array.isArray(mealsData) && mealsData.length > 0) {
+            mealsData.forEach(meal => {
+                addMeal(meal.time, meal.amount, meal.fan, meal.direction, meal.audioUrl, meal.originalFileName, false); // false = ไม่ต้อง scroll to view เมื่อโหลดจาก DB
+            });
         } else {
-            updateDeviceStatusUI(false);
+            // ✅ แก้ไข: ถ้าไม่มีข้อมูลมื้ออาหาร ให้แสดงมื้อที่ 1 เป็นค่าว่าง
+            addMeal("", "", "", "", "", "", false); // เพิ่มมื้อแรกที่เป็นค่าว่าง
         }
+        updateMealNumbers();
     });
 
-    // 6. โหลดข้อมูลมื้ออาหารเมื่อหน้าเว็บโหลด
-    db.ref("meals").once("value").then(snapshot => {
-        const data = snapshot.val();
-        if (data) {
-            // ตรวจสอบว่า data เป็น Array ก่อนที่จะเรียก .sort() และ .forEach()
-            if (Array.isArray(data)) {
-                data.sort((a, b) => (a.time || "").localeCompare(b.time || ""));
-                data.forEach(meal => {
-                    addMeal(
-                        meal.time,
-                        meal.amount,
-                        meal.fan || 1,
-                        meal.direction || 90,
-                        meal.audioUrl || "",
-                        meal.originalFileName || "",
-                        false // ไม่ต้อง scroll ขณะโหลดข้อมูล
-                    );
-                });
-                updateMealNumbers();
-    
-                const lastMeal = document.querySelector(".meal:last-child");
-                if (lastMeal) {
-                    lastMeal.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            } else {
-                console.warn("Firebase 'meals' data is not an array:", data);
-            }
-        }
-    }).catch(error => { // เพิ่ม .catch เพื่อจัดการ error ในการดึงข้อมูล meals
-        console.error("Error fetching meals from Firebase:", error);
+    // 6. ดึงสถานะอุปกรณ์แบบ Realtime
+    db.ref('feeder/isOnline').on('value', (snapshot) => {
+        const isOnline = snapshot.val();
+        db.ref('feeder/batteryVoltage').once('value', (batterySnapshot) => {
+            const batteryVoltage = batterySnapshot.val();
+            updateDeviceStatusUI(isOnline, batteryVoltage);
+        });
     });
 
-    // ✅ Firebase listener for real-time notification changes to update badge and toast
-    // This listener will trigger `updateNotificationBadgeAndToast`
-    // which will handle counting unread and showing toast.
+    // 7. ตั้งค่า Firebase listener สำหรับ Notification Badge & Toast
     db.ref("notifications").on("value", (snapshot) => {
         updateNotificationBadgeAndToast();
     });
 
-    // Call updateNotificationBadgeAndToast initially to set correct state on load
+    // เรียก updateNotificationBadgeAndToast ครั้งแรกเมื่อโหลดหน้าเว็บ
     updateNotificationBadgeAndToast();
+
+    // ✅ เรียก populateAnimalType ครั้งแรกเมื่อ DOM โหลดเสร็จ เพื่อให้ Calculator เริ่มทำงาน
+    if (animalTypeSelect) {
+        populateAnimalType(animalTypeSelect, animalData);
+        animalTypeSelect.addEventListener('change', () => updateAnimalSpecies(animalTypeSelect, animalSpeciesSelect, animalData));
+        
+        // แนบ Event Listener สำหรับการเปลี่ยนแปลงค่าใน Calculator เพื่ออัปเดตคำแนะนำ
+        const calculatorInputs = [animalTypeSelect, animalSpeciesSelect, animalWeightKgInput, lifeStageActivitySelect];
+        calculatorInputs.forEach(input => {
+            if (input) {
+                input.addEventListener('change', () => {
+                    updateRecommendedAmount(
+                        animalTypeSelect, 
+                        animalSpeciesSelect, 
+                        animalWeightKgInput, 
+                        lifeStageActivitySelect, 
+                        animalCountInput, 
+                        calculationNotesSpan, 
+                        animalData
+                    );
+                });
+            }
+        });
+
+        // Event listener สำหรับ animalCountInput (หากมีการเปลี่ยนแปลงจำนวนสัตว์)
+        if (animalCountInput) {
+            animalCountInput.addEventListener('input', () => { // ใช้ 'input' event สำหรับการเปลี่ยนแปลงทุกครั้ง
+                updateRecommendedAmount(
+                    animalTypeSelect, 
+                    animalSpeciesSelect, 
+                    animalWeightKgInput, 
+                    lifeStageActivitySelect, 
+                    animalCountInput, 
+                    calculationNotesSpan, 
+                    animalData
+                );
+            });
+        }
+
+        // เมื่อโหลดหน้าเว็บเสร็จ ให้เรียก updateRecommendedAmount ครั้งแรกด้วย
+        updateRecommendedAmount(
+            animalTypeSelect, 
+            animalSpeciesSelect, 
+            animalWeightKgInput, 
+            lifeStageActivitySelect, 
+            animalCountInput, 
+            calculationNotesSpan, 
+            animalData
+        );
+    }
 });
 // ===============================================================
     // ✅ ฟังก์ชันสำหรับทดสอบการเพิ่มแจ้งเตือน (สามารถเรียกใช้หรือ uncomment เพื่อทดสอบ)
