@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit&display=swap">
     <!-- Font Awesome Kit Code ของคุณ: อย่าลืมเปลี่ยน YOUR_KIT_CODE เป็นรหัสจริงของคุณ -->
-    <script src="https://kit.fontawesome.com/20ae9a33f4.js" crossorigin="anonymous"></script>
+    <script src="https://kit.fontawesome.com/YOUR_KIT_CODE.js" crossorigin="anonymous"></script> 
 </head>
 <body>
     <div class="notification-area">
@@ -37,13 +37,83 @@
 
     <div id="notificationModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background-color:rgba(0,0,0,0.5); z-index:999;">
         <div style="background:#fff; width:90%; max-width:500px; margin:5vh auto; padding:25px; border-radius:15px; position:relative; max-height:85vh; overflow-y:auto;">
-            <h2><i class="fa-solid fa-bullhorn"></i> แจ้งเตือนล่าสุด</h2>
+            <h2><i class="fa-solid fa-bullhorn"></i>แจ้งเตือนล่าสุด</h2>
             <ul id="notificationList" style="list-style:none; padding-left:0;"></ul>
             <button id="closeNotificationBtn" style="margin-top:20px;">ปิด</button>
         </div>
     </div>
     
     <main>
+        <!-- ✅ เพิ่มส่วนการตั้งค่าระบบตรงนี้ -->
+        <section class="system-settings-section">
+            <h2>⚙️ การตั้งค่าระบบ</h2>
+            <div class="input-group">
+                <label for="timeZoneOffsetSelect">โซนเวลา (UTC+/-H):</label>
+                <select id="timeZoneOffsetSelect">
+                    <option value="">-- เลือกโซนเวลา --</option>
+                    <option value="-12">UTC-12 (เช่น Baker Island)</option>
+                    <option value="-11">UTC-11 (เช่น American Samoa)</option>
+                    <option value="-10">UTC-10 (เช่น Hawaii)</option>
+                    <option value="-9.5">UTC-9:30</option>
+                    <option value="-9">UTC-9 (เช่น Alaska)</option>
+                    <option value="-8">UTC-8 (เช่น Los Angeles)</option>
+                    <option value="-7">UTC-7 (เช่น Denver)</option>
+                    <option value="-6">UTC-6 (เช่น Chicago)</option>
+                    <option value="-5">UTC-5 (เช่น New York)</option>
+                    <option value="-4.5">UTC-4:30 (เช่น Caracas)</option>
+                    <option value="-4">UTC-4 (เช่น Santiago)</option>
+                    <option value="-3.5">UTC-3:30 (เช่น Newfoundland)</option>
+                    <option value="-3">UTC-3 (เช่น Buenos Aires)</option>
+                    <option value="-2">UTC-2 (เช่น South Georgia)</option>
+                    <option value="-1">UTC-1 (เช่น Cape Verde)</option>
+                    <option value="0">UTC+0 (เวลาสากล, เช่น London)</option>
+                    <option value="1">UTC+1 (เช่น Berlin)</option>
+                    <option value="2">UTC+2 (เช่น Athens)</option>
+                    <option value="3">UTC+3 (เช่น Moscow, Istanbul)</option>
+                    <option value="3.5">UTC+3:30 (เช่น Tehran)</option>
+                    <option value="4">UTC+4 (เช่น Dubai)</option>
+                    <option value="4.5">UTC+4:30 (เช่น Kabul)</option>
+                    <option value="5">UTC+5 (เช่น Tashkent)</option>
+                    <option value="5.5">UTC+5:30 (เช่น New Delhi)</option>
+                    <option value="5.75">UTC+5:45 (เช่น Kathmandu)</option>
+                    <option value="6">UTC+6 (เช่น Dhaka)</option>
+                    <option value="6.5">UTC+6:30 (เช่น Yangon)</option>
+                    <option value="7">UTC+7 (เช่น ไทย, Jakarta)</option>
+                    <option value="8">UTC+8 (เช่น Beijing, Singapore)</option>
+                    <option value="8.75">UTC+8:45</option>
+                    <option value="9">UTC+9 (เช่น Tokyo, Seoul)</option>
+                    <option value="9.5">UTC+9:30 (เช่น Adelaide)</option>
+                    <option value="10">UTC+10 (เช่น Sydney)</option>
+                    <option value="10.5">UTC+10:30</option>
+                    <option value="11">UTC+11 (เช่น Solomon Islands)</option>
+                    <option value="11.5">UTC+11:30</option>
+                    <option value="12">UTC+12 (เช่น Fiji)</option>
+                    <option value="12.75">UTC+12:45</option>
+                    <option value="13">UTC+13 (เช่น Tonga)</option>
+                    <option value="14">UTC+14 (เช่น Kiritimati)</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label for="bottleSizeSelect">ขนาดขวด:</label>
+                <select id="bottleSizeSelect">
+                    <option value="">-- เลือกขนาดขวด --</option>
+                    <option value="48">18.9 ลิตร - สูง 48cm</option>
+                    <option value="45">15 ลิตร - สูง 45cm</option>
+                    <option value="37">12 ลิตร - สูง 37cm</option>
+                    <option value="24_10L">10 ลิตร - สูง 24cm</option> <!-- Note: duplicate height, differentiate value -->
+                    <option value="32">1.5 ลิตร - สูง 32cm</option>
+                    <option value="24_600ml">600ml - สูง 24cm</option> <!-- Note: duplicate height, differentiate value -->
+                    <option value="17">350ml - สูง 17cm</option>
+                    <option value="custom">กรอกความสูงเอง</option>
+                </select>
+                <!-- ช่องสำหรับกรอกความสูงเอง (ซ่อนเริ่มต้น) -->
+                <input type="number" id="customBottleHeightInput" placeholder="กรอกความสูง (cm)" min="1" style="display: none; margin-top: 5px;">
+            </div>
+            <p class="notes">
+                <small>เวลาในมื้ออาหารจะอิงตามโซนเวลานี้ <br> ขนาดขวดจะใช้ในการคำนวณปริมาณอาหารที่เหลือในถัง</small>
+            </p>
+        </section>
+
         <div class="feednowdiv">
             <button id="feedNowBtn" class="feednowbutton">
                 <i class="fa-solid fa-bowl-food"></i> <span class="button-text">ให้อาหารทันที</span>

@@ -73,6 +73,34 @@ let newNotificationToastTimeout; // To manage toast auto-hide
 const DEFAULT_USER_ID = "default-app-user"; // Placeholder userId; replace with actual user ID from auth
 let lastNotificationReadTimestampRef;
 
+// ✅ เพิ่ม Element และ Mapping สำหรับ System Settings
+let timeZoneOffsetSelect, bottleSizeSelect, customBottleHeightInput; // เพิ่ม customBottleHeightInput
+// Mapping สำหรับขนาดขวดและส่วนสูง
+const BOTTLE_SIZES_MAPPING = {
+    "48": "18.9 ลิตร - สูง 48cm",
+    "45": "15 ลิตร - สูง 45cm",
+    "37": "12 ลิตร - สูง 37cm",
+    "24_10L": "10 ลิตร - สูง 24cm", // Note: duplicate height, differentiate value
+    "32": "1.5 ลิตร - สูง 32cm",
+    "24_600ml": "600ml - สูง 24cm", // Note: duplicate height, differentiate value
+    "17": "350ml - สูง 17cm",
+    "custom": "กรอกความสูงเอง" // เพิ่มตัวเลือก "กรอกความสูงเอง"
+};
+// Reverse mapping for easy lookup of value from height
+const BOTTLE_HEIGHT_VALUES_MAPPING = {
+    "48": "48",
+    "45": "45",
+    "37": "37",
+    "24": "24", // Heights for 10L and 600ml
+    "32": "32",
+    "17": "17"
+};
+
+// Function to convert browser timezone offset to UTC+/-H format (e.g., -420 minutes -> +7.0 hours)
+function getBrowserUtcOffsetHours() {
+    const currentOffsetMinutes = new Date().getTimezoneOffset(); // returns offset in minutes, e.g., -420 for UTC+7
+    return -(currentOffsetMinutes / 60);
+}
 
 // ฟังก์ชันช่วยสำหรับอัปเดตสถานะปุ่ม (ใช้สำหรับปุ่มควบคุมหลักที่เชื่อมกับ Firebase)
 function updateButtonState(button, dbPath, initialText, workingText, iconClass = '', workingIconClass = '') {
@@ -147,16 +175,11 @@ function feedNow() {
 }
 
 // ฟังก์ชันสำหรับเพิ่มมื้ออาหารใหม่ (หรือโหลดจาก Firebase)
-// แก้ไข: ไม่ต้อง clamp ค่า fanSpeed และ direction ที่นี่โดยตรงในพารามิเตอร์แล้ว เพราะจะใช้กับค่าที่รับจาก UI โดยตรง
-function addMeal(time = "", amount = "", fanSpeed = "", direction = "", audioURL = "", originalFileName = "", scrollToView = true) { // เปลี่ยนค่าเริ่มต้นเป็น "" เพื่อให้ input ว่างเปล่า
+function addMeal(time = "", amount = "", fanSpeed = "", direction = "", audioURL = "", originalFileName = "", scrollToView = true) {
     if (document.querySelectorAll(".meal").length >= 100) {
         showCustomAlert("เกิน 100 มื้อแล้ว!", "warning", "แจ้งเตือน");
         return;
     }
-
-    // ลบ clamp ออกจากตรงนี้ เพราะต้องการให้ผู้ใช้ใส่ค่าอะไรก็ได้ใน UI ก่อน
-    // fanSpeed = clamp(parseInt(fanSpeed), 1, 3);
-    // direction = clamp(parseInt(direction), 60, 120);
 
     const div = document.createElement("div");
     div.className = "meal";
@@ -171,8 +194,8 @@ function addMeal(time = "", amount = "", fanSpeed = "", direction = "", audioURL
     div.innerHTML = `
         <span class="meal-label"></span> <label>เวลา: <input type="time" value="${time}" class="meal-time"></label>
         <label> ปริมาณ (g): <input type="number" value="${amount}" class="meal-amount" min="1"></label>
-        <label>แรงลม (1-3): <input type="number" class="meal-fan" min="1" max="1000" value="${fanSpeed}"></label> <!-- เปลี่ยน max เป็นค่าที่กว้างขึ้น -->
-        <label>ทิศทางลม(60°–120°): <input type="number" class="meal-direction" min="0" max="360" value="${direction}"></label> <!-- เปลี่ยน min/max เป็นค่าที่กว้างขึ้น -->
+        <label>แรงลม (1-3): <input type="number" class="meal-fan" min="1" max="1000" value="${fanSpeed}"></label>
+        <label>ทิศทางลม (60°–120°): <input type="number" class="meal-direction" min="0" max="360" value="${direction}"></label>
         <label>เสียง: <input type="file" accept="audio/*" class="meal-audio"> <span class="audio-status" style="color: ${initialAudioStatusColor};">${initialAudioStatusText}</span></label>
         <button class="copy-button"><i class="fa-solid fa-copy"></i></button>
         <button class="delete-button"><i class="fa-solid fa-trash"></i></button>
@@ -238,19 +261,6 @@ function addMeal(time = "", amount = "", fanSpeed = "", direction = "", audioURL
         }
     });
 
-    // ลบ Event Listener สำหรับ input ที่มีการ clamp ออก เพราะจะ clamp ตอน save แทน
-    // div.querySelector(".meal-fan").addEventListener("input", (event) => {
-    //     let value = parseInt(event.target.value);
-    //     if (isNaN(value)) value = 1;
-    //     event.target.value = clamp(value, 1, 3);
-    // });
-
-    // div.querySelector(".meal-direction").addEventListener("input", (event) => {
-    //     let value = parseInt(event.target.value);
-    //     if (isNaN(value)) value = 90;
-    //     event.target.value = clamp(value, 60, 120);
-    // });
-
     div.querySelector(".copy-button").addEventListener("click", () => {
         copiedMeal = {
             time: div.querySelector(".meal-time").value,
@@ -302,13 +312,9 @@ function saveMeals() {
         const time = div.querySelector(".meal-time").value;
         const amount = parseInt(div.querySelector(".meal-amount").value);
 
-        // ✅ ปรับเปลี่ยนการ clamp ค่า fan และ direction ที่นี่
-        // ดึงค่าจาก input ก่อน
         let fanInput = parseInt(div.querySelector(".meal-fan").value);
         let directionInput = parseInt(div.querySelector(".meal-direction").value);
 
-        // ใช้ clamp เพื่อจำกัดค่าให้อยู่ในช่วงที่ Arduino ใช้ได้จริง
-        // ตรวจสอบว่าไม่ใช่ NaN ก่อน clamp เพื่อป้องกันปัญหา
         let fan = isNaN(fanInput) ? 1 : clamp(fanInput, 1, 3);
         let direction = isNaN(directionInput) ? 90 : clamp(directionInput, 60, 120);
         
@@ -671,6 +677,11 @@ document.addEventListener("DOMContentLoaded", () => {
     newNotificationToast = document.getElementById('newNotificationToast');
     newNotificationToastMessage = document.getElementById('newNotificationToastMessage');
 
+    // ✅ รับ Reference สำหรับ System Settings (Time Zone และ Bottle Size)
+    timeZoneOffsetSelect = document.getElementById('timeZoneOffsetSelect');
+    bottleSizeSelect = document.getElementById('bottleSizeSelect');
+    customBottleHeightInput = document.getElementById('customBottleHeightInput'); // รับ Element ใหม่
+
 
     // Add event listener for custom alert OK button
     if (customAlertOkButton) {
@@ -760,6 +771,152 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    // ✅ Listener และ Logic สำหรับ System Settings (Time Zone Offset)
+    if (timeZoneOffsetSelect) {
+        // โหลดค่าเริ่มต้น
+        db.ref(`user_settings/${DEFAULT_USER_ID}/time_zone_offset_hours`).once('value', snapshot => {
+            const offset = snapshot.val();
+            if (offset !== null) { // Check for null as 0 is a valid offset
+                timeZoneOffsetSelect.value = offset;
+            } else {
+                // ถ้าไม่มีค่าใน Firebase ให้ตั้งค่าเริ่มต้นจาก Time Zone ของเบราว์เซอร์
+                const currentOffsetHours = getBrowserUtcOffsetHours();
+                // พยายามหาค่าที่ใกล้เคียงที่สุดใน dropdown เพื่อตั้งเป็นค่าเริ่มต้น
+                let closestOffsetOption = null;
+                let minDiff = Infinity;
+                Array.from(timeZoneOffsetSelect.options).forEach(option => {
+                    if (option.value === "") return;
+                    const optionValue = parseFloat(option.value);
+                    const diff = Math.abs(currentOffsetHours - optionValue);
+                    if (diff < minDiff) {
+                        minDiff = diff;
+                        closestOffsetOption = option;
+                    }
+                });
+                
+                if (closestOffsetOption) {
+                    timeZoneOffsetSelect.value = closestOffsetOption.value;
+                    // บันทึกค่าเริ่มต้นนี้ขึ้น Firebase อัตโนมัติเลย (ถ้าไม่ได้เลือกมาก่อน)
+                    db.ref(`user_settings/${DEFAULT_USER_ID}/time_zone_offset_hours`).set(parseFloat(closestOffsetOption.value));
+                    showCustomAlert(`ตั้งค่าโซนเวลาเริ่มต้นเป็น UTC${parseFloat(closestOffsetOption.value) >= 0 ? '+' : ''}${closestOffsetOption.value} (อิงตามเบราว์เซอร์)`, "info", "⚙️ ตั้งค่า");
+                }
+            }
+        });
+        // บันทึกเมื่อมีการเปลี่ยนแปลง
+        timeZoneOffsetSelect.addEventListener('change', () => {
+            const selectedOffset = parseFloat(timeZoneOffsetSelect.value);
+            if (!isNaN(selectedOffset)) {
+                db.ref(`user_settings/${DEFAULT_USER_ID}/time_zone_offset_hours`).set(selectedOffset)
+                    .then(() => showCustomAlert(`ตั้งค่าโซนเวลาเป็น UTC${selectedOffset >= 0 ? '+' : ''}${selectedOffset}`, "success", "⚙️ ตั้งค่าสำเร็จ"))
+                    .catch(error => {
+                        showCustomAlert("เกิดข้อผิดพลาดในการบันทึกโซนเวลา: " + error.message, "error", "❌ ผิดพลาด!");
+                        console.error("Firebase save timezone error:", error);
+                    });
+            } else {
+                db.ref(`user_settings/${DEFAULT_USER_ID}/time_zone_offset_hours`).remove();
+                showCustomAlert("ล้างการตั้งค่าโซนเวลา", "info", "⚙️ ตั้งค่า");
+            }
+        });
+    }
+
+    // ✅ Listener และ Logic สำหรับ System Settings (Bottle Size)
+    if (bottleSizeSelect && customBottleHeightInput) {
+        // ฟังก์ชันสำหรับแสดง/ซ่อนช่องกรอกเอง
+        const toggleCustomHeightInput = (show) => {
+            customBottleHeightInput.style.display = show ? 'block' : 'none';
+        };
+
+        // โหลดค่าเริ่มต้น
+        db.ref(`user_settings/${DEFAULT_USER_ID}/feeder_settings/bottle_height_cm`).once('value', snapshot => {
+            const savedHeight = snapshot.val(); // ค่าความสูงที่บันทึกใน Firebase
+            if (savedHeight !== null) {
+                // ตรวจสอบว่าความสูงที่บันทึกตรงกับค่าใน dropdown ที่มีอยู่หรือไม่
+                let foundMatch = false;
+                for (const valueKey in BOTTLE_SIZES_MAPPING) {
+                    // Extract numeric height from valueKey (e.g., "24_10L" -> "24")
+                    const heightFromKey = parseFloat(valueKey.split('_')[0]);
+                    if (heightFromKey === savedHeight) {
+                        bottleSizeSelect.value = valueKey; // Set dropdown to matching option
+                        foundMatch = true;
+                        break;
+                    }
+                }
+
+                if (foundMatch) {
+                    toggleCustomHeightInput(false); // ถ้าตรงกับค่าใน dropdown ให้ซ่อนช่องกรอกเอง
+                } else {
+                    // ถ้าไม่ตรงกับค่าใน dropdown แสดงว่าเป็นค่าที่กรอกเอง
+                    bottleSizeSelect.value = "custom"; // ตั้ง dropdown เป็น "กรอกความสูงเอง"
+                    toggleCustomHeightInput(true); // แสดงช่องกรอกเอง
+                    customBottleHeightInput.value = savedHeight; // นำค่าที่บันทึกมาแสดงในช่องกรอกเอง
+                }
+            } else {
+                // ถ้าไม่มีค่าใน Firebase เลย ให้ซ่อนช่องกรอกเอง
+                toggleCustomHeightInput(false);
+            }
+        });
+
+        // Event Listener สำหรับการเปลี่ยนแปลงใน Dropdown ขนาดขวด
+        bottleSizeSelect.addEventListener('change', () => {
+            const selectedValue = bottleSizeSelect.value;
+            if (selectedValue === "custom") {
+                toggleCustomHeightInput(true); // แสดงช่องกรอกเอง
+                customBottleHeightInput.value = ''; // ล้างค่าในช่องกรอกเอง
+                customBottleHeightInput.focus(); // ให้ผู้ใช้กรอกได้ทันที
+                
+                // ล้างค่าใน Firebase เมื่อเลือก "กรอกความสูงเอง" แต่ยังไม่กรอก
+                db.ref(`user_settings/${DEFAULT_USER_ID}/feeder_settings/bottle_height_cm`).remove();
+                db.ref(`user_settings/${DEFAULT_USER_ID}/feeder_settings/bottle_size_label`).remove();
+                showCustomAlert("กรุณากรอกความสูงขวด", "info", "⚙️ ตั้งค่า");
+
+            } else if (selectedValue === "") { // ถ้าเลือก "-- เลือกขนาดขวด --"
+                toggleCustomHeightInput(false); // ซ่อนช่องกรอกเอง
+                customBottleHeightInput.value = ''; // ล้างค่า
+                db.ref(`user_settings/${DEFAULT_USER_ID}/feeder_settings/bottle_height_cm`).remove();
+                db.ref(`user_settings/${DEFAULT_USER_ID}/feeder_settings/bottle_size_label`).remove();
+                showCustomAlert("ล้างการตั้งค่าขนาดขวด", "info", "⚙️ ตั้งค่า");
+            }
+            else {
+                // ถ้าเลือกขนาดที่กำหนดไว้ล่วงหน้า
+                toggleCustomHeightInput(false); // ซ่อนช่องกรอกเอง
+                const selectedHeightCm = parseFloat(selectedValue.split('_')[0]); // ดึงเฉพาะตัวเลขความสูง
+                const selectedLabel = BOTTLE_SIZES_MAPPING[selectedValue];
+
+                if (!isNaN(selectedHeightCm) && selectedHeightCm > 0) {
+                    db.ref(`user_settings/${DEFAULT_USER_ID}/feeder_settings/bottle_height_cm`).set(selectedHeightCm)
+                        .then(() => {
+                            db.ref(`user_settings/${DEFAULT_USER_ID}/feeder_settings/bottle_size_label`).set(selectedLabel);
+                            showCustomAlert(`ตั้งค่าขนาดขวดเป็น ${selectedLabel}`, "success", "⚙️ ตั้งค่าสำเร็จ");
+                        })
+                        .catch(error => {
+                            showCustomAlert("เกิดข้อผิดพลาดในการบันทึกขนาดขวด: " + error.message, "error", "❌ ผิดพลาด!");
+                            console.error("Firebase save bottle size error:", error);
+                        });
+                }
+            }
+        });
+
+        // Event Listener สำหรับช่องกรอกความสูงเอง
+        customBottleHeightInput.addEventListener('input', () => {
+            const customHeight = parseFloat(customBottleHeightInput.value);
+            if (!isNaN(customHeight) && customHeight > 0) {
+                db.ref(`user_settings/${DEFAULT_USER_ID}/feeder_settings/bottle_height_cm`).set(customHeight)
+                    .then(() => {
+                        db.ref(`user_settings/${DEFAULT_USER_ID}/feeder_settings/bottle_size_label`).set("Custom: " + customHeight + "cm");
+                        // ไม่ต้อง showCustomAlert บ่อยๆ เมื่อพิมพ์
+                    })
+                    .catch(error => {
+                        showCustomAlert("เกิดข้อผิดพลาดในการบันทึกความสูงที่กรอกเอง: " + error.message, "error", "❌ ผิดพลาด!");
+                        console.error("Firebase save custom height error:", error);
+                    });
+            } else if (customBottleHeightInput.value === '') {
+                 // ถ้าลบค่าออก ให้ลบจาก Firebase ด้วย
+                db.ref(`user_settings/${DEFAULT_USER_ID}/feeder_settings/bottle_height_cm`).remove();
+                db.ref(`user_settings/${DEFAULT_USER_ID}/feeder_settings/bottle_size_label`).remove();
+            }
+        });
+    }
+
 
     // 5. โหลดมื้ออาหารจาก Firebase และแสดงผล
     db.ref("meals").on("value", (snapshot) => {
@@ -843,34 +1000,3 @@ document.addEventListener("DOMContentLoaded", () => {
         );
     }
 });
-// ===============================================================
-    // ✅ ฟังก์ชันสำหรับทดสอบการเพิ่มแจ้งเตือน (สามารถเรียกใช้หรือ uncomment เพื่อทดสอบ)
-    // ===============================================================
-    window.addTestNotification = function() {
-        if (typeof firebase !== 'undefined' && firebase.database) {
-            const db = firebase.database();
-            const message = "นี่คือข้อความแจ้งเตือนทดสอบ (จากฟังก์ชัน)";
-            const timestamp = new Date().toISOString(); 
-
-            db.ref("notifications").push({
-                message: message,
-                time: timestamp
-            })
-            .then(() => {
-                console.log("✅ เพิ่มการแจ้งเตือนสำเร็จ:", { message, time: timestamp });
-                showCustomAlert("เพิ่มการแจ้งเตือนทดสอบแล้ว!", "info", "✅ ทดสอบสำเร็จ");
-            })
-            .catch(error => {
-                console.error("❌ เพิ่มการแจ้งเตือนล้มเหลว:", error);
-                showCustomAlert("เกิดข้อผิดพลาดในการเพิ่มการแจ้งเตือน: " + error.message, "error", "❌ ทดสอบล้มเหลว");
-            });
-        } else {
-            console.error("Firebase SDK ไม่พร้อมใช้งาน");
-            showCustomAlert("Firebase ไม่พร้อมใช้งาน! ตรวจสอบการเชื่อมต่อ.", "error", "❌ ข้อผิดพลาด");
-        }
-    };
-
-    // ✅ คุณสามารถ uncomment บรรทัดด้านล่างนี้เพื่อเรียกใช้ฟังก์ชันทดสอบ
-    //    เมื่อหน้าเว็บโหลดเสร็จหนึ่งครั้ง และคอมเมนต์กลับเมื่อทดสอบเสร็จแล้ว
-    // addTestNotification(); 
-    
