@@ -37,14 +37,14 @@
 
     <div id="notificationModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background-color:rgba(0,0,0,0.5); z-index:999;">
         <div style="background:#fff; width:90%; max-width:500px; margin:5vh auto; padding:25px; border-radius:15px; position:relative; max-height:85vh; overflow-y:auto;">
-            <h2><i class="fa-solid fa-bullhorn"></i>แจ้งเตือนล่าสุด</h2>
+            <h2>📢 แจ้งเตือนล่าสุด</h2>
             <ul id="notificationList" style="list-style:none; padding-left:0;"></ul>
             <button id="closeNotificationBtn" style="margin-top:20px;">ปิด</button>
         </div>
     </div>
     
     <main>
-        <!-- ✅ เพิ่มส่วนการตั้งค่าระบบตรงนี้ -->
+        <!-- ✅ ส่วนการตั้งค่าระบบ (จะแสดงตลอดเวลา) -->
         <section class="system-settings-section">
             <h2>⚙️ การตั้งค่าระบบ</h2>
             <div class="input-group">
@@ -100,9 +100,8 @@
                     <option value="48">18.9 ลิตร - สูง 48cm</option>
                     <option value="45">15 ลิตร - สูง 45cm</option>
                     <option value="37">12 ลิตร - สูง 37cm</option>
-                    <option value="24_10L">10 ลิตร - สูง 24cm</option> <!-- Note: duplicate height, differentiate value -->
+                    <option value="24">10 ลิตร / 600ml - สูง 24cm</option> <!-- รวม 24cm ที่ซ้ำกัน -->
                     <option value="32">1.5 ลิตร - สูง 32cm</option>
-                    <option value="24_600ml">600ml - สูง 24cm</option> <!-- Note: duplicate height, differentiate value -->
                     <option value="17">350ml - สูง 17cm</option>
                     <option value="custom">กรอกความสูงเอง</option>
                 </select>
@@ -114,89 +113,92 @@
             </p>
         </section>
 
-        <div class="feednowdiv">
-            <button id="feedNowBtn" class="feednowbutton">
-                <i class="fa-solid fa-bowl-food"></i> <span class="button-text">ให้อาหารทันที</span>
-            </button>
-        </div>
-        <p class="subtitle">จะให้อาหารทันทีโดยอิงข้อมูลจากมื้ออาหารที่ตั้งไว้</p>
-        <br>
-        
-        <h2>ตั้งค่ามื้ออาหาร</h2>
-        
-        <div id="mealList"></div>
-    
-        <button id="addMealBtn"><i class="fa-solid fa-plus"></i> เพิ่มมื้อ</button> 
-        <button id="saveMealsBtn"><i class="fa-solid fa-floppy-disk"></i> บันทึก</button> 
-        <button id="pasteBtn" disabled>
-            <i class="fa-solid fa-paste"></i> <span>วางมื้อ</span>
-        </button>
-
-        <section class="calculator-section">
-            <h2>โปรแกรมคำนวณปริมาณอาหารสัตว์</h2>
-            <p class="subtitle">ค่าเฉลี่ยของสัตว์แต่ละชนิด</p>
-
-            <div class="input-group">
-                <label for="animalType">ประเภทสัตว์:</label>
-                <select id="animalType">
-                    <option value="">-- เลือกประเภทสัตว์ --</option>
-                </select>
-            </div>
-
-            <div class="input-group">
-                <label for="animalSpecies">ชนิดสัตว์:</label>
-                <select id="animalSpecies">
-                    <option value="">-- เลือกชนิดสัตว์ --</option>
-                </select>
-            </div>
-
-            <div class="input-group">
-                <label for="animalCount">จำนวนสัตว์:</label>
-                <input type="number" id="animalCount" value="1" min="1">
-            </div>
-
-            <!-- เพิ่มช่องสำหรับน้ำหนัก (ซ่อนเริ่มต้น) -->
-            <div class="input-group" id="weightInputContainer" style="display: none;">
-                <label for="animalWeightKg">น้ำหนัก (Kg):</label>
-                <input type="number" id="animalWeightKg" value="0" min="0" step="0.1">
-            </div>
-
-            <!-- เพิ่มช่องสำหรับช่วงชีวิต/ระดับกิจกรรม (ซ่อนเริ่มต้น) -->
-            <div class="input-group" id="lifeStageActivityContainer" style="display: none;">
-                <label for="lifeStageActivity">ช่วงชีวิต/กิจกรรม:</label>
-                <select id="lifeStageActivity">
-                    <option value="">-- เลือก --</option>
-                </select>
-            </div>
-
-            <div class="result-display">
-                <strong>ปริมาณอาหารที่แนะนำ:</strong>
-                <span id="recommendedAmount" class="highlight-amount">-</span>
-                <!-- เพิ่มส่วนสำหรับแสดง Notes -->
-                <p class="calculation-notes" id="calculationNotes"></p>
-            </div>
-        </section>
-
-        <div class="check">
-            <button id="checkFoodLevelBtn" class="Check food level">
-                <i class="fa-solid fa-scale-balanced"></i> <span class="button-text">เช็คปริมาณอาหาร</span>
-            </button>
-            <button id="checkAnimalMovementBtn" class="Check animal movement">
-                <i class="fa-solid fa-paw"></i> <span class="button-text">เช็คการเคลื่อนไหว</span>
-            </button>
-
-            <div class="noise-upload-section">
-                <h3>อัปโหลดเสียงสำหรับเล่นทันที</h3>
-                <label>
-                    เลือกเสียง:
-                    <input type="file" accept="audio/*" id="makenoiseAudioInput" class="makenoise-audio">
-                    <span id="makenoiseAudioStatus" style="color: grey;"></span>
-                </label>
-                <button id="makenoiseBtn">
-                    <i class="fa-solid fa-volume-high"></i> <span class="button-text">เล่นเสียงนี้ทันที</span>
+        <!-- ✅ เพิ่ม div ใหม่เพื่อห่อหุ้มส่วนที่เหลือของ UI -->
+        <div id="mainContentContainer" style="display: none;">
+            <div class="feednowdiv">
+                <button id="feedNowBtn" class="feednowbutton">
+                    <i class="fa-solid fa-bowl-food"></i> <span class="button-text">ให้อาหารทันที</span>
                 </button>
             </div>
-        </div>
+            <p class="subtitle">จะให้อาหารทันทีโดยอิงข้อมูลจากมื้ออาหารที่ตั้งไว้</p>
+            <br>
+            
+            <h2>ตั้งค่ามื้ออาหาร</h2>
+            
+            <div id="mealList"></div>
+        
+            <button id="addMealBtn">➕ เพิ่มมื้อ</button> 
+            <button id="saveMealsBtn">💾 บันทึก</button> 
+            <button id="pasteBtn" disabled>
+                <i class="fa-solid fa-paste"></i> <span>วางมื้อ</span>
+            </button>
+
+            <section class="calculator-section">
+                <h2>โปรแกรมคำนวณปริมาณอาหารสัตว์</h2>
+                <p class="subtitle">ค่าเฉลี่ยของสัตว์แต่ละชนิด</p>
+
+                <div class="input-group">
+                    <label for="animalType">ประเภทสัตว์:</label>
+                    <select id="animalType">
+                        <option value="">-- เลือกประเภทสัตว์ --</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="animalSpecies">ชนิดสัตว์:</label>
+                    <select id="animalSpecies">
+                        <option value="">-- เลือกชนิดสัตว์ --</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="animalCount">จำนวนสัตว์:</label>
+                    <input type="number" id="animalCount" value="1" min="1">
+                </div>
+
+                <!-- เพิ่มช่องสำหรับน้ำหนัก (ซ่อนเริ่มต้น) -->
+                <div class="input-group" id="weightInputContainer" style="display: none;">
+                    <label for="animalWeightKg">น้ำหนัก (Kg):</label>
+                    <input type="number" id="animalWeightKg" value="0" min="0" step="0.1">
+                </div>
+
+                <!-- เพิ่มช่องสำหรับช่วงชีวิต/ระดับกิจกรรม (ซ่อนเริ่มต้น) -->
+                <div class="input-group" id="lifeStageActivityContainer" style="display: none;">
+                    <label for="lifeStageActivity">ช่วงชีวิต/กิจกรรม:</label>
+                    <select id="lifeStageActivity">
+                        <option value="">-- เลือก --</option>
+                    </select>
+                </div>
+
+                <div class="result-display">
+                    <strong>ปริมาณอาหารที่แนะนำ:</strong>
+                    <span id="recommendedAmount" class="highlight-amount">-</span>
+                    <!-- เพิ่มส่วนสำหรับแสดง Notes -->
+                    <p class="calculation-notes" id="calculationNotes"></p>
+                </div>
+            </section>
+
+            <div class="check">
+                <button id="checkFoodLevelBtn" class="Check food level">
+                    <i class="fa-solid fa-scale-balanced"></i> <span class="button-text">เช็คปริมาณอาหาร</span>
+                </button>
+                <button id="checkAnimalMovementBtn" class="Check animal movement">
+                    <i class="fa-solid fa-paw"></i> <span class="button-text">เช็คการเคลื่อนไหว</span>
+                </button>
+
+                <div class="noise-upload-section">
+                    <h3>อัปโหลดเสียงสำหรับเล่นทันที</h3>
+                    <label>
+                        เลือกเสียง:
+                        <input type="file" accept="audio/*" id="makenoiseAudioInput" class="makenoise-audio">
+                        <span id="makenoiseAudioStatus" style="color: grey;"></span>
+                    </label>
+                    <button id="makenoiseBtn">
+                        <i class="fa-solid fa-volume-high"></i> <span class="button-text">เล่นเสียงนี้ทันที</span>
+                    </button>
+                </div>
+            </div>
+        </div> <!-- ✅ ปิด div#mainContentContainer -->
     </main>
     
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
