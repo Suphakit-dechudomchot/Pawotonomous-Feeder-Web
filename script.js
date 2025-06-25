@@ -17,7 +17,7 @@ function sanitizeFileName(name) {
 const firebaseConfig = {
     apiKey: "AIzaSyAg-2VtD5q6Rw8JDKTiihp-ribH0HHvU-o",
     authDomain: "pawtonomous.firebaseapp.com",
-    databaseURL: "https://pawtonomous-default-rtdb.asia-southeast1.firebasedatabase.app",
+    databaseURL: "[https://pawtonomous-default-rtdb.asia-southeast1.firebasedatabase.app](https://pawtonomous-default-rtdb.asia-southeast1.firebasedatabase.app)",
     projectId: "pawtonomous",
     storageBucket: "pawtonomous.appspot.com",
     messagingSenderId: "984959145190",
@@ -30,8 +30,8 @@ const db = firebase.database();
 // Supabase Config
 // ตรวจสอบให้แน่ใจว่า Supabase SDK ถูกโหลดใน HTML ก่อนไฟล์นี้ (supabase-js)
 const supabaseClient = supabase.createClient(
-    'https://gnkgamizqlosvhkuwzhc.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdua2dhbWl6cWxvc3Zoa3V3emhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0MzY3MTUsImV4cCI6MjA2NjAxMjcxNX0.Dq5oPJ2zV8UUyoNakh4JKzDary8MIGZLDG5BppF_pgc'
+    '[https://gnkgamizqlosvhkuwzhc.supabase.co](https://gnkgamizqlosvhkuwzhc.supabase.co)',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdua2dhbWl6cWxvc3Zoa3V3emhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0MzY3MTUsImV4cCI6MjA2NjAxMjcxNX0.Dq5oPJ2zV8UUyoNakh4JKZLDG5BppF_pgc'
 );
 
 // ตัวแปรส่วนกลางสำหรับมื้ออาหารที่คัดลอกไว้
@@ -62,6 +62,8 @@ let deviceStatusCircle, deviceStatusText, notificationDot; // Notification eleme
 
 // กำหนดสถานะปุ่ม
 function setButtonState(button, isLoading) {
+    if (!button) return; // เพิ่มการตรวจสอบ null
+
     if (isLoading) {
         button.disabled = true;
         button.classList.add('loading');
@@ -100,6 +102,12 @@ function showCustomAlert(title, message) {
     const customAlertMessage = document.getElementById('customAlertMessage');
     const customAlertOkButton = document.getElementById('customAlertOkButton');
 
+    if (!customAlertOverlay || !customAlertTitle || !customAlertMessage || !customAlertOkButton) {
+        console.error("Custom alert elements not found. Falling back to native alert.");
+        alert(`${title}: ${message}`);
+        return;
+    }
+
     customAlertTitle.textContent = title;
     customAlertMessage.textContent = message;
     customAlertOverlay.style.display = 'flex'; // แสดง overlay
@@ -129,6 +137,8 @@ function showNewNotificationToast(message) {
     const toast = document.getElementById('newNotificationToast');
     const toastMessage = document.getElementById('newNotificationToastMessage');
     
+    if (!toast || !toastMessage) return;
+
     toastMessage.textContent = message;
     toast.classList.add('show');
 
@@ -140,6 +150,8 @@ function showNewNotificationToast(message) {
 // ฟังก์ชันเพิ่มการแจ้งเตือนในรายการ (โมดอล)
 function addNotificationToList(message, timestamp) {
     const notificationList = document.getElementById('notificationList');
+    if (!notificationList) return;
+
     const listItem = document.createElement('li');
     listItem.classList.add('notification-item');
     listItem.innerHTML = `
@@ -151,6 +163,7 @@ function addNotificationToList(message, timestamp) {
 
 // อัปเดตจำนวนการแจ้งเตือนที่ยังไม่ได้อ่าน
 function updateNotificationCountUI() {
+    if (!notificationDot) return;
     if (notificationCount > 0) {
         notificationDot.textContent = notificationCount;
         notificationDot.style.display = 'block';
@@ -168,6 +181,9 @@ let deviceId = null;
 
 // ฟังก์ชันสำหรับตั้งค่าสถานะอุปกรณ์บน UI
 function setDeviceStatus(isOnline) {
+    const mainContentContainer = document.getElementById('mainContentContainer');
+    if (!mainContentContainer || !deviceStatusCircle || !deviceStatusText) return;
+
     if (isOnline) {
         deviceStatusCircle.classList.remove('offline');
         deviceStatusCircle.classList.add('online');
@@ -175,15 +191,15 @@ function setDeviceStatus(isOnline) {
         deviceStatusText.classList.add('online');
         deviceStatusText.textContent = 'ออนไลน์';
         // เปิดใช้งานปุ่มเมื่ออุปกรณ์ออนไลน์
-        document.getElementById('mainContentContainer').style.display = 'block';
-        feedNowBtn.disabled = false;
-        saveMealsBtn.disabled = false;
-        addMealBtn.disabled = false;
-        checkFoodLevelBtn.disabled = false;
-        checkAnimalMovementBtn.disabled = false;
-        makenoiseBtn.disabled = false;
+        mainContentContainer.style.display = 'block';
+        if (feedNowBtn) feedNowBtn.disabled = false;
+        if (saveMealsBtn) saveMealsBtn.disabled = false;
+        if (addMealBtn) addMealBtn.disabled = false;
+        if (checkFoodLevelBtn) checkFoodLevelBtn.disabled = false;
+        if (checkAnimalMovementBtn) checkAnimalMovementBtn.disabled = false;
+        if (makenoiseBtn) makenoiseBtn.disabled = false;
         // หากมี copiedMeal อยู่แล้ว ก็ให้ pasteBtn เปิดใช้งาน
-        if (copiedMeal) {
+        if (copiedMeal && pasteBtn) {
             pasteBtn.disabled = false;
         }
 
@@ -194,14 +210,14 @@ function setDeviceStatus(isOnline) {
         deviceStatusText.classList.add('offline');
         deviceStatusText.textContent = 'ออฟไลน์';
         // ปิดใช้งานปุ่มเมื่ออุปกรณ์ออฟไลน์
-        document.getElementById('mainContentContainer').style.display = 'none';
-        feedNowBtn.disabled = true;
-        saveMealsBtn.disabled = true;
-        addMealBtn.disabled = true;
-        pasteBtn.disabled = true; // pasteBtn ก็ต้องปิดด้วย
-        checkFoodLevelBtn.disabled = true;
-        checkAnimalMovementBtn.disabled = true;
-        makenoiseBtn.disabled = true;
+        mainContentContainer.style.display = 'none';
+        if (feedNowBtn) feedNowBtn.disabled = true;
+        if (saveMealsBtn) saveMealsBtn.disabled = true;
+        if (addMealBtn) addMealBtn.disabled = true;
+        if (pasteBtn) pasteBtn.disabled = true; // pasteBtn ก็ต้องปิดด้วย
+        if (checkFoodLevelBtn) checkFoodLevelBtn.disabled = true;
+        if (checkAnimalMovementBtn) checkAnimalMovementBtn.disabled = true;
+        if (makenoiseBtn) makenoiseBtn.disabled = true;
     }
 }
 
@@ -218,7 +234,7 @@ db.ref('device/status/deviceId').on('value', (snapshot) => {
     if (currentDeviceId && currentDeviceId !== deviceId) {
         deviceId = currentDeviceId;
         console.log("New Device ID received:", deviceId);
-        // อาจจะต้องโหลดข้อมูลใหม่หรือทำอะไรบางอย่างเมื่อ Device ID เปลี่ยน
+        // Optionally, re-fetch all settings and meals for the new device ID
         loadSettingsFromFirebase(); // โหลดการตั้งค่าระบบ
         loadMeals(); // โหลดมื้ออาหาร
         setupNotificationListener(deviceId); // ตั้งค่า Listener การแจ้งเตือนใหม่
@@ -287,6 +303,7 @@ function setupNotificationListener(currentDeviceId) {
 // ฟังก์ชันโหลดและแสดงการแจ้งเตือนเก่า
 async function fetchAndDisplayNotifications() {
     const notificationList = document.getElementById('notificationList');
+    if (!notificationList) return;
     notificationList.innerHTML = ''; // เคลียร์รายการเก่าออกก่อน
     notificationCount = 0; // รีเซ็ตจำนวนที่ยังไม่ได้อ่าน
 
@@ -337,107 +354,151 @@ async function fetchAndDisplayNotifications() {
 
 // โหลดการตั้งค่าระบบจาก Firebase
 async function loadSettingsFromFirebase() {
+    const timeZoneOffsetSelect = document.getElementById('timeZoneOffsetSelect');
+    const bottleSizeSelect = document.getElementById('bottleSizeSelect');
+    const customBottleHeightInput = document.getElementById('customBottleHeightInput');
+    const mainContentContainer = document.getElementById('mainContentContainer');
+
     if (!deviceId) {
-        console.log("No deviceId available to load system settings.");
+        console.log("No deviceId available to load system settings. Hiding main content.");
+        if (mainContentContainer) mainContentContainer.style.display = 'none';
         return;
     }
     try {
         const snapshot = await db.ref(`device/${deviceId}/settings`).once('value');
         const settings = snapshot.val();
-        if (settings) {
-            document.getElementById('timeZoneOffsetSelect').value = settings.timeZoneOffset || '7'; // Default เป็น +7
-            document.getElementById('bottleSizeSelect').value = settings.bottleSize || '48'; // Default 48cm
+        let timeZoneSet = false;
+        let bottleHeightSet = false;
 
-            // จัดการ customBottleHeightInput
-            const bottleSizeSelect = document.getElementById('bottleSizeSelect');
-            const customBottleHeightInput = document.getElementById('customBottleHeightInput');
-            if (settings.bottleSize === 'custom') {
-                customBottleHeightInput.style.display = 'block';
-                customBottleHeightInput.value = settings.customBottleHeight || '';
+        if (settings) {
+            // โหลด TimeZone
+            if (settings.timeZoneOffset !== null && !isNaN(parseFloat(settings.timeZoneOffset))) {
+                timeZoneOffsetSelect.value = settings.timeZoneOffset;
+                timeZoneSet = true;
             } else {
+                 // ถ้าไม่มีค่าใน Firebase ให้ตั้งค่าเริ่มต้นจาก Time Zone ของเบราว์เซอร์
+                const currentOffsetHours = new Date().getTimezoneOffset() / -60;
+                let closestOffsetOption = null;
+                let minDiff = Infinity;
+                Array.from(timeZoneOffsetSelect.options).forEach(option => {
+                    if (option.value === "") return;
+                    const optionValue = parseFloat(option.value);
+                    const diff = Math.abs(currentOffsetHours - optionValue);
+                    if (diff < minDiff) {
+                        minDiff = diff;
+                        closestOffsetOption = option;
+                    }
+                });
+                
+                if (closestOffsetOption) {
+                    timeZoneOffsetSelect.value = closestOffsetOption.value;
+                    // ไม่ต้องบันทึกลง Firebase ที่นี่ เพราะ saveSettingsToFirebase จะทำเองเมื่อมีการเปลี่ยนแปลง
+                }
+            }
+
+
+            // โหลด Bottle Size
+            if (settings.bottleSize !== null && settings.bottleSize !== "") {
+                bottleSizeSelect.value = settings.bottleSize;
+                if (settings.bottleSize === 'custom') {
+                    customBottleHeightInput.style.display = 'block';
+                    if (settings.customBottleHeight !== null && !isNaN(parseFloat(settings.customBottleHeight))) {
+                         customBottleHeightInput.value = settings.customBottleHeight;
+                         bottleHeightSet = true; // ตั้งค่าเป็น true เมื่อ custom height มีค่า
+                    } else {
+                        customBottleHeightInput.value = ''; // เคลียร์ค่าถ้าไม่มี
+                    }
+                } else {
+                    customBottleHeightInput.style.display = 'none';
+                    bottleHeightSet = true; // ตั้งค่าเป็น true เมื่อเลือกแบบ predefined
+                }
+            } else {
+                bottleSizeSelect.value = ''; // เลือก option "-- เลือกขนาดขวด --"
                 customBottleHeightInput.style.display = 'none';
             }
         } else {
             // ถ้ายังไม่มีการตั้งค่า ให้ตั้งค่าเริ่มต้น
-            document.getElementById('timeZoneOffsetSelect').value = '7';
-            document.getElementById('bottleSizeSelect').value = '48';
-            document.getElementById('customBottleHeightInput').style.display = 'none';
+            timeZoneOffsetSelect.value = ''; // เริ่มต้นเป็น "-- เลือกโซนเวลา --"
+            bottleSizeSelect.value = ''; // เริ่มต้นเป็น "-- เลือกขนาดขวด --"
+            customBottleHeightInput.style.display = 'none';
             console.log("No existing system settings found. Using defaults.");
         }
+
+        // ตรวจสอบและแสดง/ซ่อน mainContentContainer
+        if (timeZoneSet && bottleHeightSet) {
+            mainContentContainer.style.display = 'block';
+        } else {
+            mainContentContainer.style.display = 'none';
+        }
+
     } catch (error) {
         console.error("Error loading system settings:", error);
+        showCustomAlert("ข้อผิดพลาด", `ไม่สามารถโหลดการตั้งค่าระบบได้: ${error.message}`);
+        if (mainContentContainer) mainContentContainer.style.display = 'none'; // ซ่อน UI ในกรณีเกิดข้อผิดพลาด
     }
 }
 
 // บันทึกการตั้งค่าระบบไปที่ Firebase
 async function saveSettingsToFirebase() {
+    const timeZoneOffsetSelect = document.getElementById('timeZoneOffsetSelect');
+    const bottleSizeSelect = document.getElementById('bottleSizeSelect');
+    const customBottleHeightInput = document.getElementById('customBottleHeightInput');
+    const mainContentContainer = document.getElementById('mainContentContainer');
+
     if (!deviceId) {
         showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์. โปรดรอให้อุปกรณ์เชื่อมต่อ.");
         return;
     }
-    const timeZoneOffset = document.getElementById('timeZoneOffsetSelect').value;
-    const bottleSize = document.getElementById('bottleSizeSelect').value;
+    
+    const timeZoneOffset = timeZoneOffsetSelect.value;
+    const bottleSize = bottleSizeSelect.value;
     let customBottleHeight = null;
+
+    let settingsToSave = {
+        timeZoneOffset: (timeZoneOffset === "") ? null : parseFloat(timeZoneOffset),
+        bottleSize: (bottleSize === "") ? null : bottleSize
+    };
+
+    let timeZoneSet = (timeZoneOffset !== "" && !isNaN(parseFloat(timeZoneOffset)));
+    let bottleHeightSet = false;
+
     if (bottleSize === 'custom') {
-        customBottleHeight = parseFloat(document.getElementById('customBottleHeightInput').value);
-        if (isNaN(customBottleHeight) || customBottleHeight <= 0) {
-            showCustomAlert("ข้อผิดพลาด", "โปรดระบุความสูงของขวดที่ถูกต้อง (มากกว่า 0).");
-            return;
+        customBottleHeight = parseFloat(customBottleHeightInput.value);
+        if (!isNaN(customBottleHeight) && customBottleHeight > 0) {
+            settingsToSave.customBottleHeight = customBottleHeight;
+            bottleHeightSet = true;
+        } else {
+            settingsToSave.customBottleHeight = null; // ลบค่าถ้าไม่ถูกต้อง
+            bottleHeightSet = false;
         }
+    } else if (bottleSize !== "") {
+        // หากเลือก preset
+        settingsToSave.customBottleHeight = null; // ลบ custom height หากเปลี่ยนกลับไป preset
+        bottleHeightSet = true;
+    } else {
+        // หากเลือก "-- เลือกขนาดขวด --"
+        settingsToSave.customBottleHeight = null;
+        bottleHeightSet = false;
     }
 
     try {
-        await db.ref(`device/${deviceId}/settings`).set({
-            timeZoneOffset: parseFloat(timeZoneOffset),
-            bottleSize: bottleSize,
-            customBottleHeight: customBottleHeight
-        });
+        await db.ref(`device/${deviceId}/settings`).set(settingsToSave);
         console.log("System settings saved successfully!");
-        showCustomAlert("สำเร็จ", "บันทึกการตั้งค่าระบบเรียบร้อยแล้ว.");
+        // ไม่ต้องแสดง alert บ่อยๆ ทุกครั้งที่พิมพ์ หรือเปลี่ยน
+        // showCustomAlert("สำเร็จ", "บันทึกการตั้งค่าระบบเรียบร้อยแล้ว.");
     } catch (error) {
         console.error("Error saving system settings:", error);
         showCustomAlert("ข้อผิดพลาด", `ไม่สามารถบันทึกการตั้งค่าระบบได้: ${error.message}`);
+    } finally {
+        // หลังจากบันทึกเสร็จ ตรวจสอบสถานะอีกครั้งเพื่ออัปเดต UI
+        if (timeZoneSet && bottleHeightSet) {
+            mainContentContainer.style.display = 'block';
+        } else {
+            mainContentContainer.style.display = 'none';
+        }
     }
 }
 
-// Listener สำหรับการเปลี่ยนแปลง select ของขนาดขวด
-document.addEventListener('DOMContentLoaded', () => {
-    const bottleSizeSelect = document.getElementById('bottleSizeSelect');
-    const customBottleHeightInput = document.getElementById('customBottleHeightInput');
-
-    bottleSizeSelect.addEventListener('change', () => {
-        if (bottleSizeSelect.value === 'custom') {
-            customBottleHeightInput.style.display = 'block';
-            customBottleHeightInput.focus();
-        } else {
-            customBottleHeightInput.style.display = 'none';
-        }
-    });
-
-    // กำหนดค่าให้กับตัวแปรที่รับ reference เมื่อ DOM โหลดเสร็จ
-    feedNowBtn = document.getElementById('feedNowBtn');
-    checkFoodLevelBtn = document.getElementById('checkFoodLevelBtn');
-    checkAnimalMovementBtn = document.getElementById('checkAnimalMovementBtn');
-    makenoiseBtn = document.getElementById('makenoiseBtn');
-    pasteBtn = document.getElementById('pasteBtn');
-    mealList = document.getElementById('mealList');
-    addMealBtn = document.getElementById('addMealBtn');
-    saveMealsBtn = document.getElementById('saveMealsBtn');
-    openNotificationBtn = document.getElementById('openNotificationBtn');
-    closeNotificationBtn = document.getElementById('closeNotificationBtn');
-    notificationDot = document.getElementById('notificationDot');
-    deviceStatusCircle = document.getElementById('deviceStatusCircle');
-    deviceStatusText = document.getElementById('deviceStatusText');
-
-
-    // โหลดการตั้งค่าระบบเมื่อหน้าเว็บโหลดเสร็จ
-    loadSettingsFromFirebase();
-
-    // Listener สำหรับการเปลี่ยนแปลงการตั้งค่าระบบ (เพื่อให้บันทึกอัตโนมัติ)
-    document.getElementById('timeZoneOffsetSelect').addEventListener('change', saveSettingsToFirebase);
-    document.getElementById('bottleSizeSelect').addEventListener('change', saveSettingsToFirebase);
-    document.getElementById('customBottleHeightInput').addEventListener('input', saveSettingsToFirebase);
-});
 
 // ===============================================
 // ✅ การจัดการมื้ออาหาร (เพิ่ม, ลบ, แก้ไข, บันทึก)
@@ -452,16 +513,21 @@ function addMeal(meal = {}) {
     const hour = String(meal.hour || 0).padStart(2, '0');
     const minute = String(meal.minute || 0).padStart(2, '0');
 
+    // ตรวจสอบและกำหนดค่าเริ่มต้นที่เหมาะสมสำหรับ checkbox (ควรเป็น boolean)
+    const initialSwingMode = meal.swingMode === true ? 'checked' : ''; 
+    const initialNoiseStatusText = meal.noiseFile ? `ไฟล์: ${meal.noiseFile.split('/').pop()}` : 'ไม่มีไฟล์';
+    const initialUploadBtnDisabled = meal.noiseFile ? '' : 'disabled'; // ปุ่มอัปโหลดจะถูกปิดถ้าไม่มีไฟล์เสียงที่โหลดมาแต่แรก
+
     mealDiv.innerHTML = `
         <span class="meal-label">มื้อที่ ${mealList.children.length + 1}:</span>
-        <input type="time" class="meal-time" value="${hour}:${minute}">
-        <input type="number" class="meal-amount" value="${meal.amount || 1}" min="1" max="100">
+        <label>เวลา: <input type="time" class="meal-time" value="${hour}:${minute}"></label>
+        <label>ปริมาณ (g): <input type="number" class="meal-amount" value="${meal.amount || 1}" min="1" max="100"></label>
         <label>
             เสียง: 
             <input type="file" accept="audio/*" class="meal-noise-input">
-            <span class="meal-noise-status" style="color: grey;">${meal.noiseFile ? `ไฟล์: ${meal.noiseFile.split('/').pop()}` : 'ไม่มีไฟล์'}</span>
+            <span class="meal-noise-status" style="color: grey;">${initialNoiseStatusText}</span>
         </label>
-        <button class="meal-noise-upload-btn" ${meal.noiseFile ? '' : 'disabled'}>อัปโหลดเสียง</button>
+        <button class="meal-noise-upload-btn" ${initialUploadBtnDisabled}>อัปโหลดเสียง</button>
         <div class="servo-settings">
             <label>
                 Servo 1 (อาหาร): 
@@ -474,7 +540,7 @@ function addMeal(meal = {}) {
                 <span class="servo-angle-value">${meal.servo2Angle || 90}°</span>
             </label>
             <label class="swing-mode-label">
-                <input type="checkbox" class="swing-mode-checkbox" ${meal.swingMode ? 'checked' : ''}>
+                <input type="checkbox" class="swing-mode-checkbox" ${initialSwingMode}>
                 โหมดสวิง (พัดลม)
             </label>
         </div>
@@ -501,7 +567,8 @@ function addMeal(meal = {}) {
             noiseStatus.textContent = `พร้อมอัปโหลด: ${noiseInput.files[0].name}`;
             uploadBtn.disabled = false;
         } else {
-            noiseStatus.textContent = meal.noiseFile ? `ไฟล์: ${meal.noiseFile.split('/').pop()}` : 'ไม่มีไฟล์';
+            // ถ้าล้างไฟล์ที่เลือกไป
+            noiseStatus.textContent = mealDiv.dataset.noiseFile ? `ไฟล์: ${mealDiv.dataset.noiseFile.split('/').pop()}` : 'ไม่มีไฟล์';
             uploadBtn.disabled = true;
         }
     });
@@ -514,6 +581,7 @@ function addMeal(meal = {}) {
             setButtonState(uploadBtn, true); // ตั้งค่าปุ่มเป็นสถานะโหลด
             try {
                 // อัปโหลดไปยัง Supabase Storage
+                // ใช้ mealDiv.dataset.id เพื่อสร้าง folder ย่อยสำหรับแต่ละมื้อ
                 const path = `meal_noises/${mealDiv.dataset.id}/${sanitizeFileName(originalFileName)}`;
                 const { data, error } = await supabaseClient
                     .storage
@@ -548,7 +616,7 @@ function addMeal(meal = {}) {
                 noiseStatus.textContent = `ผิดพลาด: ${originalFileName}`;
                 // คืนสถานะเดิม
                 noiseInput.value = ''; // เคลียร์ไฟล์ที่เลือก
-                noiseStatus.textContent = meal.noiseFile ? `ไฟล์: ${meal.noiseFile.split('/').pop()}` : 'ไม่มีไฟล์';
+                noiseStatus.textContent = mealDiv.dataset.noiseFile ? `ไฟล์: ${mealDiv.dataset.noiseFile.split('/').pop()}` : 'ไม่มีไฟล์';
                 uploadBtn.disabled = true;
             } finally {
                 setButtonState(uploadBtn, false); // คืนสถานะปุ่ม
@@ -573,7 +641,7 @@ function addMeal(meal = {}) {
             servo2Angle: parseInt(mealDiv.querySelector('.servo2-angle').value),
             swingMode: mealDiv.querySelector('.swing-mode-checkbox').checked // ✅ อ่านค่า swingMode
         };
-        pasteBtn.disabled = false; // เปิดใช้งานปุ่มวาง
+        if (pasteBtn) pasteBtn.disabled = false; // เปิดใช้งานปุ่มวาง
         showCustomAlert("คัดลอก", "คัดลอกมื้ออาหารแล้ว! กด 'วางมื้อ' เพื่อเพิ่ม.");
     });
 
@@ -584,6 +652,8 @@ function addMeal(meal = {}) {
 async function loadMeals() {
     if (!deviceId) {
         console.log("No deviceId available to load meals.");
+        mealList.innerHTML = ''; // เคลียร์มื้ออาหารที่มีอยู่
+        addMeal({}); // เพิ่มมื้อเริ่มต้น 1 มื้อ
         return;
     }
     mealList.innerHTML = ''; // เคลียร์มื้ออาหารที่มีอยู่
@@ -607,8 +677,14 @@ async function loadMeals() {
                     // อัปเดตสถานะการแสดงผลสำหรับไฟล์เสียงที่โหลดมา
                     const noiseStatusSpan = mealDiv.querySelector('.meal-noise-status');
                     const uploadBtn = mealDiv.querySelector('.meal-noise-upload-btn');
-                    noiseStatusSpan.textContent = `ไฟล์: ${meal.noiseFile.split('/').pop()}`;
-                    uploadBtn.disabled = true; // ไม่มีไฟล์ใหม่ให้ upload
+                    if (noiseStatusSpan) noiseStatusSpan.textContent = `ไฟล์: ${meal.noiseFile.split('/').pop()}`;
+                    if (uploadBtn) uploadBtn.disabled = true; // ไม่มีไฟล์ใหม่ให้ upload
+                } else {
+                     // ถ้าไม่มี noiseFile ให้แน่ใจว่าสถานะและปุ่มถูกต้อง
+                    const noiseStatusSpan = mealDiv.querySelector('.meal-noise-status');
+                    const uploadBtn = mealDiv.querySelector('.meal-noise-upload-btn');
+                    if (noiseStatusSpan) noiseStatusSpan.textContent = 'ไม่มีไฟล์';
+                    if (uploadBtn) uploadBtn.disabled = true;
                 }
                 // ✅ ตั้งค่าสถานะ checkbox ของ swingMode เมื่อโหลดมื้ออาหาร
                 const swingModeCheckbox = mealDiv.querySelector('.swing-mode-checkbox');
@@ -616,6 +692,8 @@ async function loadMeals() {
                     swingModeCheckbox.checked = meal.swingMode || false; // default เป็น false
                 }
             });
+        } else {
+            addMeal({}); // ถ้าไม่มีมื้ออาหาร ให้เพิ่มมื้อเริ่มต้น 1 มื้อ
         }
         console.log("Meals loaded successfully!");
     } catch (error) {
@@ -630,6 +708,7 @@ async function saveMeals() {
         showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์. โปรดรอให้อุปกรณ์เชื่อมต่อ.");
         return;
     }
+    if (!saveMealsBtn) return; // เพิ่มการตรวจสอบ null
     setButtonState(saveMealsBtn, true); // ตั้งค่าปุ่มเป็นสถานะโหลด
     const mealsToSave = [];
     let isValid = true;
@@ -650,7 +729,7 @@ async function saveMeals() {
         const amount = parseInt(amountInput);
         const servo1Angle = parseInt(servo1AngleInput);
         const servo2Angle = parseInt(servo2AngleInput);
-        const swingMode = swingModeCheckbox.checked; // ✅ รับค่า swingMode
+        const swingMode = swingModeCheckbox ? swingModeCheckbox.checked : false; // ✅ รับค่า swingMode และตรวจสอบ null
 
         if (isNaN(hour) || isNaN(minute) || isNaN(amount) || amount <= 0 || isNaN(servo1Angle) || isNaN(servo2Angle)) {
             isValid = false;
@@ -697,7 +776,7 @@ async function feedNow() {
         showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์. โปรดรอให้อุปกรณ์เชื่อมต่อ.");
         return;
     }
-
+    if (!feedNowBtn) return; // เพิ่มการตรวจสอบ null
     setButtonState(feedNowBtn, true); // ตั้งค่าปุ่มเป็นสถานะโหลด
     try {
         // ดึงการตั้งค่ามื้ออาหารปัจจุบันจาก Firebase
@@ -748,6 +827,7 @@ async function checkFoodLevel() {
         showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์. โปรดรอให้อุปกรณ์เชื่อมต่อ.");
         return;
     }
+    if (!checkFoodLevelBtn) return; // เพิ่มการตรวจสอบ null
     setButtonState(checkFoodLevelBtn, true); // ตั้งค่าปุ่มเป็นสถานะโหลด
     try {
         // ส่งคำสั่งไปยัง Firebase ให้ ESP32 ตรวจสอบระดับอาหาร
@@ -772,20 +852,20 @@ async function checkFoodLevel() {
         });
 
         const foodLevelResult = await resultPromise;
-        const bottleSize = document.getElementById('bottleSizeSelect').value;
-        const customBottleHeight = parseFloat(document.getElementById('customBottleHeightInput').value);
-
+        const bottleSizeSelect = document.getElementById('bottleSizeSelect');
+        const customBottleHeightInput = document.getElementById('customBottleHeightInput');
+        
         let bottleHeight = 0;
-        if (bottleSize === 'custom' && !isNaN(customBottleHeight)) {
-            bottleHeight = customBottleHeight;
-        } else {
-            // กำหนดความสูงตามที่เลือกใน select (ค่า value ของ option คือความสูงเป็น cm)
-            bottleHeight = parseFloat(bottleSize);
+        if (bottleSizeSelect && bottleSizeSelect.value === 'custom' && customBottleHeightInput) {
+            bottleHeight = parseFloat(customBottleHeightInput.value);
+        } else if (bottleSizeSelect) {
+            bottleHeight = parseFloat(bottleSizeSelect.value);
         }
 
         // ตรวจสอบว่าได้ค่าความสูงของขวดหรือไม่
         if (isNaN(bottleHeight) || bottleHeight <= 0) {
             showCustomAlert("ข้อผิดพลาด", "โปรดตั้งค่าขนาดขวดใน 'การตั้งค่าระบบ' ก่อน.");
+            setButtonState(checkFoodLevelBtn, false); // คืนสถานะปุ่มก่อนออก
             return;
         }
 
@@ -827,6 +907,7 @@ async function checkAnimalMovement() {
         showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์. โปรดรอให้อุปกรณ์เชื่อมต่อ.");
         return;
     }
+    if (!checkAnimalMovementBtn) return; // เพิ่มการตรวจสอบ null
     setButtonState(checkAnimalMovementBtn, true); // ตั้งค่าปุ่มเป็นสถานะโหลด
     try {
         // ส่งคำสั่งไปยัง Firebase ให้ ESP32 ตรวจสอบการเคลื่อนไหว
@@ -877,17 +958,26 @@ async function checkAnimalMovement() {
 // ===============================================
 let selectedMakeNoiseFile = null; // เก็บไฟล์ที่เลือกสำหรับ Make Noise
 
-document.getElementById('makenoiseAudioInput').addEventListener('change', (e) => {
-    if (e.target.files.length > 0) {
-        selectedMakeNoiseFile = e.target.files[0];
-        document.getElementById('makenoiseAudioStatus').textContent = `พร้อมอัปโหลด: ${selectedMakeNoiseFile.name}`;
-        makenoiseBtn.disabled = false;
-    } else {
-        selectedMakeNoiseFile = null;
-        document.getElementById('makenoiseAudioStatus').textContent = '';
-        makenoiseBtn.disabled = true;
+document.addEventListener('DOMContentLoaded', () => { // Ensure this part runs after DOM is ready
+    const makenoiseAudioInput = document.getElementById('makenoiseAudioInput');
+    const makenoiseAudioStatus = document.getElementById('makenoiseAudioStatus');
+    const makenoiseBtn = document.getElementById('makenoiseBtn'); // Make sure this is retrieved
+
+    if (makenoiseAudioInput && makenoiseAudioStatus && makenoiseBtn) {
+        makenoiseAudioInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                selectedMakeNoiseFile = e.target.files[0];
+                makenoiseAudioStatus.textContent = `พร้อมอัปโหลด: ${selectedMakeNoiseFile.name}`;
+                makenoiseBtn.disabled = false;
+            } else {
+                selectedMakeNoiseFile = null;
+                makenoiseAudioStatus.textContent = '';
+                makenoiseBtn.disabled = true;
+            }
+        });
     }
 });
+
 
 async function playMakeNoise() {
     if (!deviceId) {
@@ -899,6 +989,7 @@ async function playMakeNoise() {
         return;
     }
 
+    if (!makenoiseBtn) return; // Add null check
     setButtonState(makenoiseBtn, true); // ตั้งค่าปุ่มเป็นสถานะโหลด
     const originalFileName = selectedMakeNoiseFile.name;
     const sanitizedFileName = sanitizeFileName(originalFileName);
@@ -940,10 +1031,12 @@ async function playMakeNoise() {
         showCustomAlert("ข้อผิดพลาด", `ไม่สามารถเล่นเสียงได้: ${error.message}`);
     } finally {
         setButtonState(makenoiseBtn, false); // คืนสถานะปุ่ม
-        document.getElementById('makenoiseAudioInput').value = ''; // เคลียร์ไฟล์ที่เลือก
-        document.getElementById('makenoiseAudioStatus').textContent = '';
+        const makenoiseAudioInput = document.getElementById('makenoiseAudioInput');
+        const makenoiseAudioStatus = document.getElementById('makenoiseAudioStatus');
+        if (makenoiseAudioInput) makenoiseAudioInput.value = ''; // เคลียร์ไฟล์ที่เลือก
+        if (makenoiseAudioStatus) makenoiseAudioStatus.textContent = '';
         selectedMakeNoiseFile = null;
-        makenoiseBtn.disabled = true;
+        if (makenoiseBtn) makenoiseBtn.disabled = true;
     }
 }
 
@@ -952,7 +1045,7 @@ async function playMakeNoise() {
 // ===============================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    // กำหนดค่าให้กับตัวแปรที่รับ reference เมื่อ DOM โหลดเสร็จ
+    // 1. รับ Reference ของ Element ต่างๆ (ตรวจสอบให้แน่ใจว่า Elements เหล่านี้มีอยู่จริงใน HTML)
     feedNowBtn = document.getElementById('feedNowBtn');
     checkFoodLevelBtn = document.getElementById('checkFoodLevelBtn');
     checkAnimalMovementBtn = document.getElementById('checkAnimalMovementBtn');
@@ -967,40 +1060,99 @@ document.addEventListener('DOMContentLoaded', () => {
     deviceStatusCircle = document.getElementById('deviceStatusCircle');
     deviceStatusText = document.getElementById('deviceStatusText');
 
-    // เรียกใช้ populateAnimalType เพื่อเติมข้อมูลเริ่มต้น
-    populateAnimalType();
+    // ส่วนสำหรับ System Settings
+    const timeZoneOffsetSelect = document.getElementById('timeZoneOffsetSelect');
+    const bottleSizeSelect = document.getElementById('bottleSizeSelect');
+    const customBottleHeightInput = document.getElementById('customBottleHeightInput');
 
-    // Event listeners สำหรับส่วน Meal
-    addMealBtn.addEventListener('click', () => addMeal({})); // เรียก addMeal พร้อม object เปล่าเพื่อสร้างค่าเริ่มต้น
-    saveMealsBtn.addEventListener('click', saveMeals);
-    pasteBtn.addEventListener('click', () => {
+    // 2. ตั้งค่าสถานะเริ่มต้นของปุ่มเป็น disabled (จะเปิดใช้งานเมื่อ device ออนไลน์)
+    setDeviceStatus(false);
+    if (pasteBtn) pasteBtn.disabled = true;
+
+    // 3. แนบ Event Listeners สำหรับปุ่มควบคุมหลัก
+    if (feedNowBtn) feedNowBtn.addEventListener('click', feedNow);
+    if (addMealBtn) addMealBtn.addEventListener('click', () => addMeal({})); 
+    if (saveMealsBtn) saveMealsBtn.addEventListener('click', saveMeals);
+    if (pasteBtn) pasteBtn.addEventListener('click', () => {
         if (copiedMeal) {
             addMeal(copiedMeal);
             copiedMeal = null; // ล้างข้อมูลที่คัดลอกหลังจากวาง
-            pasteBtn.disabled = true; // ปิดใช้งานปุ่มวาง
+            if (pasteBtn) pasteBtn.disabled = true; // ปิดใช้งานปุ่มวาง
         }
     });
-
-    // Event listeners สำหรับปุ่มควบคุม
-    feedNowBtn.addEventListener('click', feedNow);
-    checkFoodLevelBtn.addEventListener('click', checkFoodLevel);
-    checkAnimalMovementBtn.addEventListener('click', checkAnimalMovement);
-    makenoiseBtn.addEventListener('click', playMakeNoise);
-
-    // Event listeners สำหรับ Notification Modal
-    openNotificationBtn.addEventListener('click', () => {
-        document.getElementById('notificationModal').style.display = 'block';
+    if (openNotificationBtn) openNotificationBtn.addEventListener('click', () => {
+        const notificationModal = document.getElementById('notificationModal');
+        if (notificationModal) notificationModal.style.display = 'block';
         notificationCount = 0; // ตั้งค่าเป็น 0 เมื่อเปิดโมดอล
         updateNotificationCountUI(); // อัปเดต UI จุดแจ้งเตือน
+        fetchAndDisplayNotifications(); // โหลดการแจ้งเตือนมาแสดงในโมดอล
     });
-    closeNotificationBtn.addEventListener('click', () => {
-        document.getElementById('notificationModal').style.display = 'none';
+    if (closeNotificationBtn) closeNotificationBtn.addEventListener('click', () => {
+        const notificationModal = document.getElementById('notificationModal');
+        if (notificationModal) notificationModal.style.display = 'none';
     });
+    if (checkFoodLevelBtn) checkFoodLevelBtn.addEventListener('click', checkFoodLevel);
+    if (checkAnimalMovementBtn) checkAnimalMovementBtn.addEventListener('click', checkAnimalMovement);
+    if (makenoiseBtn) makenoiseBtn.addEventListener('click', playMakeNoise); // ต้องแน่ใจว่า makenoiseBtn ไม่เป็น null
+
+    // 4. Listener สำหรับการเปลี่ยนแปลงการตั้งค่าระบบ (เพื่อให้บันทึกอัตโนมัติ)
+    if (timeZoneOffsetSelect) timeZoneOffsetSelect.addEventListener('change', saveSettingsToFirebase);
+    if (bottleSizeSelect) bottleSizeSelect.addEventListener('change', saveSettingsToFirebase);
+    if (customBottleHeightInput) customBottleHeightInput.addEventListener('input', saveSettingsToFirebase);
     
-    // ตั้งค่าสถานะเริ่มต้นของปุ่มเป็น disabled (จะเปิดใช้งานเมื่อ device ออนไลน์)
-    setDeviceStatus(false);
+    // 5. โหลดการตั้งค่าระบบเมื่อหน้าเว็บโหลดเสร็จ
+    loadSettingsFromFirebase();
 
-    // Initial load ของมื้ออาหาร (จะถูกเรียกอีกครั้งเมื่อ deviceId ถูกกำหนด)
-    loadMeals();
+    // 6. เรียกใช้ populateAnimalType ครั้งแรกเมื่อ DOM โหลดเสร็จ เพื่อให้ Calculator เริ่มทำงาน
+    const animalTypeSelect = document.getElementById("animalType");
+    const animalSpeciesSelect = document.getElementById("animalSpecies");
+    const animalCountInput = document.getElementById("animalCount");
+    const animalWeightKgInput = document.getElementById("animalWeightKg");
+    const lifeStageActivitySelect = document.getElementById("lifeStageActivity");
+    const calculationNotesSpan = document.getElementById("calculationNotes");
+
+    if (animalTypeSelect) {
+        populateAnimalType(animalTypeSelect, animalData);
+        animalTypeSelect.addEventListener('change', () => updateAnimalSpecies(animalTypeSelect, animalSpeciesSelect, animalData));
+        
+        const calculatorInputs = [animalTypeSelect, animalSpeciesSelect, animalWeightKgInput, lifeStageActivitySelect];
+        calculatorInputs.forEach(input => {
+            if (input) {
+                input.addEventListener('change', () => {
+                    updateRecommendedAmount(
+                        animalTypeSelect, 
+                        animalSpeciesSelect, 
+                        animalWeightKgInput, 
+                        lifeStageActivitySelect, 
+                        animalCountInput, 
+                        calculationNotesSpan, 
+                        animalData
+                    );
+                });
+            }
+        });
+
+        if (animalCountInput) {
+            animalCountInput.addEventListener('input', () => {
+                updateRecommendedAmount(
+                    animalTypeSelect, 
+                    animalSpeciesSelect, 
+                    animalWeightKgInput, 
+                    lifeStageActivitySelect, 
+                    animalCountInput, 
+                    calculationNotesSpan, 
+                    animalData
+                );
+            });
+        }
+        updateRecommendedAmount(
+            animalTypeSelect, 
+            animalSpeciesSelect, 
+            animalWeightKgInput, 
+            lifeStageActivitySelect, 
+            animalCountInput, 
+            calculationNotesSpan, 
+            animalData
+        );
+    }
 });
-
