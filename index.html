@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit&display=swap">
     <!-- Font Awesome Kit Code ของคุณ: อย่าลืมเปลี่ยน YOUR_KIT_CODE เป็นรหัสจริงของคุณ -->
-    <script src="https://kit.fontawesome.com/8b0b6a29b2.js" crossorigin="anonymous"></script>
+    <script src="https://kit.fontawesome.com/8b0b6a29b2.js" crossorigin="anonymous"></script> 
 </head>
 <body>
     <div class="notification-area">
@@ -37,7 +37,7 @@
 
     <div id="notificationModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background-color:rgba(0,0,0,0.5); z-index:999;">
         <div style="background:#fff; width:90%; max-width:500px; margin:5vh auto; padding:25px; border-radius:15px; position:relative; max-height:85vh; overflow-y:auto;">
-            <h2><i class="fa-solid fa-bullhorn"></i> แจ้งเตือนล่าสุด</h2>
+            <h2>📢 แจ้งเตือนล่าสุด</h2>
             <ul id="notificationList" style="list-style:none; padding-left:0;"></ul>
             <button id="closeNotificationBtn" style="margin-top:20px;">ปิด</button>
         </div>
@@ -46,7 +46,7 @@
     <main>
         <!-- ✅ ส่วนการตั้งค่าระบบ (จะแสดงตลอดเวลา) -->
         <section class="system-settings-section">
-            <h2><i class="fa-solid fa-gear"></i> การตั้งค่าระบบ</h2>
+            <h2>⚙️ การตั้งค่าระบบ</h2>
             <div class="input-group">
                 <label for="timeZoneOffsetSelect">โซนเวลา (UTC+/-H):</label>
                 <select id="timeZoneOffsetSelect">
@@ -127,10 +127,10 @@
             
             <div id="mealList"></div>
         
-            <button id="addMealBtn"><i class="fa-solid fa-plus"></i></button> 
-            <button id="saveMealsBtn"><i class="fa-solid fa-floppy-disk"></i></button> 
+            <button id="addMealBtn">➕ เพิ่มมื้อ</button> 
+            <button id="saveMealsBtn">💾 บันทึก</button> 
             <button id="pasteBtn" disabled>
-                <i class="fa-solid fa-paste"></i><span>วางมื้อ</span>
+                <i class="fa-solid fa-paste"></i> <span>วางมื้อ</span>
             </button>
 
             <section class="calculator-section">
