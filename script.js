@@ -178,6 +178,8 @@ function updateNotificationCountUI() {
 
 // ตัวแปรสำหรับเก็บ Device ID ที่ได้รับจาก Firebase
 let deviceId = null; 
+// ✅ เพิ่ม DEFAULT_DEVICE_ID สำหรับการพัฒนาเว็บแอปโดยไม่พึ่ง ESP32
+const DEFAULT_DEVICE_ID = "web_app_test_device"; 
 
 // ฟังก์ชันสำหรับตั้งค่าสถานะอุปกรณ์บน UI
 function setDeviceStatus(isOnline) {
@@ -191,7 +193,7 @@ function setDeviceStatus(isOnline) {
         deviceStatusText.classList.add('online');
         deviceStatusText.textContent = 'ออนไลน์';
         // เปิดใช้งานปุ่มเมื่ออุปกรณ์ออนไลน์
-        mainContentContainer.style.display = 'block';
+        // mainContentContainer.style.display จะถูกจัดการโดย loadSettingsFromFirebase()
         if (feedNowBtn) feedNowBtn.disabled = false;
         if (saveMealsBtn) saveMealsBtn.disabled = false;
         if (addMealBtn) addMealBtn.disabled = false;
@@ -210,7 +212,7 @@ function setDeviceStatus(isOnline) {
         deviceStatusText.classList.add('offline');
         deviceStatusText.textContent = 'ออฟไลน์';
         // ปิดใช้งานปุ่มเมื่ออุปกรณ์ออฟไลน์
-        mainContentContainer.style.display = 'none';
+        mainContentContainer.style.display = 'none'; // ซ่อน main UI
         if (feedNowBtn) feedNowBtn.disabled = true;
         if (saveMealsBtn) saveMealsBtn.disabled = true;
         if (addMealBtn) addMealBtn.disabled = true;
@@ -225,23 +227,39 @@ function setDeviceStatus(isOnline) {
 db.ref('device/status/online').on('value', (snapshot) => {
     const isOnline = snapshot.val();
     console.log("Device online status:", isOnline);
+    // ✅ เรียก setDeviceStatus() เพื่ออัปเดต UI Status Circle/Text
     setDeviceStatus(isOnline);
 });
 
 // ฟังการเปลี่ยนแปลง Device ID (เช่น เมื่อ ESP32 รีสตาร์ทและส่ง ID มาใหม่)
 db.ref('device/status/deviceId').on('value', (snapshot) => {
-    const currentDeviceId = snapshot.val();
-    if (currentDeviceId && currentDeviceId !== deviceId) {
+    let currentDeviceId = snapshot.val();
+    if (!currentDeviceId || currentDeviceId.length < 5) { // ถ้าไม่มีค่าหรือค่าไม่ถูกต้อง (กรณี ESP32 ยังไม่ทำงาน)
+        currentDeviceId = DEFAULT_DEVICE_ID; // ✅ ใช้ DEFAULT_DEVICE_ID ชั่วคราว
+        console.log("No valid Device ID from ESP32. Using default for web app development:", DEFAULT_DEVICE_ID);
+        // หากคุณต้องการให้แสดง UI หลักทันทีที่โหลดหน้าเว็บ แม้ไม่มี ESP32
+        // สามารถเรียก loadSettingsFromFirebase() และ loadMeals() ที่นี่ได้เลย
+        // โดยไม่สนใจ device online status
+    }
+
+    if (currentDeviceId !== deviceId) {
         deviceId = currentDeviceId;
-        console.log("New Device ID received:", deviceId);
-        // Optionally, re-fetch all settings and meals for the new device ID
-        loadSettingsFromFirebase(); // โหลดการตั้งค่าระบบ
-        loadMeals(); // โหลดมื้ออาหาร
-        setupNotificationListener(deviceId); // ตั้งค่า Listener การแจ้งเตือนใหม่
-        fetchAndDisplayNotifications(); // โหลดการแจ้งเตือนเก่ามาแสดง
+        console.log("Active Device ID set to:", deviceId);
+        // สิ่งเหล่านี้จะถูกเรียกเมื่อ deviceId ถูกกำหนด (ไม่ว่าจะเป็นจาก ESP32 หรือ default)
+        loadSettingsFromFirebase(); 
+        loadMeals(); 
+        setupNotificationListener(deviceId); 
+        fetchAndDisplayNotifications(); 
+
+        // ✅ ถ้าใช้ DEFAULT_DEVICE_ID ให้ set online status เป็น true ชั่วคราว
+        // เพื่อให้ mainContentContainer แสดงผล
+        if (currentDeviceId === DEFAULT_DEVICE_ID) {
+            setDeviceStatus(true);
+        }
     } else if (!currentDeviceId) {
-        deviceId = null; // ถ้าไม่มี Device ID แสดงว่าอุปกรณ์อาจจะยังไม่เชื่อมต่อ
+        deviceId = null; 
         console.log("Device ID is null, device might be offline or not connected.");
+        setDeviceStatus(false); // ซ่อน UI หลัก
     }
 });
 
@@ -518,7 +536,7 @@ function addMeal(meal = {}) {
     const initialUploadBtnDisabled = meal.noiseFile ? '' : 'disabled'; // ปุ่มอัปโหลดจะถูกปิดถ้าไม่มีไฟล์เสียงที่โหลดมาแต่แรก
 
     mealDiv.innerHTML = `
-        <span class="meal-label">มื้อที่ ${mealList.children.length + 1}:</span>
+        <span class="meal-label">มื้อที่ ${document.querySelectorAll(".meal").length + 1}:</span>
         <label>เวลา: <input type="time" class="meal-time" value="${hour}:${minute}"></label>
         <label>ปริมาณ (g): <input type="number" class="meal-amount" value="${meal.amount || 1}" min="1" max="100"></label>
         <label>
@@ -538,7 +556,7 @@ function addMeal(meal = {}) {
                 <input type="range" class="servo2-angle" min="0" max="180" value="${meal.servo2Angle || 90}">
                 <span class="servo-angle-value">${meal.servo2Angle || 90}°</span>
             </label>
-            <!-- ✅ ลบส่วนของ swingMode ออก -->
+            <!-- ✅ ไม่มีส่วนของ swingMode ออก -->
         </div>
         <button class="copy-meal-btn">คัดลอก</button>
         <button class="delete-meal-btn">ลบ</button>
@@ -647,7 +665,7 @@ function addMeal(meal = {}) {
 // โหลดมื้ออาหารจาก Firebase
 async function loadMeals() {
     if (!deviceId) {
-        console.log("No deviceId available to load meals.");
+        console.log("No deviceId available to load meals. Adding default meal.");
         mealList.innerHTML = ''; // เคลียร์มื้ออาหารที่มีอยู่
         addMeal({}); // เพิ่มมื้อเริ่มต้น 1 มื้อ
         return;
@@ -802,7 +820,8 @@ async function feedNow() {
             timestamp: firebase.database.ServerValue.TIMESTAMP
         });
         showCustomAlert("กำลังให้อาหาร", "ส่งคำสั่งให้อาหารทันทีแล้ว. กรุณารอ...");
-    } catch (error) {
+    }
+    catch (error) {
         console.error("Error sending feedNow command:", error);
         showCustomAlert("ข้อผิดพลาด", `ไม่สามารถส่งคำสั่งให้อาหารได้: ${error.message}`);
     } finally {
@@ -1058,7 +1077,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const customBottleHeightInput = document.getElementById('customBottleHeightInput');
 
     // 2. ตั้งค่าสถานะเริ่มต้นของปุ่มเป็น disabled (จะเปิดใช้งานเมื่อ device ออนไลน์)
-    setDeviceStatus(false);
+    setDeviceStatus(false); // เริ่มต้นเป็นออฟไลน์ (หรือรอ Firebase update)
     if (pasteBtn) pasteBtn.disabled = true;
 
     // 3. แนบ Event Listeners สำหรับปุ่มควบคุมหลัก
@@ -1092,7 +1111,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (bottleSizeSelect) bottleSizeSelect.addEventListener('change', saveSettingsToFirebase);
     if (customBottleHeightInput) customBottleHeightInput.addEventListener('input', saveSettingsToFirebase);
     
-    // 5. โหลดการตั้งค่าระบบเมื่อหน้าเว็บโหลดเสร็จ
+    // 5. โหลดการตั้งค่าระบบเมื่อหน้าเว็บโหลดเสร็จ (จะใช้ DEFAULT_DEVICE_ID หากไม่มี ESP32)
     loadSettingsFromFirebase();
 
     // 6. เรียกใช้ populateAnimalType ครั้งแรกเมื่อ DOM โหลดเสร็จ เพื่อให้ Calculator เริ่มทำงาน
