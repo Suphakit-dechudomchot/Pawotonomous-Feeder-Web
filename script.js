@@ -17,7 +17,7 @@ function sanitizeFileName(name) {
 const firebaseConfig = {
     apiKey: "AIzaSyAg-2VtD5q6Rw8JDKTiihp-ribH0HHvU-o",
     authDomain: "pawtonomous.firebaseapp.com",
-    databaseURL: "[https://pawtonomous-default-rtdb.asia-southeast1.firebasedatabase.app](https://pawtonomous-default-rtdb.asia-southeast1.firebasedatabase.app)",
+    databaseURL: "https://pawtonomous-default-rtdb.asia-southeast1.firebasedatabase.app",
     projectId: "pawtonomous",
     storageBucket: "pawtonomous.appspot.com",
     messagingSenderId: "984959145190",
@@ -30,7 +30,7 @@ const db = firebase.database();
 // Supabase Config
 // ตรวจสอบให้แน่ใจว่า Supabase SDK ถูกโหลดใน HTML ก่อนไฟล์นี้ (supabase-js)
 const supabaseClient = supabase.createClient(
-    '[https://gnkgamizqlosvhkuwzhc.supabase.co](https://gnkgamizqlosvhkuwzhc.supabase.co)',
+    'https://gnkgamizqlosvhkuwzhc.supabase.co',
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdua2dhbWl6cWxvc3Zoa3V3emhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0MzY3MTUsImV4cCI6MjA2NjAxMjcxNX0.Dq5oPJ2zV8UUyoNakh4JKZLDG5BppF_pgc'
 );
 
@@ -514,7 +514,6 @@ function addMeal(meal = {}) {
     const minute = String(meal.minute || 0).padStart(2, '0');
 
     // ตรวจสอบและกำหนดค่าเริ่มต้นที่เหมาะสมสำหรับ checkbox (ควรเป็น boolean)
-    const initialSwingMode = meal.swingMode === true ? 'checked' : ''; 
     const initialNoiseStatusText = meal.noiseFile ? `ไฟล์: ${meal.noiseFile.split('/').pop()}` : 'ไม่มีไฟล์';
     const initialUploadBtnDisabled = meal.noiseFile ? '' : 'disabled'; // ปุ่มอัปโหลดจะถูกปิดถ้าไม่มีไฟล์เสียงที่โหลดมาแต่แรก
 
@@ -539,10 +538,7 @@ function addMeal(meal = {}) {
                 <input type="range" class="servo2-angle" min="0" max="180" value="${meal.servo2Angle || 90}">
                 <span class="servo-angle-value">${meal.servo2Angle || 90}°</span>
             </label>
-            <label class="swing-mode-label">
-                <input type="checkbox" class="swing-mode-checkbox" ${initialSwingMode}>
-                โหมดสวิง (พัดลม)
-            </label>
+            <!-- ✅ ลบส่วนของ swingMode ออก -->
         </div>
         <button class="copy-meal-btn">คัดลอก</button>
         <button class="delete-meal-btn">ลบ</button>
@@ -638,8 +634,8 @@ function addMeal(meal = {}) {
             amount: parseInt(mealDiv.querySelector('.meal-amount').value),
             noiseFile: mealDiv.dataset.noiseFile || null,
             servo1Angle: parseInt(mealDiv.querySelector('.servo1-angle').value),
-            servo2Angle: parseInt(mealDiv.querySelector('.servo2-angle').value),
-            swingMode: mealDiv.querySelector('.swing-mode-checkbox').checked // ✅ อ่านค่า swingMode
+            servo2Angle: parseInt(mealDiv.querySelector('.servo2-angle').value)
+            // ✅ ไม่มี swingMode ใน copiedMeal
         };
         if (pasteBtn) pasteBtn.disabled = false; // เปิดใช้งานปุ่มวาง
         showCustomAlert("คัดลอก", "คัดลอกมื้ออาหารแล้ว! กด 'วางมื้อ' เพื่อเพิ่ม.");
@@ -686,11 +682,7 @@ async function loadMeals() {
                     if (noiseStatusSpan) noiseStatusSpan.textContent = 'ไม่มีไฟล์';
                     if (uploadBtn) uploadBtn.disabled = true;
                 }
-                // ✅ ตั้งค่าสถานะ checkbox ของ swingMode เมื่อโหลดมื้ออาหาร
-                const swingModeCheckbox = mealDiv.querySelector('.swing-mode-checkbox');
-                if (swingModeCheckbox) {
-                    swingModeCheckbox.checked = meal.swingMode || false; // default เป็น false
-                }
+                // ✅ ไม่มีส่วนของ swingMode ที่นี่แล้ว
             });
         } else {
             addMeal({}); // ถ้าไม่มีมื้ออาหาร ให้เพิ่มมื้อเริ่มต้น 1 มื้อ
@@ -717,7 +709,7 @@ async function saveMeals() {
         const amountInput = mealDiv.querySelector('.meal-amount').value;
         const servo1AngleInput = mealDiv.querySelector('.servo1-angle').value;
         const servo2AngleInput = mealDiv.querySelector('.servo2-angle').value;
-        const swingModeCheckbox = mealDiv.querySelector('.swing-mode-checkbox'); // ✅ อ่านค่า swingMode
+        // ✅ ไม่มี swingModeCheckbox แล้ว
 
         if (!timeInput || !amountInput) {
             isValid = false;
@@ -729,7 +721,7 @@ async function saveMeals() {
         const amount = parseInt(amountInput);
         const servo1Angle = parseInt(servo1AngleInput);
         const servo2Angle = parseInt(servo2AngleInput);
-        const swingMode = swingModeCheckbox ? swingModeCheckbox.checked : false; // ✅ รับค่า swingMode และตรวจสอบ null
+        // ✅ ไม่มี swingMode แล้ว
 
         if (isNaN(hour) || isNaN(minute) || isNaN(amount) || amount <= 0 || isNaN(servo1Angle) || isNaN(servo2Angle)) {
             isValid = false;
@@ -744,8 +736,8 @@ async function saveMeals() {
             amount: amount,
             noiseFile: mealDiv.dataset.noiseFile || null, // URL ของไฟล์เสียง
             servo1Angle: servo1Angle,
-            servo2Angle: servo2Angle,
-            swingMode: swingMode // ✅ บันทึกค่า swingMode
+            servo2Angle: servo2Angle
+            // ✅ ไม่มี swingMode ใน mealsToSave
         });
     });
 
@@ -806,7 +798,7 @@ async function feedNow() {
             servo1Angle: mealToDispense.servo1Angle,
             servo2Angle: mealToDispense.servo2Angle,
             noiseFile: mealToDispense.noiseFile || null,
-            swingMode: mealToDispense.swingMode || false, // ✅ ส่งค่า swingMode ไปด้วย
+            // ✅ ไม่มี swingMode ที่นี่แล้ว
             timestamp: firebase.database.ServerValue.TIMESTAMP
         });
         showCustomAlert("กำลังให้อาหาร", "ส่งคำสั่งให้อาหารทันทีแล้ว. กรุณารอ...");
