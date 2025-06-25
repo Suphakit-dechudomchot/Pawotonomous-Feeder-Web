@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit&display=swap">
     <!-- Font Awesome Kit Code ของคุณ: อย่าลืมเปลี่ยน YOUR_KIT_CODE เป็นรหัสจริงของคุณ -->
-    <script src="https://kit.fontawesome.com/8b0b6a29b2.js" crossorigin="anonymous"></script> 
+    <script src="https://kit.fontawesome.com/YOUR_KIT_CODE.js" crossorigin="anonymous"></script> 
 </head>
 <body>
     <div class="notification-area">
@@ -209,3 +209,38 @@
     
 </body>
 </html>
+
+และนี่คือส่วนที่เพิ่มเข้าไปใน script.js เพื่อสร้าง Element สำหรับแต่ละมื้ออาหารครับ:
+
+    // ... โค้ดส่วนอื่นๆ ...
+
+    mealDiv.innerHTML = `
+        <span class="meal-label">มื้อที่ ${mealList.children.length + 1}:</span>
+        <input type="time" class="meal-time" value="${hour}:${minute}">
+        <input type="number" class="meal-amount" value="${meal.amount || 1}" min="1" max="100">
+        <label>
+            เสียง: 
+            <input type="file" accept="audio/*" class="meal-noise-input">
+            <span class="meal-noise-status" style="color: grey;">${meal.noiseFile ? `ไฟล์: ${meal.noiseFile.split('/').pop()}` : 'ไม่มีไฟล์'}</span>
+        </label>
+        <button class="meal-noise-upload-btn" ${meal.noiseFile ? '' : 'disabled'}>อัปโหลดเสียง</button>
+        <div class="servo-settings">
+            <label>
+                Servo 1 (อาหาร): 
+                <input type="range" class="servo1-angle" min="0" max="180" value="${meal.servo1Angle || 90}">
+                <span class="servo-angle-value">${meal.servo1Angle || 90}°</span>
+            </label>
+            <label>
+                Servo 2 (พัดลม): 
+                <input type="range" class="servo2-angle" min="0" max="180" value="${meal.servo2Angle || 90}">
+                <span class="servo-angle-value">${meal.servo2Angle || 90}°</span>
+            </label>
+            <label class="swing-mode-label">
+                <input type="checkbox" class="swing-mode-checkbox" ${meal.swingMode ? 'checked' : ''}>
+                โหมดสวิง (พัดลม)
+            </label>
+        </div>
+        <button class="copy-meal-btn">คัดลอก</button>
+        <button class="delete-meal-btn">ลบ</button>
+    `;
+    mealList.appendChild(mealDiv);
