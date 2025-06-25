@@ -556,7 +556,7 @@ function addMeal(meal = {}) {
                 <input type="range" class="servo2-angle" min="0" max="180" value="${meal.servo2Angle || 90}">
                 <span class="servo-angle-value">${meal.servo2Angle || 90}°</span>
             </label>
-            <!-- ✅ ไม่มีส่วนของ swingMode ออก -->
+            <!-- ส่วนของ swingMode ถูกนำออก -->
         </div>
         <button class="copy-meal-btn">คัดลอก</button>
         <button class="delete-meal-btn">ลบ</button>
@@ -591,12 +591,12 @@ function addMeal(meal = {}) {
     uploadBtn.addEventListener('click', async () => {
         if (noiseInput.files.length > 0) {
             const file = noiseInput.files[0];
-            const originalFileName = file.name;
+            const originalFileName = file.name; // เก็บชื่อไฟล์เดิม
             setButtonState(uploadBtn, true); // ตั้งค่าปุ่มเป็นสถานะโหลด
             try {
                 // อัปโหลดไปยัง Supabase Storage
                 // ใช้ mealDiv.dataset.id เพื่อสร้าง folder ย่อยสำหรับแต่ละมื้อ
-                const path = `meal_noises/${mealDiv.dataset.id}/${sanitizeFileName(originalFileName)}`;
+                const path = `meal_noises/${mealDiv.dataset.id}/${sanitizeFileName(originalFileName)}`; // ใช้ชื่อที่ sanitize แล้ว
                 const { data, error } = await supabaseClient
                     .storage
                     .from('feeder-sounds') // ชื่อ bucket ของคุณ
@@ -621,6 +621,7 @@ function addMeal(meal = {}) {
 
                 // บันทึก URL นี้ลงใน dataset ของ div มื้ออาหาร
                 mealDiv.dataset.noiseFile = publicUrlData.publicUrl;
+                // แสดงชื่อไฟล์เดิมบน UI
                 noiseStatus.textContent = `อัปโหลดแล้ว: ${originalFileName}`;
                 showCustomAlert("สำเร็จ", `อัปโหลดไฟล์เสียงสำหรับมื้อที่ ${Array.from(mealList.children).indexOf(mealDiv) + 1} เรียบร้อย!`);
                 
@@ -650,10 +651,9 @@ function addMeal(meal = {}) {
             hour: hour,
             minute: minute,
             amount: parseInt(mealDiv.querySelector('.meal-amount').value),
-            noiseFile: mealDiv.dataset.noiseFile || null,
+            noiseFile: mealDiv.dataset.noiseFile || null, // เก็บ URL ที่อัปโหลดแล้ว
             servo1Angle: parseInt(mealDiv.querySelector('.servo1-angle').value),
             servo2Angle: parseInt(mealDiv.querySelector('.servo2-angle').value)
-            // ✅ ไม่มี swingMode ใน copiedMeal
         };
         if (pasteBtn) pasteBtn.disabled = false; // เปิดใช้งานปุ่มวาง
         showCustomAlert("คัดลอก", "คัดลอกมื้ออาหารแล้ว! กด 'วางมื้อ' เพื่อเพิ่ม.");
@@ -688,10 +688,13 @@ async function loadMeals() {
                 const mealDiv = mealList.lastElementChild;
                 if (meal.noiseFile) {
                     mealDiv.dataset.noiseFile = meal.noiseFile;
-                    // อัปเดตสถานะการแสดงผลสำหรับไฟล์เสียงที่โหลดมา
+                    // อัปเดตสถานะการแสดงผลสำหรับไฟล์เสียงที่โหลดมา (ใช้ชื่อไฟล์จาก URL)
                     const noiseStatusSpan = mealDiv.querySelector('.meal-noise-status');
                     const uploadBtn = mealDiv.querySelector('.meal-noise-upload-btn');
-                    if (noiseStatusSpan) noiseStatusSpan.textContent = `ไฟล์: ${meal.noiseFile.split('/').pop()}`;
+                    if (noiseStatusSpan) {
+                         const fileNameFromUrl = meal.noiseFile.split('/').pop();
+                         noiseStatusSpan.textContent = `ไฟล์: ${fileNameFromUrl}`;
+                    }
                     if (uploadBtn) uploadBtn.disabled = true; // ไม่มีไฟล์ใหม่ให้ upload
                 } else {
                      // ถ้าไม่มี noiseFile ให้แน่ใจว่าสถานะและปุ่มถูกต้อง
@@ -700,7 +703,6 @@ async function loadMeals() {
                     if (noiseStatusSpan) noiseStatusSpan.textContent = 'ไม่มีไฟล์';
                     if (uploadBtn) uploadBtn.disabled = true;
                 }
-                // ✅ ไม่มีส่วนของ swingMode ที่นี่แล้ว
             });
         } else {
             addMeal({}); // ถ้าไม่มีมื้ออาหาร ให้เพิ่มมื้อเริ่มต้น 1 มื้อ
@@ -727,7 +729,6 @@ async function saveMeals() {
         const amountInput = mealDiv.querySelector('.meal-amount').value;
         const servo1AngleInput = mealDiv.querySelector('.servo1-angle').value;
         const servo2AngleInput = mealDiv.querySelector('.servo2-angle').value;
-        // ✅ ไม่มี swingModeCheckbox แล้ว
 
         if (!timeInput || !amountInput) {
             isValid = false;
@@ -739,7 +740,6 @@ async function saveMeals() {
         const amount = parseInt(amountInput);
         const servo1Angle = parseInt(servo1AngleInput);
         const servo2Angle = parseInt(servo2AngleInput);
-        // ✅ ไม่มี swingMode แล้ว
 
         if (isNaN(hour) || isNaN(minute) || isNaN(amount) || amount <= 0 || isNaN(servo1Angle) || isNaN(servo2Angle)) {
             isValid = false;
@@ -755,7 +755,6 @@ async function saveMeals() {
             noiseFile: mealDiv.dataset.noiseFile || null, // URL ของไฟล์เสียง
             servo1Angle: servo1Angle,
             servo2Angle: servo2Angle
-            // ✅ ไม่มี swingMode ใน mealsToSave
         });
     });
 
@@ -816,7 +815,6 @@ async function feedNow() {
             servo1Angle: mealToDispense.servo1Angle,
             servo2Angle: mealToDispense.servo2Angle,
             noiseFile: mealToDispense.noiseFile || null,
-            // ✅ ไม่มี swingMode ที่นี่แล้ว
             timestamp: firebase.database.ServerValue.TIMESTAMP
         });
         showCustomAlert("กำลังให้อาหาร", "ส่งคำสั่งให้อาหารทันทีแล้ว. กรุณารอ...");
@@ -1077,7 +1075,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const customBottleHeightInput = document.getElementById('customBottleHeightInput');
 
     // 2. ตั้งค่าสถานะเริ่มต้นของปุ่มเป็น disabled (จะเปิดใช้งานเมื่อ device ออนไลน์)
-    setDeviceStatus(false); // เริ่มต้นเป็นออฟไลน์ (หรือรอ Firebase update)
+    // ✅ ไม่ต้องเรียก setDeviceStatus(false) ตรงนี้อีก เพราะมันจะถูกกำหนดโดย Firebase Listener
     if (pasteBtn) pasteBtn.disabled = true;
 
     // 3. แนบ Event Listeners สำหรับปุ่มควบคุมหลัก
