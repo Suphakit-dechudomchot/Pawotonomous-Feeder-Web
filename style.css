@@ -906,3 +906,10 @@ button.working-state {
 .meal:last-child {
     margin-bottom: 0; /* ลบ margin ล่างของมื้อสุดท้าย */
 }
+
+.meal-direction:disabled {
+    background-color: #f5f5f5;
+    opacity: 0.5;
+    cursor: not-allowed;
+    border: 2px dashed #f00000;
+}

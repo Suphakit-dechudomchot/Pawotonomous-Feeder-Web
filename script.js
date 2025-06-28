@@ -167,7 +167,7 @@ function feedNow() {
 }
 
 // ฟังก์ชันสำหรับเพิ่มมื้ออาหารใหม่ (หรือโหลดจาก Firebase)
-function addMeal(time = "", amount = "", fanSpeed = "", direction = "", audioURL = "", originalFileName = "", scrollToView = true) {
+function addMeal(time = "", amount = "", fanSpeed = "", direction = "" , audioURL = "", originalFileName = "", scrollToView = true, swing = false,) {
     if (document.querySelectorAll(".meal").length >= 100) {
         showCustomAlert("เกิน 100 มื้อแล้ว!", "warning", "แจ้งเตือน");
         return;
@@ -184,19 +184,56 @@ function addMeal(time = "", amount = "", fanSpeed = "", direction = "", audioURL
     }
 
     div.innerHTML = `
-        <span class="meal-label"></span> <label>เวลา: <input type="time" value="${time}" class="meal-time"></label>
+        <label>เวลา: <input type="time" value="${time}" class="meal-time"></label>
         <label> ปริมาณ (g): <input type="number" value="${amount}" class="meal-amount" min="1"></label>
         <label>แรงลม (1-3): <input type="number" class="meal-fan" min="1" max="1000" value="${fanSpeed}"></label>
-        <label>ทิศทางลม (60°–120°): <input type="number" class="meal-direction" min="0" max="360" value="${direction}"></label>
+        <label>ทิศทางลม (60°–120°): 
+            <input type="number" class="meal-direction" min="60" max="120" value="${direction}" ${swing ? 'disabled' : ''}>
+            <span class="swing-toggle">
+                <input type="checkbox" class="swing-checkbox" ${swing ? 'checked' : ''}> สวิง
+            </span>
+        </label>
         <label>เสียง: <input type="file" accept="audio/*" class="meal-audio"> <span class="audio-status" style="color: ${initialAudioStatusColor};">${initialAudioStatusText}</span></label>
         <button class="copy-button"><i class="fa-solid fa-copy"></i></button>
         <button class="delete-button"><i class="fa-solid fa-trash"></i></button>
     `;
 
-    div.dataset.audioUrl = audioURL;
-    div.dataset.originalFileName = originalFileName;
+    const directionInput = div.querySelector(".meal-direction");
+    const swingCheckbox = div.querySelector(".swing-checkbox");
 
-    // แนบ Event Listener สำหรับ Element ภายใน Div ของมื้ออาหารใหม่
+    // toggle swing → ปิด/เปิดช่อง direction
+    swingCheckbox.addEventListener("change", () => {
+        directionInput.disabled = swingCheckbox.checked;
+    });
+
+    // เด้งค่าทิศทางกลับ
+    directionInput.addEventListener("change", () => {
+        let value = parseInt(directionInput.value);
+        if (isNaN(value)) value = 90;
+        directionInput.value = clamp(value, 60, 120);
+    });
+
+    // เด้งแรงลมกลับ
+    const fanInput = div.querySelector(".meal-fan");
+    fanInput.addEventListener("change", () => {
+        let value = parseInt(fanInput.value);
+        if (isNaN(value)) value = 1;
+        fanInput.value = clamp(value, 1, 3);
+    });
+
+    fanInput.addEventListener("change", () => {
+        let value = parseInt(fanInput.value);
+        if (isNaN(value)) value = 1;
+        const clamped = clamp(value, 1, 3);
+        if (value !== clamped) {
+            showCustomAlert("แรงลมถูกจำกัดไว้ที่ 1–3", "info", "⚠️ ขอบเขต");
+        }
+        fanInput.value = clamped;
+    });
+
+
+
+    // แนบ Event Listener สำหรับ Element ภายใน Div ของมื้ออาหารใหม่ 
     div.querySelector(".delete-button").addEventListener("click", () => {
         div.remove();
         updateMealNumbers();
@@ -259,8 +296,9 @@ function addMeal(time = "", amount = "", fanSpeed = "", direction = "", audioURL
             amount: div.querySelector(".meal-amount").value,
             fan: div.querySelector(".meal-fan").value,
             direction: div.querySelector(".meal-direction").value,
+            swing: div.querySelector(".swing-checkbox")?.checked || false,
             audioUrl: div.dataset.audioUrl || "",
-            originalFileName: div.dataset.originalFileName || ""
+            originalFileName: div.dataset.originalFileName || ""        
         };
         showCustomAlert("คัดลอกมื้อเรียบร้อยแล้ว!", "info", "📋 คัดลอก");
         if (pasteBtn) {
@@ -290,7 +328,9 @@ function pasteCopiedMeal() {
             copiedMeal.fan,
             copiedMeal.direction,
             copiedMeal.audioUrl,
-            copiedMeal.originalFileName
+            copiedMeal.originalFileName,
+            true,                
+            copiedMeal.swing
         );
     } else {
         showCustomAlert("ยังไม่มีมื้ออาหารที่คัดลอก!", "warning", "⚠️ คำเตือน");
@@ -309,12 +349,13 @@ function saveMeals() {
 
         let fan = isNaN(fanInput) ? 1 : clamp(fanInput, 1, 3);
         let direction = isNaN(directionInput) ? 90 : clamp(directionInput, 60, 120);
+        const swing = div.querySelector(".swing-checkbox")?.checked || false;
         
         const audioUrl = div.dataset.audioUrl || "";
         const originalFileName = div.dataset.originalFileName || "";
 
         if (time && !isNaN(amount)) {
-            meals.push({ time, amount, fan, direction, audioUrl, originalFileName });
+            meals.push({ time, amount, fan, direction, swing, audioUrl, originalFileName, mealName });
         }
     });
 
