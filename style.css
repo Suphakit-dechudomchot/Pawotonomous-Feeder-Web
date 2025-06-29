@@ -21,11 +21,12 @@ body {
     font-family: 'Kanit', sans-serif;
     padding: 0;
     margin: 0;
-    background: var(--background-light);
+    background:var(--background-light);
     font-size: 16px;
     line-height: 1.6;
     color: var(--text-dark);
     box-sizing: border-box;
+    background-color: lightblue;
 }
 
 
@@ -579,6 +580,7 @@ input[type="file"] {
 
 .input-group {
     margin-bottom: 20px;
+    padding: auto;
 }
 
 
@@ -811,7 +813,9 @@ input[type="file"] {
         font-size: 15px;
     }
 
-
+    h1 {
+        font-size: 2em;
+    }
     h2 {
         font-size: 1.4em;
     }
@@ -912,4 +916,15 @@ button.working-state {
     opacity: 0.5;
     cursor: not-allowed;
     border: 2px dashed #f00000;
+}
+.swing-checkbox{
+    transform: scale(1.5);
+    margin-right: 5px;
+}
+.name-head{
+  color:var(--info-color);
+    text-align: center;
+    margin-top: 20px;
+    margin-right: 650px;
+    font-size: 2em;
 }
