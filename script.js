@@ -31,7 +31,7 @@ const db = firebase.database();
 // ตรวจสอบให้แน่ใจว่า Supabase SDK ถูกโหลดใน HTML ก่อนไฟล์นี้ (supabase-js)
 const supabaseClient = supabase.createClient(
     'https://gnkgamizqlosvhkuwzhc.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdua2dhbWl6cWxvc3Zoa3V3emhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0MzY3MTUsImV4cCI6MjA2NjAxMjcxNX0.Dq5oPJ2zV8UUyoNakh4JKZLDG5BppF_pgc'
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdua2dhbWizcWxvc3Zoa3V3emhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0MzY3MTUsImV4cCI6MjA2NjAxMjcxNX0.Dq5oPJ2zV8UUyoNakh4JKZLDG5BppF_pgc'
 );
 
 // ตัวแปรส่วนกลางสำหรับมื้ออาหารที่คัดลอกไว้
@@ -72,6 +72,18 @@ let addMealBtn, saveMealsBtn; // ปุ่มสำหรับจัดกา�
 let openNotificationBtn, closeNotificationBtn;
 let deviceStatusCircle, deviceStatusText, notificationDot; // Notification elements
 
+// ตัวแปรสำหรับ Custom Alert
+let customAlertOverlay, customAlertContent, customAlertTitle, customAlertMessage, customAlertOkButton;
+// ตัวแปรสำหรับ New Notification Toast
+let newNotificationToast, newNotificationToastMessage;
+
+// ตัวแปรสำหรับ System Settings (Time Zone, Bottle Size, Wi-Fi)
+let timeZoneOffsetSelect, bottleSizeSelect, customBottleHeightInput, mainContentContainer;
+let wifiSsidInput, wifiPasswordInput; // Wi-Fi Input fields
+
+// ตัวแปรสำหรับ Animal Calculator
+let animalTypeSelect, animalSpeciesSelect, animalCountInput, animalWeightKgInput, lifeStageActivitySelect, calculationNotesSpan;
+
 // กำหนดสถานะปุ่ม
 function setButtonState(button, isLoading) {
     if (!button) return; // เพิ่มการตรวจสอบ null
@@ -109,11 +121,6 @@ function setButtonState(button, isLoading) {
 // ✅ การจัดการ Custom Alert
 // ===============================================
 function showCustomAlert(title, message, type = "info") { // เพิ่ม type parameter
-    const customAlertOverlay = document.getElementById('customAlertOverlay');
-    const customAlertTitle = document.getElementById('customAlertTitle');
-    const customAlertMessage = document.getElementById('customAlertMessage');
-    const customAlertOkButton = document.getElementById('customAlertOkButton');
-
     if (!customAlertOverlay || !customAlertTitle || !customAlertMessage || !customAlertOkButton) {
         console.error("Custom alert elements not found. Falling back to native alert.");
         alert(`${title}: ${message}`);
@@ -152,16 +159,13 @@ let lastNotificationId = ''; // ID ของการแจ้งเตือน
 
 // ฟังก์ชันแสดง Toast Notification
 function showNewNotificationToast(message) {
-    const toast = document.getElementById('newNotificationToast');
-    const toastMessage = document.getElementById('newNotificationToastMessage');
-    
-    if (!toast || !toastMessage) return;
+    if (!newNotificationToast || !newNotificationToastMessage) return;
 
-    toastMessage.textContent = message;
-    toast.classList.add('show');
+    newNotificationToastMessage.textContent = message;
+    newNotificationToast.classList.add('show');
 
     setTimeout(() => {
-        toast.classList.remove('show');
+        newNotificationToast.classList.remove('show');
     }, 5000); // ซ่อน toast หลังจาก 5 วินาที
 }
 
@@ -190,6 +194,36 @@ function updateNotificationCountUI() {
     }
 }
 
+// Function to open the notification modal
+function openNotificationModal() {
+    const notificationModal = document.getElementById('notificationModal');
+    if (notificationModal) {
+        notificationModal.style.display = 'flex'; // Use flex to center
+        notificationCount = 0; // Reset unread count when opened
+        updateNotificationCountUI();
+        // Scroll to top of notification list to see latest
+        const notificationList = document.getElementById('notificationList');
+        if (notificationList) notificationList.scrollTop = 0;
+    }
+}
+
+// Function to close the notification modal
+function closeNotificationModal() {
+    const notificationModal = document.getElementById('notificationModal');
+    if (notificationModal) {
+        notificationModal.style.display = 'none';
+    }
+}
+
+// Close toast function
+function closeNewNotificationToast() {
+    const toast = document.getElementById('newNotificationToast');
+    if (toast) {
+        toast.classList.remove('show');
+    }
+}
+
+
 // ===============================================
 // ✅ การจัดการอุปกรณ์ (ESP32) สถานะออนไลน์/ออฟไลน์
 // ===============================================
@@ -201,8 +235,7 @@ const DEFAULT_DEVICE_ID = "web_app_test_device";
 
 // ฟังก์ชันสำหรับตั้งค่าสถานะอุปกรณ์บน UI
 function setDeviceStatus(isOnline) {
-    const mainContentContainer = document.getElementById('mainContentContainer');
-    if (!mainContentContainer || !deviceStatusCircle || !deviceStatusText) return;
+    if (!deviceStatusCircle || !deviceStatusText) return; // ตรวจสอบว่า elements พร้อมใช้งาน
 
     if (isOnline) {
         deviceStatusCircle.classList.remove('offline');
@@ -210,34 +243,23 @@ function setDeviceStatus(isOnline) {
         deviceStatusText.classList.remove('offline');
         deviceStatusText.classList.add('online');
         deviceStatusText.textContent = 'ออนไลน์';
-        // เปิดใช้งานปุ่มเมื่ออุปกรณ์ออนไลน์
-        // mainContentContainer.style.display จะถูกจัดการโดย loadSettingsFromFirebase()
-        if (feedNowBtn) feedNowBtn.disabled = false;
-        if (saveMealsBtn) saveMealsBtn.disabled = false;
-        if (addMealBtn) addMealBtn.disabled = false;
-        if (checkFoodLevelBtn) checkFoodLevelBtn.disabled = false;
-        if (checkAnimalMovementBtn) checkAnimalMovementBtn.disabled = false;
-        if (makenoiseBtn) makenoiseBtn.disabled = false;
-        // หากมี copiedMeal อยู่แล้ว ก็ให้ pasteBtn เปิดใช้งาน
-        if (copiedMeal && pasteBtn) {
-            pasteBtn.disabled = false;
-        }
-
+        // การเปิด/ปิด mainContentContainer จะถูกจัดการใน checkSystemSettingsAndToggleUI
+        // และปุ่มต่างๆ จะเปิดใช้งานเมื่อ deviceId พร้อมใช้งาน
     } else {
         deviceStatusCircle.classList.remove('online');
         deviceStatusCircle.classList.add('offline');
         deviceStatusText.classList.remove('online');
         deviceStatusText.classList.add('offline');
         deviceStatusText.textContent = 'ออฟไลน์';
-        // ปิดใช้งานปุ่มเมื่ออุปกรณ์ออฟไลน์
-        mainContentContainer.style.display = 'none'; // ซ่อน main UI
-        if (feedNowBtn) feedNowBtn.disabled = true;
-        if (saveMealsBtn) saveMealsBtn.disabled = true;
+        if (mainContentContainer) mainContentContainer.style.display = 'none'; // ซ่อน main UI
+        // ปิดใช้งานปุ่มทั้งหมดเมื่อออฟไลน์
+        if (feedNowBtn) setButtonState(feedNowBtn, true); // ตั้งเป็น loading state เพื่อ disabled
+        if (saveMealsBtn) setButtonState(saveMealsBtn, true);
         if (addMealBtn) addMealBtn.disabled = true;
-        if (pasteBtn) pasteBtn.disabled = true; // pasteBtn ก็ต้องปิดด้วย
-        if (checkFoodLevelBtn) checkFoodLevelBtn.disabled = true;
-        if (checkAnimalMovementBtn) checkAnimalMovementBtn.disabled = true;
-        if (makenoiseBtn) makenoiseBtn.disabled = true;
+        if (pasteBtn) pasteBtn.disabled = true; 
+        if (checkFoodLevelBtn) setButtonState(checkFoodLevelBtn, true);
+        if (checkAnimalMovementBtn) setButtonState(checkAnimalMovementBtn, true);
+        if (makenoiseBtn) setButtonState(makenoiseBtn, true);
     }
 }
 
@@ -245,39 +267,38 @@ function setDeviceStatus(isOnline) {
 db.ref('device/status/online').on('value', (snapshot) => {
     const isOnline = snapshot.val();
     console.log("Device online status:", isOnline);
-    // ✅ เรียก setDeviceStatus() เพื่ออัปเดต UI Status Circle/Text
     setDeviceStatus(isOnline);
 });
 
 // ฟังการเปลี่ยนแปลง Device ID (เช่น เมื่อ ESP32 รีสตาร์ทและส่ง ID มาใหม่)
+// ✅ แก้ไข: เพิ่มการอ้างอิงถึง `device/status/deviceId` เพื่อให้มีการอัปเดต deviceId ที่ถูกต้อง
 db.ref('device/status/deviceId').on('value', (snapshot) => {
     let currentDeviceId = snapshot.val();
     if (!currentDeviceId || currentDeviceId.length < 5) { // ถ้าไม่มีค่าหรือค่าไม่ถูกต้อง (กรณี ESP32 ยังไม่ทำงาน)
         currentDeviceId = DEFAULT_DEVICE_ID; // ✅ ใช้ DEFAULT_DEVICE_ID ชั่วคราว
         console.log("No valid Device ID from ESP32. Using default for web app development:", DEFAULT_DEVICE_ID);
-        // หากคุณต้องการให้แสดง UI หลักทันทีที่โหลดหน้าเว็บ แม้ไม่มี ESP32
-        // สามารถเรียก loadSettingsFromFirebase() และ loadMeals() ที่นี่ได้เลย
-        // โดยไม่สนใจ device online status
     }
 
     if (currentDeviceId !== deviceId) {
         deviceId = currentDeviceId;
         console.log("Active Device ID set to:", deviceId);
-        // สิ่งเหล่านี้จะถูกเรียกเมื่อ deviceId ถูกกำหนด (ไม่ว่าจะเป็นจาก ESP32 หรือ default)
+        
+        // โหลดข้อมูลที่เกี่ยวข้องกับ deviceId ใหม่
         loadSettingsFromFirebase(); 
         loadMeals(); 
         setupNotificationListener(deviceId); 
         fetchAndDisplayNotifications(); 
 
         // ✅ ถ้าใช้ DEFAULT_DEVICE_ID ให้ set online status เป็น true ชั่วคราว
-        // เพื่อให้ mainContentContainer แสดงผล
+        // เพื่อให้ mainContentContainer แสดงผลโดยไม่รอ ESP32 จริงๆ
         if (currentDeviceId === DEFAULT_DEVICE_ID) {
             setDeviceStatus(true);
+            checkSystemSettingsAndToggleUI(); // ตรวจสอบการตั้งค่าระบบเพื่อเปิด UI
         }
-    } else if (!currentDeviceId) {
+    } else if (!currentDeviceId) { // กรณี deviceId เป็น null
         deviceId = null; 
         console.log("Device ID is null, device might be offline or not connected.");
-        setDeviceStatus(false); // ซ่อน UI หลัก
+        setDeviceStatus(false); // ซ่อน UI หลักและปิดใช้งานปุ่ม
     }
 });
 
@@ -388,8 +409,6 @@ async function fetchAndDisplayNotifications() {
 // ✅ การจัดการการตั้งค่าระบบ (โซนเวลา, ขนาดขวด, Wi-Fi)
 // ===============================================
 
-// ตัวแปรสำหรับ input Wi-Fi
-let wifiSsidInput, wifiPasswordInput;
 let wifiSettingsTimeout; // สำหรับ debounce
 
 // ฟังก์ชันสำหรับ debounce
@@ -419,6 +438,7 @@ const saveWifiSettingsToFirebase = debounce(async () => {
             timestamp: firebase.database.ServerValue.TIMESTAMP // Optional: add timestamp
         });
         console.log("Wi-Fi settings saved successfully.");
+        checkSystemSettingsAndToggleUI(); // ตรวจสอบสถานะการตั้งค่าและสลับ UI หลังจากบันทึก
         // showCustomAlert("สำเร็จ", "บันทึกข้อมูล Wi-Fi แล้ว", "success"); // อาจจะถี่ไป ไม่ต้องโชว์ alert ทุกครั้งที่พิมพ์
     } catch (error) {
         console.error("Error saving Wi-Fi settings:", error);
@@ -428,15 +448,6 @@ const saveWifiSettingsToFirebase = debounce(async () => {
 
 // โหลดการตั้งค่าระบบจาก Firebase
 async function loadSettingsFromFirebase() {
-    const timeZoneOffsetSelect = document.getElementById('timeZoneOffsetSelect');
-    const bottleSizeSelect = document.getElementById('bottleSizeSelect');
-    const customBottleHeightInput = document.getElementById('customBottleHeightInput');
-    const mainContentContainer = document.getElementById('mainContentContainer');
-
-    // รับ Element Wi-Fi
-    wifiSsidInput = document.getElementById('wifiSsidInput');
-    wifiPasswordInput = document.getElementById('wifiPasswordInput');
-
     if (!deviceId) {
         console.log("No deviceId available to load system settings. Hiding main content.");
         if (mainContentContainer) mainContentContainer.style.display = 'none';
@@ -445,15 +456,11 @@ async function loadSettingsFromFirebase() {
     try {
         const snapshot = await db.ref(`device/${deviceId}/settings`).once('value');
         const settings = snapshot.val();
-        let timeZoneSet = false;
-        let bottleHeightSet = false; // จะตรวจสอบผ่าน bottleSizeSelect
-        let wifiSet = false;
-
+        
         if (settings) {
             // โหลด TimeZone
             if (settings.timeZoneOffset !== null && !isNaN(parseFloat(settings.timeZoneOffset))) {
                 timeZoneOffsetSelect.value = settings.timeZoneOffset;
-                timeZoneSet = true;
             } else {
                  // ถ้าไม่มีค่าใน Firebase ให้ตั้งค่าเริ่มต้นจาก Time Zone ของเบราว์เซอร์
                 const currentOffsetHours = new Date().getTimezoneOffset() / -60;
@@ -471,10 +478,8 @@ async function loadSettingsFromFirebase() {
                 
                 if (closestOffsetOption) {
                     timeZoneOffsetSelect.value = closestOffsetOption.value;
-                    // ไม่ต้องบันทึกลง Firebase ที่นี่ เพราะ saveSettingsToFirebase จะทำเองเมื่อมีการเปลี่ยนแปลง
                 }
             }
-
 
             // โหลด Bottle Size
             if (settings.bottleSize !== null && settings.bottleSize !== "") {
@@ -483,47 +488,39 @@ async function loadSettingsFromFirebase() {
                     customBottleHeightInput.style.display = 'block';
                     if (settings.customBottleHeight !== null && !isNaN(parseFloat(settings.customBottleHeight))) {
                          customBottleHeightInput.value = settings.customBottleHeight;
-                         bottleHeightSet = true; // ตั้งค่าเป็น true เมื่อ custom height มีค่า
                     } else {
                         customBottleHeightInput.value = ''; // เคลียร์ค่าถ้าไม่มี
                     }
                 } else {
                     customBottleHeightInput.style.display = 'none';
-                    bottleHeightSet = true; // ตั้งค่าเป็น true เมื่อเลือกแบบ predefined
+                    customBottleHeightInput.value = ''; // เคลียร์ค่าในช่องกรอกเอง
                 }
             } else {
                 bottleSizeSelect.value = ''; // เลือก option "-- เลือกขนาดขวด --"
                 customBottleHeightInput.style.display = 'none';
+                customBottleHeightInput.value = ''; // เคลียร์ค่าในช่องกรอกเอง
             }
 
-            // ✅ NEW: โหลด Wi-Fi Credentials
+            // ✅ โหลด Wi-Fi Credentials
             if (settings.wifiCredentials && settings.wifiCredentials.ssid) {
                 if (wifiSsidInput) wifiSsidInput.value = settings.wifiCredentials.ssid;
-                if (wifiPasswordInput) wifiPasswordInput.value = settings.wifiCredentials.password || ''; // Password might be optional or empty
-                wifiSet = true;
+                if (wifiPasswordInput) wifiPasswordInput.value = settings.wifiCredentials.password || ''; 
             } else {
                 if (wifiSsidInput) wifiSsidInput.value = '';
                 if (wifiPasswordInput) wifiPasswordInput.value = '';
-                wifiSet = false;
             }
 
         } else {
-            // ถ้ายังไม่มีการตั้งค่า ให้ตั้งค่าเริ่มต้น
-            timeZoneOffsetSelect.value = ''; // เริ่มต้นเป็น "-- เลือกโซนเวลา --"
-            bottleSizeSelect.value = ''; // เริ่มต้นเป็น "-- เลือกขนาดขวด --"
+            // ถ้ายังไม่มีการตั้งค่า ให้ตั้งค่าเริ่มต้น (เลือกค่าว่าง)
+            timeZoneOffsetSelect.value = ''; 
+            bottleSizeSelect.value = ''; 
             customBottleHeightInput.style.display = 'none';
+            customBottleHeightInput.value = '';
             if (wifiSsidInput) wifiSsidInput.value = '';
             if (wifiPasswordInput) wifiPasswordInput.value = '';
             console.log("No existing system settings found. Using defaults.");
         }
-
-        // ตรวจสอบและแสดง/ซ่อน mainContentContainer
-        if (timeZoneSet && bottleHeightSet && wifiSet) { // ✅ ตรวจสอบ wifiSet ด้วย
-            mainContentContainer.style.display = 'block';
-        } else {
-            mainContentContainer.style.display = 'none';
-        }
-
+        checkSystemSettingsAndToggleUI(); // ตรวจสอบสถานะการตั้งค่าและสลับ UI
     } catch (error) {
         console.error("Error loading system settings:", error);
         showCustomAlert("ข้อผิดพลาด", `ไม่สามารถโหลดการตั้งค่าระบบได้: ${error.message}`, "error");
@@ -533,11 +530,6 @@ async function loadSettingsFromFirebase() {
 
 // บันทึกการตั้งค่าระบบไปที่ Firebase (ไม่รวม Wi-Fi เพราะมี debounce แยก)
 async function saveSettingsToFirebase() {
-    const timeZoneOffsetSelect = document.getElementById('timeZoneOffsetSelect');
-    const bottleSizeSelect = document.getElementById('bottleSizeSelect');
-    const customBottleHeightInput = document.getElementById('customBottleHeightInput');
-    const mainContentContainer = document.getElementById('mainContentContainer');
-
     if (!deviceId) {
         showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์. โปรดรอให้อุปกรณ์เชื่อมต่อ.", "error");
         return;
@@ -552,50 +544,79 @@ async function saveSettingsToFirebase() {
         bottleSize: (bottleSize === "") ? null : bottleSize
     };
 
-    let timeZoneSet = (timeZoneOffset !== "" && !isNaN(parseFloat(timeZoneOffset)));
-    let bottleHeightSet = false; // จะตรวจสอบผ่าน bottleSizeSelect
-    let wifiSet = (wifiSsidInput && wifiSsidInput.value.length > 0); // ตรวจสอบว่ามี SSID กรอกหรือไม่
-
     if (bottleSize === 'custom') {
         customBottleHeight = parseFloat(customBottleHeightInput.value);
         if (!isNaN(customBottleHeight) && customBottleHeight > 0) {
             settingsToSave.customBottleHeight = customBottleHeight;
-            bottleHeightSet = true;
         } else {
             settingsToSave.customBottleHeight = null; // ลบค่าถ้าไม่ถูกต้อง
-            bottleHeightSet = false;
         }
-    } else if (bottleSize !== "") {
-        // หากเลือก preset
-        settingsToSave.customBottleHeight = null; // ลบ custom height หากเปลี่ยนกลับไป preset
-        bottleHeightSet = true;
     } else {
-        // หากเลือก "-- เลือกขนาดขวด --"
-        settingsToSave.customBottleHeight = null;
-        bottleHeightSet = false;
+        settingsToSave.customBottleHeight = null; // ลบ custom height หากเปลี่ยนกลับไป preset
     }
 
     try {
-        // อัปเดตเฉพาะ TimeZone และ BottleSize
         await db.ref(`device/${deviceId}/settings`).update(settingsToSave);
         console.log("System settings (TimeZone/BottleSize) saved successfully!");
-        // ไม่ต้องแสดง alert บ่อยๆ ทุกครั้งที่พิมพ์ หรือเปลี่ยน
+        checkSystemSettingsAndToggleUI(); // ตรวจสอบสถานะการตั้งค่าและสลับ UI
     } catch (error) {
         console.error("Error saving system settings:", error);
         showCustomAlert("ข้อผิดพลาด", `ไม่สามารถบันทึกการตั้งค่าระบบได้: ${error.message}`, "error");
-    } finally {
-        // หลังจากบันทึกเสร็จ ตรวจสอบสถานะอีกครั้งเพื่ออัปเดต UI
-        if (timeZoneSet && bottleHeightSet && wifiSet) { // ✅ ตรวจสอบ wifiSet ด้วย
-            mainContentContainer.style.display = 'block';
-        } else {
-            mainContentContainer.style.display = 'none';
+    }
+}
+
+// ✅ NEW: ฟังก์ชันตรวจสอบว่าการตั้งค่าระบบหลักครบถ้วนหรือไม่เพื่อเปิด/ปิด UI หลัก
+function checkSystemSettingsAndToggleUI() {
+    if (!mainContentContainer || !timeZoneOffsetSelect || !bottleSizeSelect || !wifiSsidInput || !wifiPasswordInput) {
+        console.warn("System settings UI elements not fully initialized.");
+        return;
+    }
+
+    // ต้องมี Time Zone ถูกเลือก
+    const isTimeZoneSet = (timeZoneOffsetSelect.value !== "" && !isNaN(parseFloat(timeZoneOffsetSelect.value)));
+    
+    // ต้องมี Bottle Size ถูกเลือก
+    let isBottleSizeSet = false;
+    if (bottleSizeSelect.value === 'custom') {
+        const customHeight = parseFloat(customBottleHeightInput.value);
+        isBottleSizeSet = (!isNaN(customHeight) && customHeight > 0);
+    } else {
+        isBottleSizeSet = (bottleSizeSelect.value !== "");
+    }
+
+    // ต้องมี WiFi SSID ถูกกรอก
+    const isWifiSet = (wifiSsidInput.value.trim().length > 0);
+
+    // ✅ เปิดใช้งานปุ่มทั้งหมดเมื่ออุปกรณ์ออนไลน์ และการตั้งค่าระบบหลักครบถ้วน
+    const isOnline = deviceStatusCircle.classList.contains('online'); // ตรวจสอบจากสถานะ UI
+    
+    if (isOnline && isTimeZoneSet && isBottleSizeSet && isWifiSet) {
+        mainContentContainer.style.display = 'block';
+        if (feedNowBtn) setButtonState(feedNowBtn, false);
+        if (saveMealsBtn) setButtonState(saveMealsBtn, false);
+        if (addMealBtn) addMealBtn.disabled = false;
+        if (checkFoodLevelBtn) setButtonState(checkFoodLevelBtn, false);
+        if (checkAnimalMovementBtn) setButtonState(checkAnimalMovementBtn, false);
+        if (makenoiseBtn) setButtonState(makenoiseBtn, false);
+        // หากมี copiedMeal อยู่แล้ว ก็ให้ pasteBtn เปิดใช้งาน
+        if (copiedMeal && pasteBtn) {
+            pasteBtn.disabled = false;
         }
+    } else {
+        mainContentContainer.style.display = 'none';
+        if (feedNowBtn) setButtonState(feedNowBtn, true);
+        if (saveMealsBtn) setButtonState(saveMealsBtn, true);
+        if (addMealBtn) addMealBtn.disabled = true;
+        if (pasteBtn) pasteBtn.disabled = true;
+        if (checkFoodLevelBtn) setButtonState(checkFoodLevelBtn, true);
+        if (checkAnimalMovementBtn) setButtonState(checkAnimalMovementBtn, true);
+        if (makenoiseBtn) setButtonState(makenoiseBtn, true);
     }
 }
 
 
 // ===============================================
-// ✅ การจัดการมื้ออาหาร (เพิ่ม, ลบ, แก้ไข, บันทึก)
+// ✅ การจัดการมื้ออาหาร (เพิ่ม, ลบ, แก้ไข, บันทึก, โหลด)
 // ===============================================
 
 // ฟังก์ชันสำหรับเพิ่มมื้ออาหารใหม่ (หรือโหลดจาก Firebase)
@@ -617,7 +638,6 @@ function addMeal(meal = {}) { // ใช้ parameter เป็น object เพ�
     if (audioUrl && !originalFileName) { // ถ้ามี URL แต่ไม่มีชื่อไฟล์เดิม ให้ดึงจาก URL (อาจจะเป็นชื่อที่ถูก sanitize)
          initialAudioStatusText = `ไฟล์: ${audioUrl.split('/').pop()}`;
     }
-    const initialUploadBtnDisabled = audioUrl ? '' : 'disabled'; // ปุ่มอัปโหลดจะถูกปิดถ้าไม่มีไฟล์เสียงที่โหลดมาแต่แรก
 
     div.innerHTML = `
         <span class="meal-label"></span>
@@ -728,7 +748,6 @@ function addMeal(meal = {}) { // ใช้ parameter เป็น object เพ�
         showCustomAlert("คัดลอก", "คัดลอกมื้อเรียบร้อยแล้ว!", "info");
         if (pasteBtn) {
             pasteBtn.disabled = false;
-            // pasteBtn.innerHTML = '<i class="fa-solid fa-paste"></i> <span>วางมื้อ (คัดลอกแล้ว)</span>'; // ไม่ต้องเปลี่ยนข้อความ
         }
     });
 
@@ -753,7 +772,6 @@ function pasteCopiedMeal() {
         copiedMeal = null; // ล้างข้อมูลที่คัดลอกหลังจากวาง
         if (pasteBtn) {
             pasteBtn.disabled = true;
-            // pasteBtn.innerHTML = '<i class="fa-solid fa-paste"></i> <span>วางมื้อ</span>'; // ไม่ต้องเปลี่ยนข้อความ
         }
         showCustomAlert("วาง", "วางมื้ออาหารที่คัดลอกแล้ว!", "success");
     } else {
@@ -764,8 +782,9 @@ function pasteCopiedMeal() {
 
 // ฟังก์ชันสำหรับบันทึกมื้ออาหารทั้งหมดไปยัง Firebase
 async function saveMeals() {
-    if (!deviceId) {
-        showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์. โปรดรอให้อุปกรณ์เชื่อมต่อ.", "error");
+    if (!deviceId || deviceId === DEFAULT_DEVICE_ID) { // ✅ เพิ่มเงื่อนไขตรวจสอบ DEFAULT_DEVICE_ID
+        showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์จริง (กำลังใช้โหมดทดสอบ). โปรดรอให้อุปกรณ์เชื่อมต่อ.", "error");
+        setButtonState(saveMealsBtn, false); // คืนสถานะปุ่ม
         return;
     }
     if (!saveMealsBtn) return; // เพิ่มการตรวจสอบ null
@@ -828,13 +847,45 @@ async function saveMeals() {
     }
 }
 
+// โหลดมื้ออาหารจาก Firebase และแสดงผล
+async function loadMeals() {
+    if (!deviceId) {
+        console.log("No deviceId available to load meals.");
+        mealList.innerHTML = ""; // Clear existing meals
+        addMeal({}); // Add an empty meal if no deviceId
+        updateMealNumbers();
+        return;
+    }
+    try {
+        const snapshot = await db.ref(`device/${deviceId}/meals`).once("value");
+        mealList.innerHTML = ""; // ล้างรายการเก่าก่อนโหลดใหม่
+        const mealsData = snapshot.val();
+        if (mealsData && Array.isArray(mealsData) && mealsData.length > 0) {
+            mealsData.forEach(meal => {
+                addMeal(meal); // ส่ง meal object เข้าไปตรงๆ
+            });
+        } else {
+            addMeal({}); // เพิ่มมื้อแรกที่เป็นค่าว่าง
+        }
+        updateMealNumbers();
+    } catch (error) {
+        console.error("Error loading meals:", error);
+        showCustomAlert("ข้อผิดพลาด", `ไม่สามารถโหลดมื้ออาหารได้: ${error.message}`, "error");
+        mealList.innerHTML = ""; // Clear in case of error
+        addMeal({}); // Add an empty meal on error
+        updateMealNumbers();
+    }
+}
+
+
 // ===============================================
 // ✅ การสั่งให้อาหารทันที
 // ===============================================
 
 async function feedNow() {
-    if (!deviceId) {
-        showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์. โปรดรอให้อุปกรณ์เชื่อมต่อ.", "error");
+    if (!deviceId || deviceId === DEFAULT_DEVICE_ID) {
+        showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์จริง (กำลังใช้โหมดทดสอบ). โปรดรอให้อุปกรณ์เชื่อมต่อ.", "error");
+        setButtonState(feedNowBtn, false);
         return;
     }
     if (!feedNowBtn) return; // เพิ่มการตรวจสอบ null
@@ -886,9 +937,23 @@ async function feedNow() {
 // ✅ การเช็คปริมาณอาหาร
 // ===============================================
 
+// Define BOTTLE_SIZES_MAPPING if it's not defined in animalCalculator.js and is needed here
+// For now, assume it's not strictly needed here for the purpose of the bug fix
+// const BOTTLE_SIZES_MAPPING = {
+//     "48": "18.9 ลิตร - สูง 48cm",
+//     "45": "15 ลิตร - สูง 45cm",
+//     "37": "12 ลิตร - สูง 37cm",
+//     "24": "10 ลิตร / 600ml - สูง 24cm",
+//     "32": "1.5 ลิตร - สูง 32cm",
+//     "17": "350ml - สูง 17cm",
+//     "custom": "กรอกความสูงเอง"
+// };
+
+
 async function checkFoodLevel() {
-    if (!deviceId) {
-        showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์. โปรดรอให้อุปกรณ์เชื่อมต่อ.", "error");
+    if (!deviceId || deviceId === DEFAULT_DEVICE_ID) {
+        showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์จริง (กำลังใช้โหมดทดสอบ). โปรดรอให้อุปกรณ์เชื่อมต่อ.", "error");
+        setButtonState(checkFoodLevelBtn, false);
         return;
     }
     if (!checkFoodLevelBtn) return; // เพิ่มการตรวจสอบ null
@@ -916,8 +981,6 @@ async function checkFoodLevel() {
         });
 
         const foodLevelResult = await resultPromise;
-        const bottleSizeSelect = document.getElementById('bottleSizeSelect');
-        const customBottleHeightInput = document.getElementById('customBottleHeightInput');
         
         let bottleHeight = 0;
         // โหลดค่าความสูงขวดจาก Firebase ก่อนคำนวณ
@@ -930,11 +993,8 @@ async function checkFoodLevel() {
         if (savedBottleSize === 'custom' && savedCustomHeight !== null) {
             bottleHeight = parseFloat(savedCustomHeight);
         } else if (savedBottleSize && savedBottleSize !== "") {
-            // ดึงค่าความสูงจาก BOTTLE_SIZES_MAPPING
-            const matchingOption = Object.keys(BOTTLE_SIZES_MAPPING).find(key => key === savedBottleSize);
-            if (matchingOption && matchingOption !== "custom") {
-                bottleHeight = parseFloat(matchingOption); // ใช้ค่า key ที่เป็นตัวเลข
-            }
+            // ดึงค่าความสูงจาก option value โดยตรง (ซึ่งเก็บเป็นตัวเลข)
+            bottleHeight = parseFloat(savedBottleSize);
         }
 
         // ตรวจสอบว่าได้ค่าความสูงของขวดหรือไม่
@@ -957,8 +1017,8 @@ async function checkFoodLevel() {
         } else if (foodLevelResult > bottleHeight + 5) { // +5cm เผื่อความคลาดเคลื่อน
             message = `น่าจะไม่มีอาหารในถัง หรือเซ็นเซอร์วัดค่าผิดปกติ (วัดได้ ${foodLevelResult} cm จากขวดสูง ${bottleHeight} cm)`;
         }
-        else if (foodLevelResult > bottleHeight - 5) {
-            message += `\nอาหารในถังเหลือน้อยมาก (< ${Math.round(percentage)}%).`;
+        else if (foodLevelResult > bottleHeight - (bottleHeight * 0.1)) { // ถ้าเหลือน้อยกว่า 10%
+            message += `\nอาหารในถังเหลือน้อยมาก (ประมาณ ${Math.round(percentage)}%).`;
         } else {
             message += `\nประมาณ ${Math.round(percentage)}% ของถัง.`;
         }
@@ -978,8 +1038,9 @@ async function checkFoodLevel() {
 // ===============================================
 
 async function checkAnimalMovement() {
-    if (!deviceId) {
-        showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์. โปรดรอให้อุปกรณ์เชื่อมต่อ.", "error");
+    if (!deviceId || deviceId === DEFAULT_DEVICE_ID) {
+        showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์จริง (กำลังใช้โหมดทดสอบ). โปรดรอให้อุปกรณ์เชื่อมต่อ.", "error");
+        setButtonState(checkAnimalMovementBtn, false);
         return;
     }
     if (!checkAnimalMovementBtn) return; // เพิ่มการตรวจสอบ null
@@ -1032,22 +1093,25 @@ async function checkAnimalMovement() {
 // ✅ การเล่นเสียง Make Noise ทันที
 // ===============================================
 let selectedMakeNoiseFile = null; // เก็บไฟล์ที่เลือกสำหรับ Make Noise
+let makenoiseUploadedAudioURL = ""; // URL ของเสียงที่อัปโหลดสำหรับ Make Noise
 
 document.addEventListener('DOMContentLoaded', () => { // Ensure this part runs after DOM is ready
     const makenoiseAudioInput = document.getElementById('makenoiseAudioInput');
     const makenoiseAudioStatus = document.getElementById('makenoiseAudioStatus');
-    const makenoiseBtn = document.getElementById('makenoiseBtn'); // Make sure this is retrieved
+    // makenoiseBtn ถูกประกาศเป็น global แล้ว ไม่ต้องประกาศซ้ำ
 
     if (makenoiseAudioInput && makenoiseAudioStatus && makenoiseBtn) {
         makenoiseAudioInput.addEventListener('change', (e) => {
             if (e.target.files.length > 0) {
                 selectedMakeNoiseFile = e.target.files[0];
                 makenoiseAudioStatus.textContent = `พร้อมอัปโหลด: ${selectedMakeNoiseFile.name}`;
-                makenoiseBtn.disabled = false;
+                if (deviceId && deviceId !== DEFAULT_DEVICE_ID) { // เปิดใช้งานถ้ามี deviceId จริง
+                    setButtonState(makenoiseBtn, false); // เปิดปุ่ม
+                }
             } else {
                 selectedMakeNoiseFile = null;
                 makenoiseAudioStatus.textContent = '';
-                makenoiseBtn.disabled = true;
+                setButtonState(makenoiseBtn, true); // ปิดปุ่ม
             }
         });
     }
@@ -1055,8 +1119,9 @@ document.addEventListener('DOMContentLoaded', () => { // Ensure this part runs a
 
 
 async function playMakeNoise() {
-    if (!deviceId) {
-        showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์. โปรดรอให้อุปกรณ์เชื่อมต่อ.", "error");
+    if (!deviceId || deviceId === DEFAULT_DEVICE_ID) {
+        showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์จริง (กำลังใช้โหมดทดสอบ). โปรดรอให้อุปกรณ์เชื่อมต่อ.", "error");
+        setButtonState(makenoiseBtn, false);
         return;
     }
     if (!selectedMakeNoiseFile) {
@@ -1111,7 +1176,7 @@ async function playMakeNoise() {
         if (makenoiseAudioInput) makenoiseAudioInput.value = ''; // เคลียร์ไฟล์ที่เลือก
         if (makenoiseAudioStatus) makenoiseAudioStatus.textContent = '';
         selectedMakeNoiseFile = null;
-        if (makenoiseBtn) makenoiseBtn.disabled = true;
+        setButtonState(makenoiseBtn, true); // ปิดใช้งานปุ่มหลังทำงานเสร็จ
     }
 }
 
@@ -1138,11 +1203,10 @@ document.addEventListener('DOMContentLoaded', () => {
     animalTypeSelect = document.getElementById("animalType");
     animalSpeciesSelect = document.getElementById("animalSpecies");
     animalCountInput = document.getElementById("animalCount");
-    // เพิ่มการรับ Reference สำหรับ Element Calculator ใหม่
     animalWeightKgInput = document.getElementById("animalWeightKg");
     lifeStageActivitySelect = document.getElementById("lifeStageActivity");
-    calculationNotesSpan = document.getElementById("calculationNotes"); // รับ reference ของ Notes
-    notificationDot = document.getElementById("notificationDot"); // ✅ รับ reference ของจุดแจ้งเตือน
+    calculationNotesSpan = document.getElementById("calculationNotes"); 
+    notificationDot = document.getElementById("notificationDot"); 
 
     // ✅ รับ Reference สำหรับ Custom Alert และ Toast Notification
     customAlertOverlay = document.getElementById('customAlertOverlay');
@@ -1168,7 +1232,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (customAlertOkButton) {
         customAlertOkButton.addEventListener('click', () => {
             customAlertOverlay.classList.remove('show');
-            customAlertContent.classList.remove('success', 'error', 'warning', 'info'); // Clean up types
+            customAlertContent.classList.remove('success', 'error', 'warning', 'info'); 
         });
     }
 
@@ -1176,34 +1240,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (newNotificationToast) {
         newNotificationToast.addEventListener('click', () => {
             closeNewNotificationToast();
-            openNotificationModal(); // Open main notification modal when toast is clicked
+            openNotificationModal(); 
         });
     }
 
-    // Initialize Firebase reference for user settings
-    // Note: This DEFAULT_USER_ID is a placeholder. For a multi-user app, you'd integrate Firebase Auth.
-    // For device settings like WiFi, it's generally better to store them under `device/{deviceId}/settings`.
-    // The current implementation is already using `device/${deviceId}/settings` for TimeZone/BottleSize,
-    // so WiFi will follow that pattern for consistency.
-    // The `last_notification_read_timestamp` is user-specific, so it's fine under `user_settings`.
-    // For now, let's keep `lastNotificationReadTimestampRef` as is for user-specific notification tracking.
-    let lastNotificationReadTimestampRef = db.ref(`user_settings/${DEFAULT_USER_ID}/last_notification_read_timestamp`);
-
-
     // 2. กำหนดสถานะเริ่มต้นของ UI (รวมถึงปุ่ม paste)
-    updateDeviceStatusUI(false); // เริ่มต้นเป็นออฟไลน์
+    setDeviceStatus(false); // เริ่มต้นเป็นออฟไลน์
     if (pasteBtn) {
         pasteBtn.disabled = true;
-        pasteBtn.innerHTML = '<i class="fa-solid fa-paste"></i> <span>วางมื้อ</span>';
+        // pasteBtn.innerHTML = '<i class="fa-solid fa-paste"></i> <span>วางมื้อ</span>'; // ไม่จำเป็นต้องเปลี่ยนข้อความ
     }
+    setButtonState(makenoiseBtn, true); // ปิดใช้งานปุ่ม Make Noise ตั้งแต่เริ่มต้น
 
-    // 3. ใช้งานฟังก์ชัน updateButtonState สำหรับปุ่มหลักที่เชื่อมกับ Firebase
-    updateButtonState(feedNowBtn, `device/${deviceId}/commands/feedNow`, 'ให้อาหารทันที', 'กำลังให้อาหาร...', 'fa-solid fa-bowl-food', 'fa-solid fa-spinner fa-spin');
-    updateButtonState(checkFoodLevelBtn, `device/${deviceId}/commands/checkFoodLevel`, 'เช็คปริมาณอาหาร', 'กำลังเช็ค...', 'fa-solid fa-scale-balanced', 'fa-solid fa-spinner fa-spin');
-    updateButtonState(checkAnimalMovementBtn, `device/${deviceId}/commands/checkMovement`, 'เช็คการเคลื่อนไหว', 'กำลังเช็ค...', 'fa-solid fa-paw', 'fa-solid fa-spinner fa-spin');
-    updateButtonState(makenoiseBtn, `device/${deviceId}/commands/makeNoise`, 'เล่นเสียงนี้ทันที', 'กำลังเล่นเสียง...', 'fa-solid fa-volume-high', 'fa-solid fa-spinner fa-spin');
 
-    // 4. แนบ Event Listeners ทั้งหมด
+    // 3. แนบ Event Listeners ทั้งหมด
     if (feedNowBtn) feedNowBtn.addEventListener('click', feedNow);
     if (addMealBtn) addMealBtn.addEventListener('click', () => addMeal());
     if (saveMealsBtn) saveMealsBtn.addEventListener('click', saveMeals);
@@ -1214,189 +1264,27 @@ document.addEventListener('DOMContentLoaded', () => {
     if (checkAnimalMovementBtn) checkAnimalMovementBtn.addEventListener('click', checkAnimalMovement);
     if (makenoiseBtn) makenoiseBtn.addEventListener('click', playMakeNoise);
 
-    // Event Listener สำหรับอัปโหลดเสียงเฉพาะ makenoise
-    if (makenoiseAudioInput && makenoiseAudioStatusSpan) {
-        makenoiseAudioInput.addEventListener("change", async () => {
-            const file = makenoiseAudioInput.files[0];
-            if (!file) {
-                makenoiseUploadedAudioURL = "";
-                makenoiseAudioStatusSpan.textContent = "ไม่มีไฟล์ที่เลือก";
-                makenoiseAudioStatusSpan.style.color = "grey";
-                if (makenoiseBtn) makenoiseBtn.disabled = true; // disable makenoise button if no file
-                return;
-            }
-
-            makenoiseAudioStatusSpan.textContent = "🔄 กำลังอัปโหลด...";
-            makenoiseAudioStatusSpan.style.color = "orange";
-            if (makenoiseBtn) makenoiseBtn.disabled = true; // disable while uploading
-
-            const fileName = `${Date.now()}_${sanitizeFileName(file.name)}`;
-
-            try {
-                const { data, error } = await supabaseClient.storage.from("feeder-sounds").upload(`make_noise/${deviceId}/${fileName}`, file); // Store under deviceId
-
-                if (error) {
-                    showCustomAlert("อัปโหลดไม่สำเร็จ: " + error.message, "error", "❌ ผิดพลาด!");
-                    makenoiseAudioStatusSpan.textContent = "❌ อัปโหลดไม่สำเร็จ: " + error.message;
-                    makenoiseAudioStatusSpan.style.color = "red";
-                    makenoiseUploadedAudioURL = ""; // ตั้งค่าเป็นค่าว่างหากอัปโหลดไม่สำเร็จ
-                    console.error("Supabase Upload Error:", error);
-                    return;
-                }
-
-                const { data: publicData } = supabaseClient.storage.from("feeder-sounds").getPublicUrl(`make_noise/${deviceId}/${fileName}`);
-                makenoiseUploadedAudioURL = publicData.publicUrl; // เก็บ URL ที่ได้มา
-
-                const uploadedFileName = file.name;
-                makenoiseAudioStatusSpan.innerHTML = `✅ อัปโหลดแล้ว<br><small>(${uploadedFileName})</small>`;
-                makenoiseAudioStatusSpan.style.color = "green";
-                showCustomAlert(`อัปโหลดไฟล์เสียง "${file.name}" สำเร็จ!`, "success", "✅ สำเร็จ!");
-                if (makenoiseBtn) makenoiseBtn.disabled = false; // enable after successful upload
-            } catch (e) {
-                showCustomAlert("เกิดข้อผิดพลาด: " + e.message, "error", "❌ ผิดพลาด!");
-                makenoiseAudioStatusSpan.textContent = "❌ เกิดข้อผิดพลาด: " + e.message;
-                makenoiseAudioStatusSpan.style.color = "red";
-                makenoiseUploadedAudioURL = ""; // ตั้งค่าเป็นค่าว่างหากเกิดข้อผิดพลาด
-                console.error("General Upload Error:", e);
-            }
-        });
-    }
-
     // ✅ Listener และ Logic สำหรับ System Settings (Time Zone Offset)
     if (timeZoneOffsetSelect) {
-        // โหลดค่าเริ่มต้นและฟังการเปลี่ยนแปลง
-        // db.ref(`user_settings/${DEFAULT_USER_ID}/time_zone_offset_hours`).on('value', snapshot => { // Path เดิม
-        db.ref(`device/${deviceId}/settings/timeZoneOffset`).on('value', snapshot => { // Path ใหม่
-            const offset = snapshot.val();
-            if (offset !== null) { // Check for null as 0 is a valid offset
-                timeZoneOffsetSelect.value = offset;
-            } else {
-                // ถ้าไม่มีค่าใน Firebase ให้ตั้งค่าเริ่มต้นจาก Time Zone ของเบราว์เซอร์
-                const currentOffsetHours = new Date().getTimezoneOffset() / -60;
-                let closestOffsetOption = null;
-                let minDiff = Infinity;
-                Array.from(timeZoneOffsetSelect.options).forEach(option => {
-                    if (option.value === "") return;
-                    const optionValue = parseFloat(option.value);
-                    const diff = Math.abs(currentOffsetHours - optionValue);
-                    if (diff < minDiff) {
-                        minDiff = diff;
-                        closestOffsetOption = option;
-                    }
-                });
-                
-                if (closestOffsetOption) {
-                    timeZoneOffsetSelect.value = closestOffsetOption.value;
-                    // db.ref(`user_settings/${DEFAULT_USER_ID}/time_zone_offset_hours`).set(parseFloat(closestOffsetOption.value)); // Path เดิม
-                    db.ref(`device/${deviceId}/settings/timeZoneOffset`).set(parseFloat(closestOffsetOption.value)); // Path ใหม่
-                    showCustomAlert(`ตั้งค่าโซนเวลาเริ่มต้นเป็น UTC${parseFloat(closestOffsetOption.value) >= 0 ? '+' : ''}${closestOffsetOption.value} (อิงตามเบราว์เซอร์)`, "info", "⚙️ ตั้งค่า");
-                }
-            }
-            checkSystemSettingsAndToggleUI(); // ตรวจสอบสถานะการตั้งค่าและสลับ UI
-        });
-        // บันทึกเมื่อมีการเปลี่ยนแปลง
-        timeZoneOffsetSelect.addEventListener('change', () => {
-            const selectedOffset = parseFloat(timeZoneOffsetSelect.value);
-            if (!isNaN(selectedOffset)) {
-                // db.ref(`user_settings/${DEFAULT_USER_ID}/time_zone_offset_hours`).set(selectedOffset) // Path เดิม
-                db.ref(`device/${deviceId}/settings/timeZoneOffset`).set(selectedOffset) // Path ใหม่
-                    .then(() => showCustomAlert(`ตั้งค่าโซนเวลาเป็น UTC${selectedOffset >= 0 ? '+' : ''}${selectedOffset}`, "success", "⚙️ ตั้งค่าสำเร็จ"))
-                    .catch(error => {
-                        showCustomAlert("เกิดข้อผิดพลาดในการบันทึกโซนเวลา: " + error.message, "error", "❌ ผิดพลาด!");
-                        console.error("Firebase save timezone error:", error);
-                    });
-            } else {
-                // db.ref(`user_settings/${DEFAULT_USER_ID}/time_zone_offset_hours`).remove(); // Path เดิม
-                db.ref(`device/${deviceId}/settings/timeZoneOffset`).remove(); // Path ใหม่
-                showCustomAlert("ล้างการตั้งค่าโซนเวลา", "info", "⚙️ ตั้งค่า");
-            }
+        timeZoneOffsetSelect.addEventListener('change', async () => {
+            await saveSettingsToFirebase(); // บันทึกและตรวจสอบ UI หลังเปลี่ยน
         });
     }
 
     // ✅ Listener และ Logic สำหรับ System Settings (Bottle Size)
     if (bottleSizeSelect && customBottleHeightInput) {
-        // ฟังก์ชันสำหรับแสดง/ซ่อนช่องกรอกเอง
         const toggleCustomHeightInput = (show) => {
             customBottleHeightInput.style.display = show ? 'block' : 'none';
         };
 
-        // โหลดค่าเริ่มต้นและฟังการเปลี่ยนแปลง
-        // db.ref(`user_settings/${DEFAULT_USER_ID}/feeder_settings/bottle_height_cm`).on('value', snapshot => { // Path เดิม
-        db.ref(`device/${deviceId}/settings/bottleSize`).on('value', snapshot => { // Path ใหม่ (bottleSize)
-            const savedBottleSizeValue = snapshot.val(); // ค่าที่บันทึกใน Firebase (เช่น "48", "custom")
-            // db.ref(`user_settings/${DEFAULT_USER_ID}/feeder_settings/custom_bottle_height_cm`).on('value', customHeightSnapshot => { // Path เดิม
-            db.ref(`device/${deviceId}/settings/customBottleHeight`).on('value', customHeightSnapshot => { // Path ใหม่ (customBottleHeight)
-                const savedCustomHeight = customHeightSnapshot.val(); // ค่าความสูงเอง
-                
-                if (savedBottleSizeValue) { // ถ้ามีค่า bottleSize
-                    bottleSizeSelect.value = savedBottleSizeValue; // ตั้งค่า dropdown
-
-                    if (savedBottleSizeValue === 'custom') {
-                        toggleCustomHeightInput(true); // แสดงช่องกรอกเอง
-                        customBottleHeightInput.value = savedCustomHeight !== null ? savedCustomHeight : ''; // ใส่ค่าที่บันทึกไว้
-                    } else {
-                        toggleCustomHeightInput(false); // ซ่อนช่องกรอกเอง
-                        customBottleHeightInput.value = ''; // ล้างค่าในช่องกรอกเอง
-                    }
-                } else {
-                    // ถ้าไม่มีค่าใน Firebase เลย
-                    bottleSizeSelect.value = ""; // ตั้งค่าเริ่มต้นของ dropdown
-                    toggleCustomHeightInput(false);
-                    customBottleHeightInput.value = ''; // ล้างค่าในช่องกรอกเอง
-                }
-                checkSystemSettingsAndToggleUI(); // ตรวจสอบสถานะการตั้งค่าและสลับ UI
-            });
-        });
-
-        // Event Listener สำหรับการเปลี่ยนแปลงใน Dropdown ขนาดขวด
-        bottleSizeSelect.addEventListener('change', () => {
+        bottleSizeSelect.addEventListener('change', async () => {
             const selectedValue = bottleSizeSelect.value;
-            if (selectedValue === "custom") {
-                toggleCustomHeightInput(true); // แสดงช่องกรอกเอง
-                customBottleHeightInput.value = ''; // ล้างค่าในช่องกรอกเอง
-                customBottleHeightInput.focus(); // ให้ผู้ใช้กรอกได้ทันที
-                
-                // db.ref(`user_settings/${DEFAULT_USER_ID}/feeder_settings/bottle_height_cm`).remove(); // Path เดิม
-                db.ref(`device/${deviceId}/settings/bottleSize`).set("custom"); // บันทึกว่าเลือก custom
-                db.ref(`device/${deviceId}/settings/customBottleHeight`).remove(); // ลบค่าความสูงเดิม (ถ้ามี)
-                showCustomAlert("กรุณากรอกความสูงขวด", "info", "⚙️ ตั้งค่า");
-
-            } else if (selectedValue === "") { // ถ้าเลือก "-- เลือกขนาดขวด --"
-                toggleCustomHeightInput(false); // ซ่อนช่องกรอกเอง
-                customBottleHeightInput.value = ''; // ล้างค่า
-                // db.ref(`user_settings/${DEFAULT_USER_ID}/feeder_settings/bottle_height_cm`).remove(); // Path เดิม
-                db.ref(`device/${deviceId}/settings/bottleSize`).remove(); // ลบค่า
-                db.ref(`device/${deviceId}/settings/customBottleHeight`).remove(); // ลบ custom height ด้วย
-                showCustomAlert("ล้างการตั้งค่าขนาดขวด", "info", "⚙️ ตั้งค่า");
-            }
-            else {
-                // ถ้าเลือกขนาดที่กำหนดไว้ล่วงหน้า
-                toggleCustomHeightInput(false); // ซ่อนช่องกรอกเอง
-                customBottleHeightInput.value = ''; // ล้างค่าในช่องกรอกเอง
-                const selectedHeightCm = parseFloat(selectedValue); // ค่า height คือ value ของ option ตรงๆ
-
-                if (!isNaN(selectedHeightCm) && selectedHeightCm > 0) {
-                    // db.ref(`user_settings/${DEFAULT_USER_ID}/feeder_settings/bottle_height_cm`).set(selectedHeightCm) // Path เดิม
-                    db.ref(`device/${deviceId}/settings/bottleSize`).set(selectedValue); // บันทึก value ของ dropdown option
-                    db.ref(`device/${deviceId}/settings/customBottleHeight`).remove(); // ลบ custom height ถ้าเปลี่ยนมาใช้ preset
-                    showCustomAlert(`ตั้งค่าขนาดขวดเป็น ${BOTTLE_SIZES_MAPPING[selectedValue]}`, "success", "⚙️ ตั้งค่าสำเร็จ");
-                }
-            }
+            toggleCustomHeightInput(selectedValue === "custom");
+            await saveSettingsToFirebase(); // บันทึกและตรวจสอบ UI หลังเปลี่ยน
         });
 
-        // Event Listener สำหรับช่องกรอกความสูงเอง
-        customBottleHeightInput.addEventListener('input', () => {
-            const customHeight = parseFloat(customBottleHeightInput.value);
-            if (!isNaN(customHeight) && customHeight > 0) {
-                // db.ref(`user_settings/${DEFAULT_USER_ID}/feeder_settings/bottle_height_cm`).set(customHeight) // Path เดิม
-                db.ref(`device/${deviceId}/settings/customBottleHeight`).set(customHeight); // บันทึก custom height
-                db.ref(`device/${deviceId}/settings/bottleSize`).set("custom"); // ตรวจสอบให้แน่ใจว่า bottleSize ถูกตั้งเป็น "custom"
-                // ไม่ต้อง showCustomAlert บ่อยๆ เมื่อพิมพ์
-            } else if (customBottleHeightInput.value === '') {
-                 // ถ้าลบค่าออก ให้ลบจาก Firebase ด้วย
-                // db.ref(`user_settings/${DEFAULT_USER_ID}/feeder_settings/bottle_height_cm`).remove(); // Path เดิม
-                db.ref(`device/${deviceId}/settings/customBottleHeight`).remove();
-            }
+        customBottleHeightInput.addEventListener('input', async () => {
+            await saveSettingsToFirebase(); // บันทึกและตรวจสอบ UI หลังพิมพ์
         });
     }
 
@@ -1404,68 +1292,34 @@ document.addEventListener('DOMContentLoaded', () => {
     if (wifiSsidInput && wifiPasswordInput) {
         wifiSsidInput.addEventListener('input', saveWifiSettingsToFirebase);
         wifiPasswordInput.addEventListener('input', saveWifiSettingsToFirebase);
-
-        // Load Wi-Fi settings on page load (part of loadSettingsFromFirebase now)
-        // No explicit separate listener needed here as it's included in loadSettingsFromFirebase
     }
 
-    // 5. โหลดมื้ออาหารจาก Firebase และแสดงผล
-    db.ref(`device/${deviceId}/meals`).on("value", (snapshot) => { // เปลี่ยน Path ให้ใช้ deviceId
-        mealList.innerHTML = ""; // ล้างรายการเก่าก่อนโหลดใหม่
-        const mealsData = snapshot.val();
-        if (mealsData && Array.isArray(mealsData) && mealsData.length > 0) {
-            mealsData.forEach(meal => {
-                addMeal(meal); // ส่ง meal object เข้าไปตรงๆ
-            });
-        } else {
-            // ✅ แก้ไข: ถ้าไม่มีข้อมูลมื้ออาหาร ให้แสดงมื้อที่ 1 เป็นค่าว่าง
-            addMeal({}); // เพิ่มมื้อแรกที่เป็นค่าว่าง
-        }
-        updateMealNumbers();
-    });
+    // 4. Initial load of settings and meals (handled by deviceId listener now)
+    // Эти функции будут вызваны внутри слушателя deviceId
+    // loadSettingsFromFirebase(); 
+    // loadMeals();
+    // setupNotificationListener(deviceId); 
+    // fetchAndDisplayNotifications();
 
-    // 6. ดึงสถานะอุปกรณ์แบบ Realtime
-    // db.ref('feeder/isOnline').on('value', (snapshot) => { // Path เดิม
-    db.ref(`device/${deviceId}/status/online`).on('value', (snapshot) => { // Path ใหม่
-        const isOnline = snapshot.val();
-        // db.ref('feeder/batteryVoltage').once('value', (batterySnapshot) => { // Path เดิม
-        db.ref(`device/${deviceId}/status/batteryVoltage`).once('value', (batterySnapshot) => { // Path ใหม่
-            const batteryVoltage = batterySnapshot.val();
-            updateDeviceStatusUI(isOnline, batteryVoltage);
-        });
-    });
-
-    // 7. ตั้งค่า Firebase listener สำหรับ Notification Badge & Toast
-    // db.ref("notifications").on("value", (snapshot) => { // Path เดิม
-    db.ref(`device/${deviceId}/notifications`).on("value", (snapshot) => { // Path ใหม่
-        updateNotificationBadgeAndToast();
-    });
-
-    // เรียก updateNotificationBadgeAndToast ครั้งแรกเมื่อโหลดหน้าเว็บ
-    updateNotificationBadgeAndToast();
-
-    // ✅ เรียก populateAnimalType ครั้งแรกเมื่อ DOM โหลดเสร็จ เพื่อให้ Calculator เริ่มทำงาน
+    // 5. ✅ เรียก populateAnimalType ครั้งแรกเมื่อ DOM โหลดเสร็จ เพื่อให้ Calculator เริ่มทำงาน
     if (animalTypeSelect) {
-        populateAnimalType(); // ไม่ต้องส่ง animalTypeSelect, animalData เพราะเป็น global แล้ว
-        animalTypeSelect.addEventListener('change', () => updateAnimalSpecies()); // ไม่ต้องส่ง parameters
+        populateAnimalType(); 
+        animalTypeSelect.addEventListener('change', () => updateAnimalSpecies()); 
         
-        // แนบ Event Listener สำหรับการเปลี่ยนแปลงค่าใน Calculator เพื่ออัปเดตคำแนะนำ
         const calculatorInputs = [animalTypeSelect, animalSpeciesSelect, animalWeightKgInput, lifeStageActivitySelect];
         calculatorInputs.forEach(input => {
             if (input) {
                 input.addEventListener('change', () => {
-                    updateRecommendedAmount(); // ไม่ต้องส่ง parameters
+                    updateRecommendedAmount(); 
                 });
             }
         });
 
-        // Event listener สำหรับ animalCountInput (หากมีการเปลี่ยนแปลงจำนวนสัตว์)
         if (animalCountInput) {
-            animalCountInput.addEventListener('input', () => { // ใช้ 'input' event สำหรับการเปลี่ยนแปลงทุกครั้ง
-                updateRecommendedAmount(); // ไม่ต้องส่ง parameters
+            animalCountInput.addEventListener('input', () => { 
+                updateRecommendedAmount(); 
             });
         }
-        // เมื่อโหลดหน้าเว็บเสร็จ ให้เรียก updateRecommendedAmount ครั้งแรกด้วย
-        updateRecommendedAmount(); // ไม่ต้องส่ง parameters
+        updateRecommendedAmount(); 
     }
 });
