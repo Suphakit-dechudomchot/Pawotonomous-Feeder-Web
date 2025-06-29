@@ -112,7 +112,8 @@ float customBottleHeight = 0.0; // Custom bottle height in cm if bottleSize is "
 
 // Function prototypes
 void connectToWiFi();
-void firebaseStreamCallback(FirebaseStream data); // Corrected: Use FirebaseStream
+// ✅ FIX: เปลี่ยน FirebaseStream เป็น FirebaseData&
+void firebaseStreamCallback(FirebaseData &data); 
 void firebaseStreamTimeoutCallback(bool timeout);
 void syncTime();
 void updateDeviceStatus(bool online);
@@ -161,7 +162,6 @@ void setup() {
     
     // Initialize Firebase Configuration
     firebaseConfig.host = FIREBASE_HOST;
-    // ✅ แก้ไขการใช้ database_secret (เป็นรูปแบบที่ไลบรารีเวอร์ชันล่าสุดรองรับ)
     firebaseConfig.signer.test_mode = true; // เปิดใช้งาน test_mode
     firebaseConfig.database_secret = FIREBASE_AUTH; // กำหนด database_secret
 
@@ -202,28 +202,24 @@ void setup() {
     }
 
     // Initialize Audio (for ESP8266Audio library)
-    // ✅ NEW: ใช้ AudioOutputI2S (สำหรับ I2S DAC)
     audioOutput = new AudioOutputI2S(); 
-    // กำหนดขา I2S (BCLK, LRC, DOUT)
     audioOutput->SetPinout(I2S_BCLK_PIN, I2S_LRC_PIN, I2S_DOUT_PIN); 
-    audioOutput->SetGain(0.1); // Volume 0.0 - 1.0
-
-    // หากต้องการใช้ DAC ภายในของ ESP32 (GPIO25/26) แทน I2S DAC:
-    // audioOutputAnalog = new AudioOutputAnalog(AUDIO_OUT_DAC_PIN);
-    // audioOutputAnalog->SetGain(0.1); // Volume 0.0 - 1.0
+    audioOutput->SetGain(0.1); 
     
-    mp3 = new AudioGeneratorMP3(); // สร้าง MP3 Generator
+    mp3 = new AudioGeneratorMP3(); 
 
     // Set up Firebase stream for commands and settings for this specific device
     String devicePath = "/device/" + deviceId; 
-    if (!Firebase.RTDB.beginStream(&firebaseData, devicePath.c_str())) { // ใช้ &firebaseData และ .c_str()
+    
+    // ✅ FIX: ตั้งค่า stream callback ก่อนที่จะเริ่ม stream
+    Firebase.RTDB.setStreamCallback(&firebaseData, firebaseStreamCallback, firebaseStreamTimeoutCallback); 
+
+    if (!Firebase.RTDB.beginStream(&firebaseData, devicePath.c_str())) { 
         Serial.printf("Failed to begin stream at %s: %s\n", devicePath.c_str(), firebaseData.errorReason().c_str());
-    } else {
-        Firebase.RTDB.setStreamCallback(&firebaseData, firebaseStreamCallback, firebaseStreamTimeoutCallback); // ใช้ &firebaseData
-    }
+    } 
 
     // Sync time with NTP server
-    syncTime(); // gmtOffset_sec จะถูกโหลดจาก Firebase ใน fetchSettingsFromFirebase()
+    syncTime(); 
 
     // Set device online status
     updateDeviceStatus(true);
@@ -237,25 +233,23 @@ void setup() {
 // ===========================================
 void loop() {
     // Check Firebase stream for new commands/data
-    if (Firebase.RTDB.readStream(&firebaseData)) { // ใช้ &firebaseData
+    if (Firebase.RTDB.readStream(&firebaseData)) { 
         // Stream data is handled in firebaseStreamCallback
     }
 
     // Manual feed button check
-    if (digitalRead(BUTTON_PIN) == LOW) { // Button is pressed
+    if (digitalRead(BUTTON_PIN) == LOW) { 
         if (millis() - lastButtonPressTime > debounceDelay) {
             Serial.println("Manual feed button pressed!");
-            // Check if there are any meals configured
             if (mealCount > 0) {
-                // Use the settings of the first meal for manual dispense
                 dispenseFood(meals[0].amount, meals[0].fanStrength, meals[0].fanDirection, meals[0].swingMode, meals[0].noiseFile, meals[0].originalNoiseFileName);
             } else {
                 Serial.println("No meals configured for manual dispense.");
-                beep(200, 1000); // Error beep
+                beep(200, 1000); 
                 delay(200);
                 beep(200, 1000);
             }
-            lastButtonPressTime = millis(); // Update last press time
+            lastButtonPressTime = millis(); 
         }
     }
 
@@ -263,11 +257,10 @@ void loop() {
     struct tm timeinfo;
     if (getLocalTime(&timeinfo)) {
         for (int i = 0; i < mealCount; i++) {
-            // Check if current time matches scheduled meal time
             if (timeinfo.tm_hour == meals[i].hour && timeinfo.tm_min == meals[i].minute && !isDispensing) {
                 Serial.printf("Scheduled meal %d triggered at %02d:%02d\n", i + 1, meals[i].hour, meals[i].minute);
                 dispenseFood(meals[i].amount, meals[i].fanStrength, meals[i].fanDirection, meals[i].swingMode, meals[i].noiseFile, meals[i].originalNoiseFileName);
-                delay(60000); // Wait 1 minute after dispensing
+                delay(60000); 
             }
         }
     }
@@ -275,48 +268,45 @@ void loop() {
     // PIR motion sensor check
     int pirState = digitalRead(PIR_PIN);
     if (pirState == HIGH) {
-        // Motion detected
-        updateLastMovementDetected(Firebase.RTDB.getTimestamp(&firebaseData)); // ใช้ getTimestamp() ที่ถูกต้อง
-        delay(5000); // Wait 5 seconds before checking again
+        updateLastMovementDetected(Firebase.RTDB.getTimestamp(&firebaseData)); 
+        delay(5000); 
     }
 
     // Food dispensing process (non-blocking)
     if (isDispensing) {
         unsigned long elapsed = millis() - dispenseStartTime;
         if (elapsed < currentDispenseDuration) {
-            // Continue dispensing, foodServo is already open
             if (currentSwingMode) {
                 static unsigned long lastSwingMove = 0;
                 if (millis() - lastSwingMove > 500) { 
                     static bool swingForward = true;
-                    int swingRange = 20; // Example: Swing 20 degrees around the center (90)
+                    int swingRange = 20; 
                     int targetAngle = swingForward ? 90 + swingRange : 90 - swingRange; 
-                    fanServo.write(clamp(targetAngle, 60.0f, 120.0f)); // Ensure within bounds
+                    fanServo.write(clamp(targetAngle, 60.0f, 120.0f)); 
                     swingForward = !swingForward;
                     lastSwingMove = millis();
                 }
             } else {
-                fanServo.write(currentFanDirection); // Maintain fixed direction
+                fanServo.write(currentFanDirection); 
             }
 
         } else {
-            // Dispensing finished
             Serial.println("Dispensing finished.");
-            foodServo.write(90); // Close food servo
+            foodServo.write(90); 
             isDispensing = false;
             currentDispenseDuration = 0;
             currentDispenseAmount = 0;
             currentNoiseFile = "";
             currentOriginalNoiseFileName = "";
-            fanServo.write(90); // Return fan to neutral position (assuming 90 is neutral)
+            fanServo.write(90); 
 
-            beep(50, 2000); // Short beep to confirm dispense end
+            beep(50, 2000); 
         }
     }
 
     // ✅ NEW: Audio loop for ESP8266Audio
-    if (mp3 && mp3->isRunning()) { // ตรวจสอบว่า mp3 object ไม่เป็น nullptr ก่อนเรียกใช้
-      if (!mp3->loop()) { // หากเล่นจบ (loop() ส่งค่า false)
+    if (mp3 && mp3->isRunning()) { 
+      if (!mp3->loop()) {
         mp3->stop();
         delete mp3;
         mp3 = nullptr;
@@ -336,7 +326,7 @@ void connectToWiFi() {
 
     WiFi.begin(currentSsid, currentPassword);
     int retries = 0;
-    while (WiFi.status() != WL_CONNECTED && retries < 40) { // ลองเชื่อมต่อ 20 วินาที
+    while (WiFi.status() != WL_CONNECTED && retries < 40) { 
         Serial.print(".");
         delay(500);
         retries++;
@@ -348,7 +338,7 @@ void connectToWiFi() {
     } else {
         Serial.println("\nFailed to connect to WiFi using stored credentials.");
         Serial.println("Attempting to connect with hardcoded default WiFi.");
-        WiFi.begin("Wokwi-GUEST", ""); // ลองเชื่อมต่อกับค่าเริ่มต้น (ถ้ายังไม่ได้เชื่อมต่อ)
+        WiFi.begin("Wokwi-GUEST", ""); 
         retries = 0;
         while (WiFi.status() != WL_CONNECTED && retries < 40) {
             Serial.print("-");
@@ -366,14 +356,14 @@ void connectToWiFi() {
 // ===========================================
 // Firebase Stream Callbacks
 // ===========================================
-void firebaseStreamCallback(FirebaseStream data) { // Corrected: Use FirebaseStream
+// ✅ FIX: เปลี่ยน FirebaseStream เป็น FirebaseData&
+void firebaseStreamCallback(FirebaseData &data) { 
     // ตรวจสอบว่าข้อมูลมาจาก Device ID ของตัวเอง
     if (!data.dataPath.startsWith("/device/" + deviceId)) {
         Serial.printf("Ignoring stream data from other device: %s\n", data.dataPath.c_str());
         return;
     }
 
-    // ใช้ data.dataPath.substring เพื่อตัดส่วนที่ไม่จำเป็นออก ให้เหลือแค่ส่วนที่เป็น commands, meals, settings
     String relativePath = data.dataPath.substring(("/device/" + deviceId).length());
 
     if (relativePath == "/status/online") {
@@ -431,7 +421,7 @@ void syncTime() {
     Serial.println("Waiting for NTP time sync...");
     struct tm timeinfo;
     unsigned long startSyncTime = millis();
-    while (!getLocalTime(&timeinfo) && (millis() - startSyncTime < 10000)) { // ลอง sync 10 วินาที
+    while (!getLocalTime(&timeinfo) && (millis() - startSyncTime < 10000)) { 
         Serial.print(".");
         delay(500);
     }
@@ -482,7 +472,7 @@ void dispenseFood(int amount, int fan_strength, int fan_direction, bool swing_mo
                   amount, fan_strength, fan_direction, swing_mode, noiseFile.c_str());
 
     currentDispenseAmount = amount;
-    currentDispenseDuration = amount * 1000; // Example: 1 unit = 1 second (adjust as needed)
+    currentDispenseDuration = amount * 1000; 
 
     currentNoiseFile = noiseFile;
     currentOriginalNoiseFileName = originalNoiseName;
@@ -490,7 +480,7 @@ void dispenseFood(int amount, int fan_strength, int fan_direction, bool swing_mo
     currentFanDirection = clamp(fan_direction, 60.0f, 120.0f); 
     currentSwingMode = swing_mode;
     
-    foodServo.write(90); // Example: angle to open food
+    foodServo.write(90); 
     isDispensing = true;
     dispenseStartTime = millis();
 
@@ -512,29 +502,25 @@ void dispenseFood(int amount, int fan_strength, int fan_direction, bool swing_mo
 // Sound Playing Logic (using ESP8266Audio)
 // ===========================================
 void playSoundFromURL(const String& url) {
-    // ตรวจสอบและหยุดการเล่นเพลงที่กำลังทำงานอยู่ก่อนเริ่มต้นใหม่
     if (mp3 && mp3->isRunning()) { 
         mp3->stop();
     }
-    // ลบ objects เก่าทิ้งเพื่อป้องกัน memory leak
     if(httpStream) { delete httpStream; httpStream = nullptr; }
     if(fileSource) { delete fileSource; fileSource = nullptr; }
 
-    // กำหนด AudioOutput (ใช้ I2S หรือ Analog ตามที่เลือกใน setup)
     AudioOutput *currentAudioOutput = audioOutput;
-    // AudioOutput *currentAudioOutput = audioOutputAnalog; // หากใช้ Analog DAC แทน
 
     if (url.startsWith("http://") || url.startsWith("https://")) {
         Serial.printf("Playing from HTTP URL: %s\n", url.c_str());
         httpStream = new AudioFileSourceHTTPStream(url.c_str());
-        if(httpStream && httpStream->isFileOpen()) { // ตรวจสอบว่า httpStream ถูกสร้างและเปิดไฟล์ได้
+        if(httpStream && httpStream->isFileOpen()) { 
             mp3->begin(httpStream, currentAudioOutput);
         } else {
             Serial.println("Failed to open HTTP stream. Playing default beep.");
             beep(500, 1500);
-            if(httpStream) { delete httpStream; httpStream = nullptr; } // ลบทิ้งถ้ามีปัญหา
+            if(httpStream) { delete httpStream; httpStream = nullptr; }
         }
-    } else { // Assume it's a local path on SD card
+    } else { 
         Serial.printf("Playing from SD card path: %s\n", url.c_str());
         if (!SD.begin(SD_CS_PIN_LOCAL)) {
             Serial.println("SD Card not available. Cannot play local sound.");
@@ -542,18 +528,17 @@ void playSoundFromURL(const String& url) {
             return;
         }
         fileSource = new AudioFileSourceSD(url.c_str());
-        if(fileSource && fileSource->isOpen()) { // ตรวจสอบว่า fileSource ถูกสร้างและเปิดไฟล์ได้
+        if(fileSource && fileSource->isOpen()) { 
             mp3->begin(fileSource, currentAudioOutput);
         } else {
             Serial.println("Failed to open SD file. Playing default beep.");
             beep(500, 1500);
-            if(fileSource) { delete fileSource; fileSource = nullptr; } // ลบทิ้งถ้ามีปัญหา
+            if(fileSource) { delete fileSource; fileSource = nullptr; }
         }
-        SD.end(); // ปิดการ์ด SD หลังใช้งานเสร็จ
+        SD.end(); 
     }
 }
 
-// downloadFile is generally not needed if streaming directly from URL using AudioFileSourceHTTPStream
 void downloadFile(const String& url, const String& path) {
     HTTPClient http;
     File file;
@@ -573,12 +558,12 @@ void downloadFile(const String& url, const String& path) {
             if (!file) {
                 Serial.println("Failed to open file for writing on SD card.");
                 http.end();
-                SD.end(); // Close SD if opened
+                SD.end(); 
                 return;
             }
             http.writeToStream(&file);
             file.close();
-            SD.end(); // Close SD after writing
+            SD.end(); 
             Serial.printf("[HTTP] file downloaded to %s\n", path.c_str());
         }
     } else {
@@ -591,19 +576,18 @@ void playDownloadedSound(const String& filename) {
     if (mp3 && mp3->isRunning()) {
         mp3->stop();
     }
-    if(fileSource) { delete fileSource; fileSource = nullptr; } // Clear previous
-    if(httpStream) { delete httpStream; httpStream = nullptr; } // Clear previous
+    if(fileSource) { delete fileSource; fileSource = nullptr; } 
+    if(httpStream) { delete httpStream; httpStream = nullptr; } 
 
     AudioOutput *currentAudioOutput = audioOutput;
-    // AudioOutput *currentAudioOutput = audioOutputAnalog; // หากใช้ Analog DAC แทน
 
-    if (!SD.begin(SD_CS_PIN_LOCAL)) { // Initialize SD card for reading
+    if (!SD.begin(SD_CS_PIN_LOCAL)) { 
         Serial.println("SD card not available, cannot play downloaded sound.");
         beep(500, 1500);
         return;
     }
     fileSource = new AudioFileSourceSD(filename.c_str());
-    if (fileSource && fileSource->isOpen()) { // ตรวจสอบว่า fileSource ถูกสร้างและเปิดไฟล์ได้
+    if (fileSource && fileSource->isOpen()) { 
         Serial.printf("Playing %s from SD card...\n", filename.c_str());
         mp3->begin(fileSource, currentAudioOutput);
     } else {
@@ -611,9 +595,8 @@ void playDownloadedSound(const String& filename) {
         beep(500, 1500);
         if(fileSource) { delete fileSource; fileSource = nullptr; }
     }
-    SD.end(); // Close SD after use
+    SD.end(); 
 }
-
 
 // ===========================================
 // Ultrasonic Sensor Logic (Food Level)
@@ -789,13 +772,11 @@ void fetchSettingsFromFirebase() {
             FirebaseJsonData wifiCredentialsData;
             if (jsonRef.get(wifiCredentialsData, "wifiCredentials")) {
                 if (wifiCredentialsData.dataType == FirebaseJson::JSON_OBJECT) {
-                    // ✅ แก้ไข: ดึงค่าจาก wifiCredentialsData.jsonValue (เป็น FirebaseJson object)
                     if (wifiCredentialsData.jsonValue.get(data, "ssid")) {
                         firebaseSsid = data.stringValue;
                         Serial.printf("Loaded WiFi SSID: %s\n", firebaseSsid.c_str());
                     }
                     if (wifiCredentialsData.jsonValue.get(data, "password")) {
-                        // บรรทัดนี้ถูกต้องแล้วหลังจากแก้ไข `.jsonValue.get()`
                         firebasePassword = data.stringValue; 
                         Serial.println("Loaded WiFi Password."); 
                     }
