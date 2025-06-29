@@ -112,8 +112,8 @@ float customBottleHeight = 0.0; // Custom bottle height in cm if bottleSize is "
 
 // Function prototypes
 void connectToWiFi();
-// ✅ FIX: เปลี่ยน FirebaseStream เป็น FirebaseData&
-void firebaseStreamCallback(FirebaseData &data); 
+// ✅ FIX: เปลี่ยน FirebaseStream เป็น StreamData
+void firebaseStreamCallback(StreamData data); 
 void firebaseStreamTimeoutCallback(bool timeout);
 void syncTime();
 void updateDeviceStatus(bool online);
@@ -162,12 +162,14 @@ void setup() {
     
     // Initialize Firebase Configuration
     firebaseConfig.host = FIREBASE_HOST;
-    firebaseConfig.signer.test_mode = true; // เปิดใช้งาน test_mode
-    firebaseConfig.database_secret = FIREBASE_AUTH; // กำหนด database_secret
-
+    // ✅ FIX: เปลี่ยนเป็น auth_token หรือ email/password หรือ client_id & client_secret
+    // ใช้ FIREBASE_AUTH เป็น Database Secret (Firebase Legacy Token)
+    firebaseConfig.signer.tokens.legacy_token = FIREBASE_AUTH; 
+    
     // Callback for token status (optional but good for debugging)
     firebaseConfig.token_status_callback = [](TokenInfo info){
-      Serial.printf("Token info: type = %s, status = %s\n", Firebase.getTokenInfoType(info).c_str(), Firebase.getTokenStatus(info).c_str());
+      // ✅ FIX: เปลี่ยนเป็น info.type และ info.status
+      Serial.printf("Token info: type = %s, status = %s\n", Firebase.getTokenInfoString(info.type).c_str(), Firebase.getTokenStatusString(info.status).c_str());
     };
 
     // Initialize Firebase
@@ -175,15 +177,16 @@ void setup() {
     Firebase.reconnectWiFi(true); // ตั้งค่าให้เชื่อมต่อ WiFi ใหม่โดยอัตโนมัติ
 
     // Get or create device ID
-    if (Firebase.RTDB.getString(&firebaseData, "/device/status/deviceId")) { 
+    // ✅ FIX: ใช้ Firebase.RTDB.getString (ไม่ต้อง FirebaseData)
+    if (Firebase.RTDB.getString(firebaseData, "/device/status/deviceId")) { 
         deviceId = firebaseData.stringData();
-        if (deviceId.length() < 5) { // If ID is too short/invalid, create new
-            deviceId = WiFi.macAddress(); // Use MAC address as a unique ID
-            Firebase.RTDB.setString(&firebaseData, "/device/status/deviceId", deviceId); 
+        if (deviceId.length() < 5) { 
+            deviceId = WiFi.macAddress(); 
+            Firebase.RTDB.setString(firebaseData, "/device/status/deviceId", deviceId); 
         }
     } else {
-        deviceId = WiFi.macAddress(); // Use MAC address as a unique ID
-        Firebase.RTDB.setString(&firebaseData, "/device/status/deviceId", deviceId); 
+        deviceId = WiFi.macAddress(); 
+        Firebase.RTDB.setString(firebaseData, "/device/status/deviceId", deviceId); 
     }
     Serial.print("Device ID: ");
     Serial.println(deviceId);
@@ -211,9 +214,10 @@ void setup() {
     // Set up Firebase stream for commands and settings for this specific device
     String devicePath = "/device/" + deviceId; 
     
-    // ✅ FIX: ตั้งค่า stream callback ก่อนที่จะเริ่ม stream
+    // ✅ FIX: ใช้ Firebase.RTDB.setStreamCallback (ส่ง FirebaseData object ไป)
     Firebase.RTDB.setStreamCallback(&firebaseData, firebaseStreamCallback, firebaseStreamTimeoutCallback); 
 
+    // ✅ FIX: ใช้ Firebase.RTDB.beginStream (ส่ง FirebaseData object และ path ไป)
     if (!Firebase.RTDB.beginStream(&firebaseData, devicePath.c_str())) { 
         Serial.printf("Failed to begin stream at %s: %s\n", devicePath.c_str(), firebaseData.errorReason().c_str());
     } 
@@ -233,7 +237,8 @@ void setup() {
 // ===========================================
 void loop() {
     // Check Firebase stream for new commands/data
-    if (Firebase.RTDB.readStream(&firebaseData)) { 
+    // ✅ FIX: ใช้ Firebase.RTDB.readStream (ส่ง FirebaseData object ไป)
+    if (Firebase.RTDB.readStream(firebaseData)) { 
         // Stream data is handled in firebaseStreamCallback
     }
 
@@ -268,7 +273,8 @@ void loop() {
     // PIR motion sensor check
     int pirState = digitalRead(PIR_PIN);
     if (pirState == HIGH) {
-        updateLastMovementDetected(Firebase.RTDB.getTimestamp(&firebaseData)); 
+        // ✅ FIX: ใช้ Firebase.RTDB.getTimestamp (ไม่ต้อง FirebaseData)
+        updateLastMovementDetected(Firebase.RTDB.getTimestamp()); 
         delay(5000); 
     }
 
@@ -356,21 +362,25 @@ void connectToWiFi() {
 // ===========================================
 // Firebase Stream Callbacks
 // ===========================================
-// ✅ FIX: เปลี่ยน FirebaseStream เป็น FirebaseData&
-void firebaseStreamCallback(FirebaseData &data) { 
+// ✅ FIX: เปลี่ยนเป็น StreamData (ประเภทที่ไลบรารีปัจจุบันใช้)
+void firebaseStreamCallback(StreamData data) { 
     // ตรวจสอบว่าข้อมูลมาจาก Device ID ของตัวเอง
-    if (!data.dataPath.startsWith("/device/" + deviceId)) {
-        Serial.printf("Ignoring stream data from other device: %s\n", data.dataPath.c_str());
+    // ✅ FIX: data.dataPath() เป็นฟังก์ชัน
+    if (!data.dataPath().startsWith("/device/" + deviceId)) {
+        Serial.printf("Ignoring stream data from other device: %s\n", data.dataPath().c_str());
         return;
     }
 
-    String relativePath = data.dataPath.substring(("/device/" + deviceId).length());
+    // ✅ FIX: data.dataPath() เป็นฟังก์ชัน
+    String relativePath = data.dataPath().substring(("/device/" + deviceId).length());
 
     if (relativePath == "/status/online") {
-        bool onlineStatus = data.value.as<bool>();
+        // ✅ FIX: เข้าถึง value โดยตรง
+        bool onlineStatus = data.boolData();
         Serial.printf("Device online status updated: %s\n", onlineStatus ? "online" : "offline");
     } else if (relativePath == "/status/deviceId") {
-        String newDeviceId = data.value.as<String>();
+        // ✅ FIX: เข้าถึง value โดยตรง
+        String newDeviceId = data.stringData();
         if (newDeviceId != deviceId) {
             deviceId = newDeviceId;
             Serial.printf("Device ID updated to: %s\n", deviceId.c_str());
@@ -379,22 +389,28 @@ void firebaseStreamCallback(FirebaseData &data) {
         }
     } else if (relativePath == "/commands/feedNow") {
         Serial.println("FeedNow command received!");
-        json.setJsonData(data.value.raw());
+        // ✅ FIX: ใช้ data.jsonString()
+        json.setJsonData(data.jsonString());
         handleFeedNowCommand(json);
-        Firebase.RTDB.deleteNode(&firebaseData, data.dataPath); 
+        // ✅ FIX: ใช้ Firebase.RTDB.deleteNode (ส่ง FirebaseData object และ path ไป)
+        Firebase.RTDB.deleteNode(firebaseData, data.dataPath()); 
     } else if (relativePath == "/commands/checkFoodLevel") {
         Serial.println("CheckFoodLevel command received!");
         handleCheckFoodLevelCommand();
-        Firebase.RTDB.deleteNode(&firebaseData, data.dataPath); 
+        // ✅ FIX: ใช้ Firebase.RTDB.deleteNode (ส่ง FirebaseData object และ path ไป)
+        Firebase.RTDB.deleteNode(firebaseData, data.dataPath()); 
     } else if (relativePath == "/commands/checkMovement") {
         Serial.println("CheckMovement command received!");
         handleCheckMovementCommand();
-        Firebase.RTDB.deleteNode(&firebaseData, data.dataPath); 
+        // ✅ FIX: ใช้ Firebase.RTDB.deleteNode (ส่ง FirebaseData object และ path ไป)
+        Firebase.RTDB.deleteNode(firebaseData, data.dataPath()); 
     } else if (relativePath == "/commands/makeNoise") {
         Serial.println("MakeNoise command received!");
-        json.setJsonData(data.value.raw());
+        // ✅ FIX: ใช้ data.jsonString()
+        json.setJsonData(data.jsonString());
         handleMakeNoiseCommand(json);
-        Firebase.RTDB.deleteNode(&firebaseData, data.dataPath); 
+        // ✅ FIX: ใช้ Firebase.RTDB.deleteNode (ส่ง FirebaseData object และ path ไป)
+        Firebase.RTDB.deleteNode(firebaseData, data.dataPath()); 
     } else if (relativePath == "/meals") {
         Serial.println("Meals data updated from Firebase.");
         fetchMealsFromFirebase();
@@ -437,26 +453,34 @@ void syncTime() {
 // Firebase Data Updates
 // ===========================================
 String getFirebaseTimestampString() {
-    return String(Firebase.RTDB.getTimestamp(&firebaseData)); 
+    // ✅ FIX: ใช้ Firebase.RTDB.getTimestamp() (ไม่ต้อง FirebaseData)
+    return String(Firebase.RTDB.getTimestamp()); 
 }
 
 void updateDeviceStatus(bool online) {
     if (deviceId.length() == 0) return; 
-    Firebase.RTDB.setBool(&firebaseData, "/device/" + deviceId + "/status/online", online); 
+    // ✅ FIX: ใช้ Firebase.RTDB.setBool (ส่ง FirebaseData object และ path ไป)
+    Firebase.RTDB.setBool(firebaseData, "/device/" + deviceId + "/status/online", online); 
     if (online) {
-        Firebase.RTDB.set(&firebaseData, "/device/" + deviceId + "/status/lastOnline", Firebase.RTDB.getTimestamp(&firebaseData)); 
+        // ✅ FIX: ใช้ Firebase.RTDB.set (ส่ง FirebaseData object และ path ไป)
+        // ✅ FIX: ใช้ Firebase.RTDB.getTimestamp() (ไม่ต้อง FirebaseData)
+        Firebase.RTDB.set(firebaseData, "/device/" + deviceId + "/status/lastOnline", Firebase.RTDB.getTimestamp()); 
     }
 }
 
 void updateFoodLevel(float distance) {
     if (deviceId.length() == 0) return;
-    Firebase.RTDB.setFloat(&firebaseData, "/device/" + deviceId + "/status/foodLevel", distance); 
-    Firebase.RTDB.set(&firebaseData, "/device/" + deviceId + "/status/lastFoodLevelCheck", Firebase.RTDB.getTimestamp(&firebaseData)); 
+    // ✅ FIX: ใช้ Firebase.RTDB.setFloat (ส่ง FirebaseData object และ path ไป)
+    Firebase.RTDB.setFloat(firebaseData, "/device/" + deviceId + "/status/foodLevel", distance); 
+    // ✅ FIX: ใช้ Firebase.RTDB.set (ส่ง FirebaseData object และ path ไป)
+    // ✅ FIX: ใช้ Firebase.RTDB.getTimestamp() (ไม่ต้อง FirebaseData)
+    Firebase.RTDB.set(firebaseData, "/device/" + deviceId + "/status/lastFoodLevelCheck", Firebase.RTDB.getTimestamp()); 
 }
 
 void updateLastMovementDetected(unsigned long timestamp) {
     if (deviceId.length() == 0) return;
-    Firebase.RTDB.set(&firebaseData, "/device/" + deviceId + "/status/lastMovementDetected", timestamp); 
+    // ✅ FIX: ใช้ Firebase.RTDB.set (ส่ง FirebaseData object และ path ไป)
+    Firebase.RTDB.set(firebaseData, "/device/" + deviceId + "/status/lastMovementDetected", timestamp); 
 }
 
 // ===========================================
@@ -513,7 +537,8 @@ void playSoundFromURL(const String& url) {
     if (url.startsWith("http://") || url.startsWith("https://")) {
         Serial.printf("Playing from HTTP URL: %s\n", url.c_str());
         httpStream = new AudioFileSourceHTTPStream(url.c_str());
-        if(httpStream && httpStream->isFileOpen()) { 
+        // ✅ FIX: เปลี่ยน isFileOpen เป็น isOpen
+        if(httpStream && httpStream->isOpen()) { 
             mp3->begin(httpStream, currentAudioOutput);
         } else {
             Serial.println("Failed to open HTTP stream. Playing default beep.");
@@ -651,14 +676,17 @@ void handleFeedNowCommand(FirebaseJson &json) {
 
 void handleCheckFoodLevelCommand() {
     float distance = getFoodLevel();
-    updateFoodLevel(distance);
-    Firebase.RTDB.setString(&firebaseData, "/device/" + deviceId + "/notifications/" + getFirebaseTimestampString(),
+    // ✅ FIX: ใช้ Firebase.RTDB.setFloat (ส่ง FirebaseData object และ path ไป)
+    Firebase.RTDB.setFloat(firebaseData, "/device/" + deviceId + "/status/foodLevel", distance); 
+    // ✅ FIX: ใช้ Firebase.RTDB.setString (ส่ง FirebaseData object และ path ไป)
+    Firebase.RTDB.setString(firebaseData, "/device/" + deviceId + "/notifications/" + getFirebaseTimestampString(),
                       "Food level checked: " + String(distance, 2) + " cm"); 
 }
 
 void handleCheckMovementCommand() {
     Serial.println("Received check movement command. PIR updates passively.");
-    Firebase.RTDB.setString(&firebaseData, "/device/" + deviceId + "/notifications/" + getFirebaseTimestampString(),
+    // ✅ FIX: ใช้ Firebase.RTDB.setString (ส่ง FirebaseData object และ path ไป)
+    Firebase.RTDB.setString(firebaseData, "/device/" + deviceId + "/notifications/" + getFirebaseTimestampString(),
                           "Movement check requested. Last detected time is available in app."); 
 }
 
@@ -670,12 +698,14 @@ void handleMakeNoiseCommand(FirebaseJson &json) {
     if (url.length() > 0) {
         Serial.printf("Received makeNoise command with URL: %s\n", url.c_str());
         playSoundFromURL(url);
-        Firebase.RTDB.setString(&firebaseData, "/device/" + deviceId + "/notifications/" + getFirebaseTimestampString(),
+        // ✅ FIX: ใช้ Firebase.RTDB.setString (ส่ง FirebaseData object และ path ไป)
+        Firebase.RTDB.setString(firebaseData, "/device/" + deviceId + "/notifications/" + getFirebaseTimestampString(),
                           "Playing sound from URL: " + url); 
     } else {
         Serial.println("MakeNoise command received but no URL specified.");
         beep(500, 1000); 
-        Firebase.RTDB.setString(&firebaseData, "/device/" + deviceId + "/notifications/" + getFirebaseTimestampString(),
+        // ✅ FIX: ใช้ Firebase.RTDB.setString (ส่ง FirebaseData object และ path ไป)
+        Firebase.RTDB.setString(firebaseData, "/device/" + deviceId + "/notifications/" + getFirebaseTimestampString(),
                           "Make Noise command received with no URL. Playing default beep."); 
     }
 }
@@ -689,7 +719,8 @@ void fetchMealsFromFirebase() {
         return;
     }
     Serial.println("Fetching meals from Firebase...");
-    if (Firebase.RTDB.get(&firebaseData, "/device/" + deviceId + "/meals")) { 
+    // ✅ FIX: ใช้ Firebase.RTDB.get (ส่ง FirebaseData object และ path ไป)
+    if (Firebase.RTDB.get(firebaseData, "/device/" + deviceId + "/meals")) { 
         if (firebaseData.dataType() == "json") {
             FirebaseJson jsonRef; 
             jsonRef.setJsonData(firebaseData.jsonString()); 
@@ -742,7 +773,8 @@ void fetchSettingsFromFirebase() {
         return;
     }
     Serial.println("Fetching settings from Firebase...");
-    if (Firebase.RTDB.get(&firebaseData, "/device/" + deviceId + "/settings")) { 
+    // ✅ FIX: ใช้ Firebase.RTDB.get (ส่ง FirebaseData object และ path ไป)
+    if (Firebase.RTDB.get(firebaseData, "/device/" + deviceId + "/settings")) { 
         if (firebaseData.dataType() == "json") {
             FirebaseJson jsonRef;
             jsonRef.setJsonData(firebaseData.jsonString()); 
@@ -770,16 +802,17 @@ void fetchSettingsFromFirebase() {
 
             // Wi-Fi Credentials
             FirebaseJsonData wifiCredentialsData;
-            if (jsonRef.get(wifiCredentialsData, "wifiCredentials")) {
-                if (wifiCredentialsData.dataType == FirebaseJson::JSON_OBJECT) {
-                    if (wifiCredentialsData.jsonValue.get(data, "ssid")) {
-                        firebaseSsid = data.stringValue;
-                        Serial.printf("Loaded WiFi SSID: %s\n", firebaseSsid.c_str());
-                    }
-                    if (wifiCredentialsData.jsonValue.get(data, "password")) {
-                        firebasePassword = data.stringValue; 
-                        Serial.println("Loaded WiFi Password."); 
-                    }
+            // ✅ FIX: FirebaseJsonData.dataType() เป็นฟังก์ชัน
+            if (jsonRef.get(wifiCredentialsData, "wifiCredentials") && wifiCredentialsData.dataType() == FirebaseJson::JSON_OBJECT) {
+                // ✅ FIX: wifiCredentialsData.jsonValue เป็นฟังก์ชัน
+                if (wifiCredentialsData.jsonValue().get(data, "ssid")) {
+                    firebaseSsid = data.stringValue;
+                    Serial.printf("Loaded WiFi SSID: %s\n", firebaseSsid.c_str());
+                }
+                // ✅ FIX: wifiCredentialsData.jsonValue เป็นฟังก์ชัน
+                if (wifiCredentialsData.jsonValue().get(data, "password")) {
+                    firebasePassword = data.stringValue; 
+                    Serial.println("Loaded WiFi Password."); 
                 }
             }
             Serial.println("Settings loaded successfully.");

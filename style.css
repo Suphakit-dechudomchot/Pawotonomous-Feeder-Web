@@ -928,3 +928,38 @@ button.working-state {
     margin-right: 650px;
     font-size: 2em;
 }
+input:disabled, select:disabled, textarea:disabled,
+input[readonly], select[readonly], textarea[readonly] {
+    background-color: #e9e9e9;
+    cursor: not-allowed;
+    color: #777;
+}
+
+/* สำหรับข้อความสถานะ */
+#statusMessage {
+    padding: 10px;
+    margin: 15px auto;
+    border-radius: 8px;
+    max-width: 800px;
+    background-color: #fff3cd; /* สีเหลืองอ่อน */
+    border: 1px solid #ffeeba;
+    color: #856404;
+    display: none; /* ซ่อนไว้ก่อน */
+}
+/* เพิ่ม style สำหรับข้อความสถานะเมื่อแสดงผล */
+
+#statusMessage.online-status {
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+    color: #155724;
+}
+#statusMessage.offline-status {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+#statusMessage.dev-mode-status {
+    background-color: #ffeeba;
+    border-color: #ffda6a;
+    color: #856404;
+}
