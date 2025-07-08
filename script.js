@@ -38,7 +38,7 @@ const CALIBRATION_TEST_SECONDS = 5; // จำนวนวินาทีที�
 
 // References to DOM elements (initialized in DOMContentLoaded)
 let deviceIdInput, setDeviceIdBtn, mainContentContainer;
-let deviceStatusCircle, deviceStatusText, notificationDot, openNotificationBtn;
+let deviceStatusCircle, deviceStatusText, notificationDot, openNotificationBtn; // openNotificationBtn will be removed from HTML
 let customAlertOverlay, customAlertContent, customAlertTitle, customAlertMessage, customAlertOkButton;
 let newNotificationToast, newNotificationToastMessage;
 let notificationModal, closeNotificationModalBtn, notificationList, notificationHistoryList;
@@ -95,7 +95,7 @@ function showSection(sectionId) {
     // Special handling for notification history section
     if (sectionId === 'notifications-section') {
         fetchAndDisplayNotifications(); // Refresh notifications when section is opened
-        notificationDot.style.display = 'none'; // Hide dot when user views notifications
+        // notificationDot.style.display = 'none'; // This dot is removed from the header now
         notificationCount = 0;
     }
 }
@@ -360,7 +360,7 @@ function setupNotificationListener() {
             showNewNotificationToast(notification.message);
             addNotificationToList(notification.message, formattedTime, notificationList); // Add to modal list
             notificationCount++;
-            updateNotificationDotUI();
+            // updateNotificationDotUI(); // This is for the header dot, which is now removed
         }
     });
 }
@@ -373,7 +373,7 @@ async function fetchAndDisplayNotifications() {
 
     if (!currentDeviceId) {
         console.log("No deviceId available to fetch notifications.");
-        updateNotificationDotUI();
+        // updateNotificationDotUI(); // This is for the header dot, which is now removed
         return;
     }
 
@@ -401,7 +401,7 @@ async function fetchAndDisplayNotifications() {
             const formattedTime = date.toLocaleString('th-TH', options);
             addNotificationToList(notification.message, formattedTime, notificationHistoryList);
         });
-        updateNotificationDotUI(); // Should be 0 if user just opened it
+        // updateNotificationDotUI(); // This is for the header dot, which is now removed
     } catch (error) {
         console.error("Error fetching historical notifications:", error);
     }
@@ -418,15 +418,15 @@ function addNotificationToList(message, timestamp, listElement) {
     listElement.prepend(listItem); // Add to the top
 }
 
-// Update notification dot UI
+// Update notification dot UI (This function is no longer needed for the header, but kept for reference if needed elsewhere)
 function updateNotificationDotUI() {
-    if (!notificationDot) return;
-    if (notificationCount > 0) {
-        notificationDot.textContent = notificationCount;
-        notificationDot.style.display = 'block';
-    } else {
-        notificationDot.style.display = 'none';
-    }
+    // if (!notificationDot) return; // notificationDot is now removed from header
+    // if (notificationCount > 0) {
+    //     notificationDot.textContent = notificationCount;
+    //     notificationDot.style.display = 'block';
+    // } else {
+    //     notificationDot.style.display = 'none';
+    // }
 }
 
 // Open/Close Notification Modal
@@ -434,8 +434,7 @@ function openNotificationModal() {
     showModal(notificationModal);
     // When modal is opened, all notifications are considered "read"
     notificationCount = 0;
-    updateNotificationDotUI();
-    // No need to update Firebase for read status for now, as per user's current requirements
+    // updateNotificationDotUI(); // This is for the header dot, which is now removed
 }
 
 function closeNotificationModal() {
@@ -719,9 +718,10 @@ async function loadMeals() {
             for (const id in mealsData) {
                 mealsArray.push({ id, ...mealsData[id] });
             }
+            // Sort meals by time, handling potential non-string 'time' values gracefully
             mealsArray.sort((a, b) => {
-                const timeA = a.time.split(':').map(Number);
-                const timeB = b.time.split(':').map(Number);
+                const timeA = typeof a.time === 'string' ? a.time.split(':').map(Number) : [0, 0]; // Default to [0,0] if not string
+                const timeB = typeof b.time === 'string' ? b.time.split(':').map(Number) : [0, 0]; // Default to [0,0] if not string
                 if (timeA[0] !== timeB[0]) return timeA[0] - timeB[0];
                 return timeA[1] - timeB[1];
             });
@@ -871,7 +871,9 @@ async function saveMealDetail() {
 
     const time = mealTimeInput.value;
     const name = mealNameInput.value.trim();
-    const amount = clamp(parseInt(mealAmountInput.value), 1, 100);
+    // ✅ แก้ไข: ไม่จำกัดปริมาณอาหารสูงสุด แต่ต้องไม่ติดลบ
+    const amount = Math.max(1, parseInt(mealAmountInput.value) || 1); // Ensure it's at least 1, default to 1 if NaN or 0
+
     const fanStrength = clamp(parseInt(mealFanStrengthInput.value), 1, 3);
     const fanDirection = clamp(parseInt(mealFanDirectionInput.value), 60, 120);
     const swingMode = mealSwingModeCheckbox.checked;
@@ -948,7 +950,8 @@ async function saveMealDetail() {
         }
         hideModal(mealDetailModal);
         loadMeals(); // Reload meals to update UI
-    } catch (error) {
+    }
+    catch (error) {
         console.error("Error saving meal:", error);
         showCustomAlert("ข้อผิดพลาด", `ไม่สามารถบันทึกมื้ออาหารได้: ${error.message}`, "error");
     } finally {
@@ -1275,8 +1278,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     deviceStatusCircle = document.getElementById('deviceStatusCircle');
     deviceStatusText = document.getElementById('deviceStatusText');
-    notificationDot = document.getElementById('notificationDot');
-    openNotificationBtn = document.getElementById('openNotificationBtn');
+    // notificationDot = document.getElementById('notificationDot'); // Removed from HTML
+    // openNotificationBtn = document.getElementById('openNotificationBtn'); // Removed from HTML
 
     customAlertOverlay = document.getElementById('customAlertOverlay');
     customAlertContent = document.getElementById('customAlertContent');
@@ -1384,7 +1387,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Notification Modal buttons
-    openNotificationBtn.addEventListener('click', openNotificationModal);
+    // openNotificationBtn.addEventListener('click', openNotificationModal); // Removed from HTML
     closeNotificationModalBtn.addEventListener('click', closeNotificationModal);
 
     // Dashboard Actions
@@ -1494,4 +1497,3 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial call for animal calculator
     updateRecommendedAmount();
 });
-
