@@ -1,27 +1,29 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pawotonomous</title>
+    <title>Pawotonomous Feeder</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit&display=swap">
-    <!-- Font Awesome Kit Code ของคุณ: อย่าลืมเปลี่ยน YOUR_KIT_CODE เป็นรหัสจริงของคุณ -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700&display=swap">
+    <!-- Font Awesome สำหรับ Icons -->
     <script src="https://kit.fontawesome.com/8b0b6a29b2.js" crossorigin="anonymous"></script> 
 </head>
 <body>
-    <div class="notification-area">
-        <h1 class="name-head">Pawotonomous</h1>
-        <span id="deviceStatusCircle" class="status-circle offline" title="สถานะอุปกรณ์: ออฟไลน์"></span>
-        <span id="deviceStatusText" class="status-text offline">ออฟไลน์</span>
-        <button id="openNotificationBtn">
-            <i class="fa-solid fa-bell"></i>
-            <!-- ✅ เพิ่ม span สำหรับจุดแจ้งเตือนสีแดงพร้อมตัวเลข -->
-            <span id="notificationDot" class="notification-dot" style="display:none;"></span>
-        </button> 
+    <!-- ส่วนแสดงสถานะอุปกรณ์และการแจ้งเตือน (ด้านบน) -->
+    <div class="header-area">
+        <h1 class="app-name">Pawotonomous Feeder</h1>
+        <div class="device-status-display">
+            <span id="deviceStatusCircle" class="status-circle offline" title="สถานะอุปกรณ์: ออฟไลน์"></span>
+            <span id="deviceStatusText" class="status-text offline">ออฟไลน์</span>
+            <button id="openNotificationBtn" class="notification-button">
+                <i class="fa-solid fa-bell"></i>
+                <span id="notificationDot" class="notification-dot" style="display:none;"></span>
+            </button> 
+        </div>
     </div>
 
-    <!-- ✅ Custom Alert Modal Structure (แทนที่ alert()) -->
+    <!-- Custom Alert Modal Structure -->
     <div id="customAlertOverlay" class="custom-alert-overlay">
         <div id="customAlertContent" class="custom-alert-content">
             <h3 id="customAlertTitle"></h3>
@@ -30,192 +32,331 @@
         </div>
     </div>
 
-    <!-- ✅ New Incoming Notification Toast -->
+    <!-- New Incoming Notification Toast -->
     <div id="newNotificationToast" class="new-notification-toast">
-        <i class="fa-solid fa-bell-concierge"></i> <!-- Icon สำหรับแจ้งเตือนใหม่ -->
+        <i class="fa-solid fa-bell-concierge"></i>
         <p id="newNotificationToastMessage"></p>
     </div>
 
-    <div id="notificationModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background-color:rgba(0,0,0,0.5); z-index:999;">
-        <div style="background:#fff; width:90%; max-width:500px; margin:5vh auto; padding:25px; border-radius:15px; position:relative; max-height:85vh; overflow-y:auto;">
+    <!-- Notification List Modal -->
+    <div id="notificationModal" class="modal">
+        <div class="modal-content">
             <h2><i class="fa-solid fa-bullhorn"></i> แจ้งเตือนล่าสุด</h2>
-            <ul id="notificationList" style="list-style:none; padding-left:0;"></ul>
-            <button id="closeNotificationBtn" style="margin-top:20px;">ปิด</button>
+            <ul id="notificationList" class="notification-list"></ul>
+            <button id="closeNotificationModalBtn" class="modal-close-button">ปิด</button>
         </div>
     </div>
-    
+
+    <!-- Calibration Modal -->
+    <div id="calibrationModal" class="modal">
+        <div class="modal-content">
+            <h2><i class="fa-solid fa-ruler-combined"></i> ทดสอบและตั้งค่าปริมาณอาหาร</h2>
+            <p>โปรดวางภาชนะรองรับอาหารที่ช่องจ่ายอาหาร</p>
+            <button id="startCalibrationTestBtn" class="primary-button"><i class="fa-solid fa-play"></i> ปล่อยอาหารทดสอบ (5 วินาที)</button>
+            <p id="calibrationStatus" class="status-message"></p>
+            <div class="input-group">
+                <label for="calibratedWeightInput">น้ำหนักที่ชั่งได้ (กรัม):</label>
+                <input type="number" id="calibratedWeightInput" placeholder="กรอกน้ำหนัก (กรัม)" min="0" step="0.1">
+            </div>
+            <button id="saveCalibrationBtn" class="success-button" disabled><i class="fa-solid fa-save"></i> บันทึกค่า Calibrate</button>
+            <button id="closeCalibrationModalBtn" class="modal-close-button">ยกเลิก</button>
+        </div>
+    </div>
+
+    <!-- Meal Detail Modal (สำหรับเพิ่ม/แก้ไขมื้ออาหาร) -->
+    <div id="mealDetailModal" class="modal">
+        <div class="modal-content meal-detail-content">
+            <h2><span id="mealModalTitle">เพิ่มมื้ออาหารใหม่</span></h2>
+            <div class="input-group time-picker-group">
+                <input type="time" id="mealTimeInput" value="07:00">
+            </div>
+            <div class="input-group">
+                <label for="mealNameInput">ชื่อมื้ออาหาร:</label>
+                <input type="text" id="mealNameInput" placeholder="เช่น มื้อเช้า, มื้อเย็น">
+            </div>
+            <div class="input-group days-of-week">
+                <label>วัน:</label>
+                <div class="day-buttons">
+                    <button class="day-btn" data-day="Mon">จ</button>
+                    <button class="day-btn" data-day="Tue">อ</button>
+                    <button class="day-btn" data-day="Wed">พ</button>
+                    <button class="day-btn" data-day="Thu">พฤ</button>
+                    <button class="day-btn" data-day="Fri">ศ</button>
+                    <button class="day-btn" data-day="Sat">ส</button>
+                    <button class="day-btn" data-day="Sun">อา</button>
+                </div>
+            </div>
+            <div class="input-group">
+                <label for="mealAmountInput">ปริมาณ (กรัม):</label>
+                <input type="number" id="mealAmountInput" value="1" min="1" max="100">
+            </div>
+            <div class="input-group">
+                <label for="mealFanStrengthInput">ความแรงลม (1-3):</label>
+                <input type="number" id="mealFanStrengthInput" value="1" min="1" max="3">
+            </div>
+            <div class="input-group">
+                <label for="mealFanDirectionInput">ทิศทางลม (60°-120°):</label>
+                <input type="number" id="mealFanDirectionInput" value="90" min="60" max="120">
+                <label class="toggle-label">
+                    <input type="checkbox" id="mealSwingModeCheckbox" class="toggle-switch">
+                    <span class="toggle-slider"></span>
+                    โหมดสวิง
+                </label>
+            </div>
+            <div class="input-group">
+                <label for="mealAudioInput">เสียงเรียกสัตว์:</label>
+                <input type="file" accept="audio/*" id="mealAudioInput" class="meal-audio-input">
+                <span id="mealAudioStatus" class="audio-status" style="color: grey;">ไม่มีไฟล์</span>
+                <audio id="mealAudioPreview" controls style="display:none; width: 100%; margin-top: 10px;"></audio>
+            </div>
+            <div class="modal-buttons">
+                <button id="saveMealDetailBtn" class="primary-button"><i class="fa-solid fa-save"></i> บันทึก</button>
+                <button id="deleteMealDetailBtn" class="danger-button" style="display:none;"><i class="fa-solid fa-trash"></i> ลบมื้อ</button>
+                <button id="cancelMealDetailBtn" class="secondary-button"><i class="fa-solid fa-times"></i> ยกเลิก</button>
+            </div>
+        </div>
+    </div>
+
+
     <main>
-        <!-- ✅ ส่วนการตั้งค่าระบบ (จะแสดงตลอดเวลา) -->
-        <section class="system-settings-section">
-            <h2><i class="fa-solid fa-gear"></i> การตั้งค่าระบบ</h2>
+        <!-- ส่วนสำหรับเลือก Device ID (แสดงก่อนส่วนหลัก) -->
+        <section class="device-selection-section">
+            <h2><i class="fa-solid fa-microchip"></i> เลือกอุปกรณ์</h2>
+            <p class="subtitle">กรุณาระบุ Device ID ของเครื่องให้อาหาร</p>
             <div class="input-group">
-                <label for="timeZoneOffsetSelect">โซนเวลา (UTC+/-H):</label>
-                <select id="timeZoneOffsetSelect">
-                    <option value="">-- เลือกโซนเวลา --</option>
-                    <option value="-12">UTC-12 (เช่น Baker Island)</option>
-                    <option value="-11">UTC-11 (เช่น American Samoa)</option>
-                    <option value="-10">UTC-10 (เช่น Hawaii)</option>
-                    <option value="-9.5">UTC-9:30</option>
-                    <option value="-9">UTC-9 (เช่น Alaska)</option>
-                    <option value="-8">UTC-8 (เช่น Los Angeles)</option>
-                    <option value="-7">UTC-7 (เช่น Denver)</option>
-                    <option value="-6">UTC-6 (เช่น Chicago)</option>
-                    <option value="-5">UTC-5 (เช่น New York)</option>
-                    <option value="-4.5">UTC-4:30 (เช่น Caracas)</option>
-                    <option value="-4">UTC-4 (เช่น Santiago)</option>
-                    <option value="-3.5">UTC-3:30 (เช่น Newfoundland)</option>
-                    <option value="-3">UTC-3 (เช่น Buenos Aires)</option>
-                    <option value="-2">UTC-2 (เช่น South Georgia)</option>
-                    <option value="-1">UTC-1 (เช่น Cape Verde)</option>
-                    <option value="0">UTC+0 (เวลาสากล, เช่น London)</option>
-                    <option value="1">UTC+1 (เช่น Berlin)</option>
-                    <option value="2">UTC+2 (เช่น Athens)</option>
-                    <option value="3">UTC+3 (เช่น Moscow, Istanbul)</option>
-                    <option value="3.5">UTC+3:30 (เช่น Tehran)</option>
-                    <option value="4">UTC+4 (เช่น Dubai)</option>
-                    <option value="4.5">UTC+4:30 (เช่น Kabul)</option>
-                    <option value="5">UTC+5 (เช่น Tashkent)</option>
-                    <option value="5.5">UTC+5:30 (เช่น New Delhi)</option>
-                    <option value="5.75">UTC+5:45 (เช่น Kathmandu)</option>
-                    <option value="6">UTC+6 (เช่น Dhaka)</option>
-                    <option value="6.5">UTC+6:30 (เช่น Yangon)</option>
-                    <option value="7">UTC+7 (เช่น ไทย, Jakarta)</option>
-                    <option value="8">UTC+8 (เช่น Beijing, Singapore)</option>
-                    <option value="8.75">UTC+8:45</option>
-                    <option value="9">UTC+9 (เช่น Tokyo, Seoul)</option>
-                    <option value="9.5">UTC+9:30 (เช่น Adelaide)</option>
-                    <option value="10">UTC+10 (เช่น Sydney)</option>
-                    <option value="10.5">UTC+10:30</option>
-                    <option value="11">UTC+11 (เช่น Solomon Islands)</option>
-                    <option value="11.5">UTC+11:30</option>
-                    <option value="12">UTC+12 (เช่น Fiji)</option>
-                    <option value="12.75">UTC+12:45</option>
-                    <option value="13">UTC+13 (เช่น Tonga)</option>
-                    <option value="14">UTC+14 (เช่น Kiritimati)</option>
-                </select>
-            </div>
-            <div class="input-group">
-                <label for="bottleSizeSelect">ขนาดขวด:</label>
-                <select id="bottleSizeSelect">
-                    <option value="">-- เลือกขนาดขวด --</option>
-                    <option value="48">18.9 ลิตร - สูง 48cm</option>
-                    <option value="45">15 ลิตร - สูง 45cm</option>
-                    <option value="37">12 ลิตร - สูง 37cm</option>
-                    <option value="24">10 ลิตร / 600ml - สูง 24cm</option> <!-- รวม 24cm ที่ซ้ำกัน -->
-                    <option value="32">1.5 ลิตร - สูง 32cm</option>
-                    <option value="17">350ml - สูง 17cm</option>
-                    <option value="custom">กรอกความสูงเอง</option>
-                </select>
-                <!-- ช่องสำหรับกรอกความสูงเอง (ซ่อนเริ่มต้น) -->
-                <input type="number" id="customBottleHeightInput" placeholder="กรอกความสูง (cm)" min="1" style="display: none; margin-top: 5px;">
-            </div>
-            <!-- ✅ แก้ไขโครงสร้าง Wi-Fi และเพิ่ม ID -->
-            <div class="input-group">
-                <label for="wifiSsidInput">WIFI SSID:</label>
-                <input type="text" id="wifiSsidInput" placeholder="ชื่อ Wi-Fi">
-            </div>
-            <div class="input-group">
-                <label for="wifiPasswordInput">WIFI PASSWORD:</label>
-                <input type="password" id="wifiPasswordInput" placeholder="รหัสผ่าน Wi-Fi">
+                <label for="deviceIdInput">Device ID:</label>
+                <input type="text" id="deviceIdInput" placeholder="กรอก Device ID ของเครื่อง" value="">
+                <button id="setDeviceIdBtn" class="primary-button"><i class="fa-solid fa-check"></i> ยืนยัน</button>
             </div>
             <p class="notes">
-                <small>เวลาในมื้ออาหารจะอิงตามโซนเวลานี้ <br> ขนาดขวดจะใช้ในการคำนวณปริมาณอาหารที่เหลือในถัง <br> ข้อมูล Wi-Fi จะถูกส่งไปยังอุปกรณ์เพื่อเชื่อมต่ออัตโนมัติ</small>
+                <small>หากไม่ระบุ จะใช้ Device ID ชั่วคราวสำหรับการพัฒนา</small>
             </p>
         </section>
 
-        <!-- ✅ เพิ่ม div ใหม่เพื่อห่อหุ้มส่วนที่เหลือของ UI -->
-        <div id="mainContentContainer" style="display: none;">
-            <div class="feednowdiv">
-                <button id="feedNowBtn" class="feednowbutton">
-                    <i class="fa-solid fa-bowl-food"></i> <span class="button-text">ให้อาหารทันที</span>
-                </button>
-            </div>
-            <p class="subtitle">จะให้อาหารทันทีโดยอิงข้อมูลจากมื้ออาหารที่ตั้งไว้</p>
-            <br>
-            
-            <h2>ตั้งค่ามื้ออาหาร</h2>
-            
-            <div id="mealList"></div>
-        
-            <button id="addMealBtn"><i class="fa-solid fa-plus"></i></button> 
-            <button id="saveMealsBtn"><i class="fa-solid fa-floppy-disk"></i></button> 
-            <button id="pasteBtn" disabled>
-                <i class="fa-solid fa-paste"></i><span>วางมื้อ</span>
-            </button>
-
-            <section class="calculator-section">
-                <h2>โปรแกรมคำนวณปริมาณอาหารสัตว์</h2>
-                <p class="subtitle">ค่าเฉลี่ยของสัตว์แต่ละชนิด</p>
-
-                <div class="input-group">
-                    <label for="animalType">ประเภทสัตว์:</label>
-                    <select id="animalType">
-                        <option value="">-- เลือกประเภทสัตว์ --</option>
-                    </select>
-                </div>
-
-                <div class="input-group">
-                    <label for="animalSpecies">ชนิดสัตว์:</label>
-                    <select id="animalSpecies">
-                        <option value="">-- เลือกชนิดสัตว์ --</option>
-                    </select>
-                </div>
-
-                <div class="input-group">
-                    <label for="animalCount">จำนวนสัตว์:</label>
-                    <input type="number" id="animalCount" value="1" min="1">
-                </div>
-
-                <!-- เพิ่มช่องสำหรับน้ำหนัก (ซ่อนเริ่มต้น) -->
-                <div class="input-group" id="weightInputContainer" style="display: none;">
-                    <label for="animalWeightKg">น้ำหนัก (Kg):</label>
-                    <input type="number" id="animalWeightKg" value="0" min="0" step="0.1">
-                </div>
-
-                <!-- เพิ่มช่องสำหรับช่วงชีวิต/ระดับกิจกรรม (ซ่อนเริ่มต้น) -->
-                <div class="input-group" id="lifeStageActivityContainer" style="display: none;">
-                    <label for="lifeStageActivity">ช่วงชีวิต/กิจกรรม:</label>
-                    <select id="lifeStageActivity">
-                        <option value="">-- เลือก --</option>
-                    </select>
-                </div>
-
-                <div class="result-display">
-                    <strong>ปริมาณอาหารที่แนะนำ:</strong>
-                    <span id="recommendedAmount" class="highlight-amount">-</span>
-                    <!-- เพิ่มส่วนสำหรับแสดง Notes -->
-                    <p class="calculation-notes" id="calculationNotes"></p>
+        <!-- Main Content Container (จะถูกซ่อนจนกว่า Device ID จะถูกตั้งค่า) -->
+        <div id="mainContentContainer" class="main-content-container" style="display: none;">
+            <!-- 1. Dashboard Section (ปุ่มและฟังก์ชันต่างๆ) -->
+            <section id="dashboard-section" class="content-section active">
+                <h2><i class="fa-solid fa-bolt"></i> ควบคุมด่วน</h2>
+                <div class="dashboard-grid">
+                    <div class="card action-card">
+                        <h3>ให้อาหารทันที</h3>
+                        <p class="notes"><small>จะให้อาหารทันทีโดยอิงข้อมูลจากมื้ออาหารที่ตั้งไว้</small></p>
+                        <button id="feedNowBtn" class="primary-button full-width-button"><i class="fa-solid fa-bowl-food"></i> ให้อาหารทันที</button>
+                    </div>
+                    <div class="card action-card">
+                        <h3>สถานะและการตรวจสอบ</h3>
+                        <p>ปริมาณอาหารคงเหลือ: <span id="currentFoodLevelDisplay">- %</span></p>
+                        <p>ตรวจพบการเคลื่อนไหวล่าสุด: <span id="lastMovementDisplay">-</span></p>
+                        <button id="checkFoodLevelBtn" class="secondary-button full-width-button"><i class="fa-solid fa-scale-balanced"></i> เช็คปริมาณอาหาร</button>
+                        <button id="checkAnimalMovementBtn" class="secondary-button full-width-button"><i class="fa-solid fa-paw"></i> เช็คการเคลื่อนไหว</button>
+                    </div>
+                    <div class="card action-card">
+                        <h3>เล่นเสียงเรียกสัตว์</h3>
+                        <label class="file-input-label">
+                            เลือกเสียง:
+                            <input type="file" accept="audio/*" id="makenoiseAudioInput" class="makenoise-audio">
+                            <span id="makenoiseAudioStatus" class="audio-status" style="color: grey;"></span>
+                        </label>
+                        <button id="makenoiseBtn" class="primary-button full-width-button" disabled><i class="fa-solid fa-volume-high"></i> เล่นเสียงนี้ทันที</button>
+                    </div>
                 </div>
             </section>
 
-            <div class="check">
-                <button id="checkFoodLevelBtn" class="Check food level">
-                    <i class="fa-solid fa-scale-balanced"></i> <span class="button-text">เช็คปริมาณอาหาร</span>
-                </button>
-                <button id="checkAnimalMovementBtn" class="Check animal movement">
-                    <i class="fa-solid fa-paw"></i> <span class="button-text">เช็คการเคลื่อนไหว</span>
-                </button>
-
-                <div class="noise-upload-section">
-                    <h3>อัปโหลดเสียงสำหรับเล่นทันที</h3>
-                    <label>
-                        เลือกเสียง:
-                        <input type="file" accept="audio/*" id="makenoiseAudioInput" class="makenoise-audio">
-                        <span id="makenoiseAudioStatus" style="color: grey;"></span>
-                    </label>
-                    <button id="makenoiseBtn">
-                        <i class="fa-solid fa-volume-high"></i> <span class="button-text">เล่นเสียงนี้ทันที</span>
-                    </button>
+            <!-- 2. Meal Schedule Section (ตั้งมื้ออาหาร) -->
+            <section id="meal-schedule-section" class="content-section">
+                <div class="section-header">
+                    <h2><i class="fa-solid fa-utensils"></i> ตั้งค่ามื้ออาหาร</h2>
+                    <button id="addMealCardBtn" class="add-meal-card-button"><i class="fa-solid fa-plus"></i></button>
                 </div>
-            </div>
-        </div> <!-- ✅ ปิด div#mainContentContainer -->
+                <p class="subtitle">ตั้งค่าเวลา, ปริมาณ, ความแรงลม, ทิศทาง และเสียงสำหรับแต่ละมื้อ</p>
+                <div id="mealListContainer" class="meal-list-cards">
+                    <!-- Meal cards will be dynamically inserted here -->
+                </div>
+            </section>
+
+            <!-- 3. Device Settings Section (การตั้งค่า) -->
+            <section id="device-settings-section" class="content-section">
+                <h2><i class="fa-solid fa-gear"></i> การตั้งค่าอุปกรณ์</h2>
+                <div class="card settings-card">
+                    <h3>การเชื่อมต่อ Wi-Fi</h3>
+                    <div class="input-group">
+                        <label for="wifiSsidInput">WIFI SSID:</label>
+                        <input type="text" id="wifiSsidInput" placeholder="ชื่อ Wi-Fi">
+                    </div>
+                    <div class="input-group">
+                        <label for="wifiPasswordInput">WIFI PASSWORD:</label>
+                        <input type="password" id="wifiPasswordInput" placeholder="รหัสผ่าน Wi-Fi">
+                    </div>
+                    <p class="notes"><small>ข้อมูล Wi-Fi จะถูกส่งไปยังอุปกรณ์เพื่อเชื่อมต่ออัตโนมัติ</small></p>
+                </div>
+
+                <div class="card settings-card">
+                    <h3>การตั้งค่าเวลาและปริมาณ</h3>
+                    <div class="input-group">
+                        <label for="timeZoneOffsetSelect">โซนเวลา (UTC+/-H):</label>
+                        <select id="timeZoneOffsetSelect">
+                            <option value="">-- เลือกโซนเวลา --</option>
+                            <option value="-12">UTC-12 (เช่น Baker Island)</option>
+                            <option value="-11">UTC-11 (เช่น American Samoa)</option>
+                            <option value="-10">UTC-10 (เช่น Hawaii)</option>
+                            <option value="-9.5">UTC-9:30</option>
+                            <option value="-9">UTC-9 (เช่น Alaska)</option>
+                            <option value="-8">UTC-8 (เช่น Los Angeles)</option>
+                            <option value="-7">UTC-7 (เช่น Denver)</option>
+                            <option value="-6">UTC-6 (เช่น Chicago)</option>
+                            <option value="-5">UTC-5 (เช่น New York)</option>
+                            <option value="-4.5">UTC-4:30 (เช่น Caracas)</option>
+                            <option value="-4">UTC-4 (เช่น Santiago)</option>
+                            <option value="-3.5">UTC-3:30 (เช่น Newfoundland)</option>
+                            <option value="-3">UTC-3 (เช่น Buenos Aires)</option>
+                            <option value="-2">UTC-2 (เช่น South Georgia)</option>
+                            <option value="-1">UTC-1 (เช่น Cape Verde)</option>
+                            <option value="0">UTC+0 (เวลาสากล, เช่น London)</option>
+                            <option value="1">UTC+1 (เช่น Berlin)</option>
+                            <option value="2">UTC+2 (เช่น Athens)</option>
+                            <option value="3">UTC+3 (เช่น Moscow, Istanbul)</option>
+                            <option value="3.5">UTC+3:30 (เช่น Tehran)</option>
+                            <option value="4">UTC+4 (เช่น Dubai)</option>
+                            <option value="4.5">UTC+4:30 (เช่น Kabul)</option>
+                            <option value="5">UTC+5 (เช่น Tashkent)</option>
+                            <option value="5.5">UTC+5:30 (เช่น New Delhi)</option>
+                            <option value="5.75">UTC+5:45 (เช่น Kathmandu)</option>
+                            <option value="6">UTC+6 (เช่น Dhaka)</option>
+                            <option value="6.5">UTC+6:30 (เช่น Yangon)</option>
+                            <option value="7">UTC+7 (เช่น ไทย, Jakarta)</option>
+                            <option value="8">UTC+8 (เช่น Beijing, Singapore)</option>
+                            <option value="8.75">UTC+8:45</option>
+                            <option value="9">UTC+9 (เช่น Tokyo, Seoul)</option>
+                            <option value="9.5">UTC+9:30 (เช่น Adelaide)</option>
+                            <option value="10">UTC+10 (เช่น Sydney)</option>
+                            <option value="10.5">UTC+10:30</option>
+                            <option value="11">UTC+11 (เช่น Solomon Islands)</option>
+                            <option value="11.5">UTC+11:30</option>
+                            <option value="12">UTC+12 (เช่น Fiji)</option>
+                            <option value="12.75">UTC+12:45</option>
+                            <option value="13">UTC+13 (เช่น Tonga)</option>
+                            <option value="14">UTC+14 (เช่น Kiritimati)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="bottleSizeSelect">ขนาดขวด:</label>
+                        <select id="bottleSizeSelect">
+                            <option value="">-- เลือกขนาดขวด --</option>
+                            <option value="48">18.9 ลิตร - สูง 48cm</option>
+                            <option value="45">15 ลิตร - สูง 45cm</option>
+                            <option value="37">12 ลิตร - สูง 37cm</option>
+                            <option value="24">10 ลิตร / 600ml - สูง 24cm</option>
+                            <option value="32">1.5 ลิตร - สูง 32cm</option>
+                            <option value="17">350ml - สูง 17cm</option>
+                            <option value="custom">กรอกความสูงเอง</option>
+                        </select>
+                        <input type="number" id="customBottleHeightInput" placeholder="กรอกความสูง (cm)" min="1" style="display: none; margin-top: 5px;">
+                    </div>
+                    <p class="notes"><small>เวลาในมื้ออาหารจะอิงตามโซนเวลานี้ <br> ขนาดขวดจะใช้ในการคำนวณปริมาณอาหารที่เหลือในถัง</small></p>
+                </div>
+
+                <div class="card settings-card">
+                    <h3>การปรับเทียบปริมาณอาหาร</h3>
+                    <p class="notes"><small>ปรับเทียบอัตราส่วนกรัมต่อวินาทีเพื่อให้การจ่ายอาหารแม่นยำยิ่งขึ้น</small></p>
+                    <p>ค่าปัจจุบัน: <span id="currentGramsPerSecondDisplay">- กรัม/วินาที</span></p>
+                    <button id="openCalibrationModalBtn" class="secondary-button full-width-button"><i class="fa-solid fa-wrench"></i> ทดสอบและตั้งค่าปริมาณอาหาร</button>
+                </div>
+            </section>
+
+            <!-- 4. Notification History Section (ประวัติการแจ้งเตือน) -->
+            <section id="notifications-section" class="content-section">
+                <h2><i class="fa-solid fa-history"></i> ประวัติการแจ้งเตือน</h2>
+                <p class="subtitle">การแจ้งเตือนล่าสุดจากเครื่องให้อาหารของคุณ</p>
+                <div class="card notification-history-card">
+                    <ul id="notificationHistoryList" class="notification-list">
+                        <!-- Notifications will be dynamically inserted here -->
+                    </ul>
+                </div>
+            </section>
+
+            <!-- 5. Animal Food Calculator Section (คำนวณอาหารสัตว์) -->
+            <section id="animal-calculator-section" class="content-section">
+                <h2><i class="fa-solid fa-calculator"></i> โปรแกรมคำนวณปริมาณอาหารสัตว์</h2>
+                <p class="subtitle">ค่าเฉลี่ยของสัตว์แต่ละชนิด</p>
+
+                <div class="card calculator-card">
+                    <div class="input-group">
+                        <label for="animalType">ประเภทสัตว์:</label>
+                        <select id="animalType">
+                            <option value="">-- เลือกประเภทสัตว์ --</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="animalSpecies">ชนิดสัตว์:</label>
+                        <select id="animalSpecies">
+                            <option value="">-- เลือกชนิดสัตว์ --</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="animalCount">จำนวนสัตว์:</label>
+                        <input type="number" id="animalCount" value="1" min="1">
+                    </div>
+
+                    <!-- ช่องสำหรับน้ำหนัก (ซ่อนเริ่มต้น) -->
+                    <div class="input-group" id="weightInputContainer" style="display: none;">
+                        <label for="animalWeightKg">น้ำหนัก (Kg):</label>
+                        <input type="number" id="animalWeightKg" value="0" min="0" step="0.1">
+                    </div>
+
+                    <!-- ช่องสำหรับช่วงชีวิต/ระดับกิจกรรม (ซ่อนเริ่มต้น) -->
+                    <div class="input-group" id="lifeStageActivityContainer" style="display: none;">
+                        <label for="lifeStageActivity">ช่วงชีวิต/กิจกรรม:</label>
+                        <select id="lifeStageActivity">
+                            <option value="">-- เลือก --</option>
+                        </select>
+                    </div>
+
+                    <div class="result-display">
+                        <strong>ปริมาณอาหารที่แนะนำ:</strong>
+                        <span id="recommendedAmount" class="highlight-amount">-</span>
+                        <p class="calculation-notes" id="calculationNotes"></p>
+                    </div>
+                    <button id="applyRecommendedAmountBtn" class="primary-button full-width-button" disabled><i class="fa-solid fa-check-circle"></i> นำไปใช้กับมื้ออาหาร</button>
+                </div>
+            </section>
+        </div> <!-- ปิด mainContentContainer -->
     </main>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" data-target="dashboard-section">
+            <i class="fa-solid fa-bolt"></i>
+            <span>ควบคุม</span>
+        </button>
+        <button class="nav-item" data-target="meal-schedule-section">
+            <i class="fa-solid fa-utensils"></i>
+            <span>มื้ออาหาร</span>
+        </button>
+        <button class="nav-item" data-target="device-settings-section">
+            <i class="fa-solid fa-gear"></i>
+            <span>ตั้งค่า</span>
+        </button>
+        <button class="nav-item" data-target="notifications-section">
+            <i class="fa-solid fa-bell"></i>
+            <span>แจ้งเตือน</span>
+        </button>
+        <button class="nav-item" data-target="animal-calculator-section">
+            <i class="fa-solid fa-calculator"></i>
+            <span>คำนวณ</span>
+        </button>
+    </nav>
     
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script type="module" src="script.js"></script>
-    <script type="module" src="animalCalculator.js"></script>
     
+    <!-- Your JavaScript files -->
+    <script type="module" src="animalCalculator.js"></script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>
