@@ -1,19 +1,17 @@
-// script.js (ไฟล์หลัก)
+// script.js (ไฟล์หลัก V2)
 
 // Import ฟังก์ชันและตัวแปรจาก animalCalculator.js
-import { populateAnimalType, updateAnimalSpecies, animalData, updateRecommendedAmount } from './animalCalculator.js';
+import { populateAnimalType, updateAnimalSpecies, updateRecommendedAmount } from './animalCalculator.js';
 
 // ===============================================
 // ✅ Firebase & Supabase Configuration
 // ===============================================
-
-// Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyAg-2VtD5q6Rw8JDKTiihp-ribH0HHvU-o",
   authDomain: "pawtonomous.firebaseapp.com",
   databaseURL: "https://pawtonomous-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "pawtonomous",
-  storageBucket: "pawtonomous.firebasestorage.app",
+  storageBucket: "pawtonomous.appspot.com",
   messagingSenderId: "984959145190",
   appId: "1:984959145190:web:b050c1ed26962cdef4d727",
   measurementId: "G-1QQ3FLHD0M"
@@ -21,1479 +19,873 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// Supabase Config
 const supabaseClient = supabase.createClient(
     'https://gnkgamizqlosvhkuwzhc.supabase.co',
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdua2dhbWl6cWxvc3Zoa3V3emhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0MzY3MTUsImV4cCI6MjA2NjAxMjcxNX0.Dq5oPJ2zV8UUyoNakh4JKzDary8MIGZLDG5BppF_pgc'
 );
 
 // ===============================================
-// ✅ Global Variables and Utility Functions
+// ✅ Global Variables and State
 // ===============================================
+let currentDeviceId = null;
+const CALIBRATION_TEST_SECONDS = 5;
+const NOTIFICATION_HISTORY_LIMIT = 50;
+const MEAL_BLOCK_DURATION_SECONDS = {
+    movementCheck: 3 * 60, // 3 minutes
+    cooldown: 30, // 30 seconds
+};
 
-let currentDeviceId = null; // Device ID ที่ใช้งานอยู่
-const DEFAULT_DEVICE_ID = "web_app_test_device"; // Device ID ชั่วคราวสำหรับการพัฒนา
+// DOM Element References
+const DOMElements = {};
 
-const CALIBRATION_TEST_SECONDS = 5; // จำนวนวินาทีที่ใช้ทดสอบการปล่อยอาหารในการ Calibrate
+let activeMealId = null;
+let lastNotificationId = '';
+let gramsPerSecond = null; // Store calibration value globally
 
-// References to DOM elements (initialized in DOMContentLoaded)
-let deviceIdInput, setDeviceIdBtn, mainContentContainer;
-let deviceStatusCircle, deviceStatusText, notificationDot, openNotificationBtn; // openNotificationBtn will be removed from HTML
-let customAlertOverlay, customAlertContent, customAlertTitle, customAlertMessage, customAlertOkButton;
-let newNotificationToast, newNotificationToastMessage;
-let notificationModal, closeNotificationModalBtn, notificationList, notificationHistoryList;
-let feedNowBtn, checkFoodLevelBtn, checkAnimalMovementBtn, makenoiseAudioInput, makenoiseAudioStatus, makenoiseBtn;
-let timeZoneOffsetSelect, bottleSizeSelect, customBottleHeightInput, openCalibrationModalBtn, currentGramsPerSecondDisplay;
-let calibrationModal, startCalibrationTestBtn, calibrationStatus, calibratedWeightInput, saveCalibrationBtn, closeCalibrationModalBtn;
-let mealListContainer, addMealCardBtn, mealDetailModal, mealModalTitle, mealTimeInput, mealNameInput, mealAmountInput, mealFanStrengthInput, mealFanDirectionInput, mealSwingModeCheckbox, mealAudioInput, mealAudioStatus, mealAudioPreview, saveMealDetailBtn, deleteMealDetailBtn, cancelMealDetailBtn;
-let animalTypeSelect, animalSpeciesSelect, animalCountInput, animalWeightKgInput, lifeStageActivitySelect, recommendedAmountSpan, calculationNotesSpan, applyRecommendedAmountBtn;
-let wifiSsidInput, wifiPasswordInput;
-
-let notificationCount = 0; // จำนวนการแจ้งเตือนที่ยังไม่ได้อ่าน
-let lastNotificationId = ''; // ID ของการแจ้งเตือนล่าสุดที่แสดงใน toast
-let activeMealId = null; // ID ของมื้ออาหารที่กำลังแก้ไขใน Modal
-
-// Utility: Sanitize file name
+// ===============================================
+// ✅ Utility Functions
+// ===============================================
 function sanitizeFileName(name) {
-    return name
-        .normalize("NFD")
-        .replace(/\u0300-\u036f/g, "")
-        .replace(/[^a-zA-Z0-9._-]/g, "_");
+    return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9._-]/g, "_");
 }
-
-// Utility: Clamp value within a range
 function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
 }
-
-// Utility: Debounce function for input fields
 function debounce(func, delay) {
     let timeout;
     return function(...args) {
-        const context = this;
         clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(context, args), delay);
+        timeout = setTimeout(() => func.apply(this, args), delay);
     };
 }
 
 // ===============================================
-// ✅ UI State Management (Buttons, Modals, Tabs)
+// ✅ UI Management (Alerts, Modals, Tabs, Buttons)
 // ===============================================
-
-// Show/Hide Content Sections (Tab Navigation)
 function showSection(sectionId) {
-    document.querySelectorAll('.content-section').forEach(section => {
-        section.classList.remove('active');
-    });
-    document.getElementById(sectionId).classList.add('active');
-
+    document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+    document.getElementById(sectionId)?.classList.add('active');
     document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
+        item.classList.toggle('active', item.dataset.target === sectionId);
     });
-    document.querySelector(`.nav-item[data-target="${sectionId}"]`).classList.add('active');
-
-    // Special handling for notification history section
     if (sectionId === 'notifications-section') {
-        fetchAndDisplayNotifications(); // Refresh notifications when section is opened
-        // notificationDot.style.display = 'none'; // This dot is removed from the header now
-        notificationCount = 0;
+        fetchAndDisplayNotifications();
     }
 }
 
-// Set Button State (Loading/Enabled/Disabled)
 function setButtonState(button, isLoading) {
     if (!button) return;
-
-    if (isLoading) {
-        button.disabled = true;
-        button.classList.add('loading');
-        if (!button.querySelector('.spinner')) {
-            const spinner = document.createElement('div');
-            spinner.className = 'spinner';
-            button.prepend(spinner);
-        }
-    } else {
-        button.disabled = false;
-        button.classList.remove('loading');
-        const spinner = button.querySelector('.spinner');
-        if (spinner) spinner.remove();
+    button.disabled = isLoading;
+    button.classList.toggle('loading', isLoading);
+    const spinner = button.querySelector('.spinner');
+    if (isLoading && !spinner) {
+        const newSpinner = document.createElement('div');
+        newSpinner.className = 'spinner';
+        button.prepend(newSpinner);
+    } else if (!isLoading && spinner) {
+        spinner.remove();
     }
 }
 
-// Custom Alert Modal
 async function showCustomAlert(title, message, type = "info") {
-    if (!customAlertOverlay || !customAlertTitle || !customAlertMessage || !customAlertOkButton) {
-        console.error("Custom alert elements not found. Falling back to native alert.");
-        alert(`${title}: ${message}`);
-        return;
-    }
-
-    customAlertTitle.textContent = title;
-    customAlertMessage.textContent = message;
-    customAlertContent.classList.remove('success', 'error', 'warning', 'info');
-    customAlertContent.classList.add(type);
-    customAlertOverlay.classList.add('show');
-    customAlertOkButton.focus();
-
+    DOMElements.customAlertTitle.textContent = title;
+    DOMElements.customAlertMessage.textContent = message;
+    DOMElements.customAlertContent.className = `custom-alert-content ${type}`;
+    DOMElements.customAlertOverlay.classList.add('show');
     return new Promise(resolve => {
         const handler = () => {
-            customAlertOverlay.classList.remove('show');
-            customAlertContent.classList.remove('success', 'error', 'warning', 'info');
-            customAlertOkButton.removeEventListener('click', handler);
+            DOMElements.customAlertOverlay.classList.remove('show');
+            DOMElements.customAlertOkButton.removeEventListener('click', handler);
             resolve();
         };
-        customAlertOkButton.addEventListener('click', handler);
+        DOMElements.customAlertOkButton.addEventListener('click', handler);
     });
 }
 
-// Show/Hide Modals
 function showModal(modalElement) {
     modalElement.style.display = 'flex';
-    setTimeout(() => modalElement.classList.add('show'), 10); // Add class for transition
 }
-
 function hideModal(modalElement) {
-    modalElement.classList.remove('show');
-    setTimeout(() => modalElement.style.display = 'none', 300); // Hide after transition
+    modalElement.style.display = 'none';
 }
 
-// Toast Notification
 function showNewNotificationToast(message) {
-    if (!newNotificationToast || !newNotificationToastMessage) return;
-
-    newNotificationToastMessage.textContent = message;
-    newNotificationToast.classList.add('show');
-
-    setTimeout(() => {
-        newNotificationToast.classList.remove('show');
-    }, 5000); // Hide after 5 seconds
+    DOMElements.newNotificationToastMessage.textContent = message;
+    DOMElements.newNotificationToast.classList.add('show');
+    setTimeout(() => DOMElements.newNotificationToast.classList.remove('show'), 5000);
 }
 
 // ===============================================
-// ✅ Device ID Management
+// ✅ Device & Session Management (Login/Logout)
 // ===============================================
-
-// Set Device ID and enable main UI
 function setAndLoadDeviceId(id) {
     currentDeviceId = id;
-    console.log("Active Device ID set to:", currentDeviceId);
-
-    // Save device ID to localStorage for persistence
     localStorage.setItem('pawtonomous_device_id', currentDeviceId);
-
-    // Hide device selection and show main content
-    document.querySelector('.device-selection-section').style.display = 'none';
-    mainContentContainer.style.display = 'block';
-
-    // Load all settings and data for the new device ID
-    loadSettingsFromFirebase();
+    DOMElements.deviceSelectionSection.style.display = 'none';
+    DOMElements.mainContentContainer.style.display = 'block';
+    
+    // Start listening and loading data
+    listenToDeviceStatus();
+    loadSettingsFromFirebase(); // This will also trigger the initial setup check
     loadMeals();
     setupNotificationListener();
-    fetchAndDisplayNotifications();
-    // Initially update status based on Firebase, but allow editing regardless
-    listenToDeviceStatus(); 
+}
+
+function handleLogout() {
+    localStorage.removeItem('pawtonomous_device_id');
+    currentDeviceId = null;
+    window.location.reload(); // Easiest way to reset the app state
 }
 
 // ===============================================
-// ✅ Device Status (Online/Offline)
+// ✅ Initial Setup Check
 // ===============================================
+async function checkInitialSetupComplete() {
+    if (!currentDeviceId) return false;
+    try {
+        const settingsSnapshot = await db.ref(`device/${currentDeviceId}/settings`).once('value');
+        const settings = settingsSnapshot.val() || {};
+        const isSetupComplete = 
+            settings.timeZoneOffset != null &&
+            settings.bottleSize != null &&
+            settings.calibration?.grams_per_second > 0;
 
-// Update UI based on device online status
-function updateDeviceStatusUI(isOnline, batteryVoltage = null) {
-    if (!deviceStatusCircle || !deviceStatusText) return;
-
-    deviceStatusCircle.classList.remove('online', 'offline', 'low-battery');
-    deviceStatusText.classList.remove('online', 'offline', 'low-battery');
-
-    if (isOnline) {
-        deviceStatusCircle.classList.add('online');
-        deviceStatusText.classList.add('online');
-        deviceStatusText.textContent = 'ออนไลน์';
+        DOMElements.forceSetupOverlay.style.display = isSetupComplete ? 'none' : 'flex';
+        DOMElements.settingsNavDot.style.display = isSetupComplete ? 'none' : 'block';
         
-        // Enable command buttons
-        if (feedNowBtn) feedNowBtn.disabled = false;
-        if (checkFoodLevelBtn) checkFoodLevelBtn.disabled = false;
-        if (checkAnimalMovementBtn) checkAnimalMovementBtn.disabled = false;
-        // Enable makenoiseBtn only if a file is selected AND online
-        if (makenoiseAudioInput && makenoiseAudioInput.files.length > 0) { 
-            if (makenoiseBtn) makenoiseBtn.disabled = false;
-        } else {
-            if (makenoiseBtn) makenoiseBtn.disabled = true;
-        }
+        // Disable other tabs if setup is not complete
+        document.querySelectorAll('.nav-item').forEach(item => {
+            if (item.dataset.target !== 'device-settings-section') {
+                item.disabled = !isSetupComplete;
+            }
+        });
 
-        // Check battery status if provided
-        if (batteryVoltage !== null && batteryVoltage < 3.5) { // Example threshold for low battery
-            deviceStatusCircle.classList.remove('online');
-            deviceStatusCircle.classList.add('low-battery');
-            deviceStatusText.classList.remove('online');
-            deviceStatusText.classList.add('low-battery');
-            deviceStatusText.textContent = 'แบตเตอรี่ต่ำ';
-        }
-
-    } else { // Device is offline
-        deviceStatusCircle.classList.add('offline');
-        deviceStatusText.classList.add('offline');
-        deviceStatusText.textContent = 'ออฟไลน์';
-        
-        // Disable command buttons when offline
-        if (feedNowBtn) feedNowBtn.disabled = true;
-        if (checkFoodLevelBtn) checkFoodLevelBtn.disabled = true;
-        if (checkAnimalMovementBtn) checkAnimalMovementBtn.disabled = true;
-        if (makenoiseBtn) makenoiseBtn.disabled = true;
-        
-        // Keep settings/meal editing buttons enabled
-        // openCalibrationModalBtn and addMealCardBtn are NOT disabled here.
-        // Their state will be managed by their respective functions or default enabled state.
+        return isSetupComplete;
+    } catch (error) {
+        console.error("Error checking initial setup:", error);
+        return false;
     }
 }
 
-// Listen for device online status from Firebase
+// ===============================================
+// ✅ Device Status Listeners
+// ===============================================
+function updateDeviceStatusUI(isOnline) {
+    DOMElements.deviceStatusCircle.className = `status-circle ${isOnline ? 'online' : 'offline'}`;
+    DOMElements.deviceStatusText.className = `status-text ${isOnline ? 'online' : 'offline'}`;
+    DOMElements.deviceStatusText.textContent = isOnline ? 'ออนไลน์' : 'ออฟไลน์';
+    
+    // Enable/disable real-time command buttons
+    [DOMElements.feedNowBtn, DOMElements.checkFoodLevelBtn, DOMElements.checkAnimalMovementBtn, DOMElements.makenoiseBtn].forEach(btn => {
+        if (btn) btn.disabled = !isOnline;
+    });
+    if (DOMElements.makenoiseBtn && !DOMElements.makenoiseAudioInput.files.length) {
+        DOMElements.makenoiseBtn.disabled = true;
+    }
+}
+
 function listenToDeviceStatus() {
     if (!currentDeviceId) return;
-
-    db.ref(`device/${currentDeviceId}/status/online`).on('value', (snapshot) => {
-        const isOnline = snapshot.val();
-        console.log("Device online status:", isOnline);
-        db.ref(`device/${currentDeviceId}/status/batteryVoltage`).once('value', (batterySnapshot) => {
-            const batteryVoltage = batterySnapshot.val();
-            updateDeviceStatusUI(isOnline, batteryVoltage);
-        });
-    });
-
-    db.ref(`device/${currentDeviceId}/status/foodLevel`).on('value', (snapshot) => {
-        const foodLevelCm = snapshot.val();
-        updateFoodLevelDisplay(foodLevelCm);
-    });
-
-    db.ref(`device/${currentDeviceId}/status/lastMovementDetected`).on('value', (snapshot) => {
-        const lastDetectedTimestamp = snapshot.val();
-        updateLastMovementDisplay(lastDetectedTimestamp);
+    const statusRef = db.ref(`device/${currentDeviceId}/status`);
+    statusRef.on('value', (snapshot) => {
+        const status = snapshot.val() || {};
+        updateDeviceStatusUI(status.online);
+        updateFoodLevelDisplay(status.foodLevel);
+        DOMElements.lastMovementDisplay.textContent = status.lastMovementDetected 
+            ? new Date(status.lastMovementDetected).toLocaleString('th-TH', { timeStyle: 'short' }) 
+            : 'ไม่มีข้อมูล';
     });
 }
 
-// Update food level display
 async function updateFoodLevelDisplay(foodLevelCm) {
-    if (!currentFoodLevelDisplay) return;
-
-    let bottleHeight = 0;
     try {
-        const bottleSnapshot = await db.ref(`device/${currentDeviceId}/settings/bottleSize`).once('value');
-        const customHeightSnapshot = await db.ref(`device/${currentDeviceId}/settings/customBottleHeight`).once('value');
-        
-        const savedBottleSize = bottleSnapshot.val();
-        const savedCustomHeight = customHeightSnapshot.val();
-
-        if (savedBottleSize === 'custom' && savedCustomHeight !== null) {
-            bottleHeight = parseFloat(savedCustomHeight);
-        } else if (savedBottleSize && savedBottleSize !== "") {
-            // Find the height from the predefined options
-            const predefinedHeight = parseFloat(savedBottleSize); // Value is already the height in cm
-            if (!isNaN(predefinedHeight) && predefinedHeight > 0) {
-                bottleHeight = predefinedHeight;
-            }
+        const settingsSnapshot = await db.ref(`device/${currentDeviceId}/settings`).once('value');
+        const settings = settingsSnapshot.val() || {};
+        let bottleHeight = 0;
+        if (settings.bottleSize === 'custom') {
+            bottleHeight = parseFloat(settings.customBottleHeight);
+        } else if (settings.bottleSize) {
+            bottleHeight = parseFloat(settings.bottleSize);
         }
+
+        if (isNaN(foodLevelCm) || foodLevelCm === null || bottleHeight <= 0) {
+            DOMElements.currentFoodLevelDisplay.textContent = "- %";
+            return;
+        }
+
+        const remainingHeight = bottleHeight - foodLevelCm;
+        const percentage = clamp((remainingHeight / bottleHeight) * 100, 0, 100);
+        DOMElements.currentFoodLevelDisplay.textContent = `${Math.round(percentage)} %`;
     } catch (error) {
-        console.error("Error fetching bottle height for display:", error);
-    }
-
-    if (isNaN(foodLevelCm) || foodLevelCm === null || bottleHeight <= 0) {
-        currentFoodLevelDisplay.textContent = "- %";
-        return;
-    }
-
-    const remainingHeight = bottleHeight - foodLevelCm;
-    const percentage = clamp((remainingHeight / bottleHeight) * 100, 0, 100);
-    currentFoodLevelDisplay.textContent = `${Math.round(percentage)} %`;
-}
-
-// Update last movement display
-function updateLastMovementDisplay(timestamp) {
-    if (!lastMovementDisplay) return;
-
-    if (timestamp && timestamp > 0) {
-        const date = new Date(timestamp);
-        const options = {
-            year: 'numeric', month: 'short', day: 'numeric',
-            hour: 'numeric', minute: 'numeric', second: 'numeric',
-            hour12: false, timeZoneName: 'shortOffset', timeZone: 'Asia/Bangkok'
-        };
-        lastMovementDisplay.textContent = date.toLocaleString('th-TH', options);
-    } else {
-        lastMovementDisplay.textContent = "ไม่มีข้อมูล";
+        console.error("Error updating food level display:", error);
+        DOMElements.currentFoodLevelDisplay.textContent = "Error";
     }
 }
 
 // ===============================================
-// ✅ Notifications
+// ✅ Notifications Management
 // ===============================================
-
-let notificationListenerRef = null; // To store Firebase listener reference
-
-// Setup Firebase listener for new notifications
+let notificationListenerRef = null;
 function setupNotificationListener() {
-    if (notificationListenerRef) {
-        notificationListenerRef.off('child_added'); // Detach old listener
-        console.log("Previous notification listener removed.");
-    }
+    if (notificationListenerRef) notificationListenerRef.off();
+    if (!currentDeviceId) return;
 
-    if (!currentDeviceId) {
-        console.warn("Cannot set up notification listener: Device ID is not available.");
-        return;
-    }
-
-    notificationListenerRef = db.ref(`device/${currentDeviceId}/notifications`);
-    notificationListenerRef.limitToLast(1).on('child_added', (snapshot) => {
-        const notification = snapshot.val();
-        const notificationId = snapshot.key;
-        console.log("New notification received:", notification);
-
-        const date = new Date(notification.timestamp);
-        const options = {
-            year: 'numeric', month: 'long', day: 'numeric',
-            hour: 'numeric', minute: 'numeric', second: 'numeric',
-            hour12: false, timeZoneName: 'shortOffset', timeZone: 'Asia/Bangkok'
-        };
-        const formattedTime = date.toLocaleString('th-TH', options);
-
-        if (notificationId !== lastNotificationId) {
-            lastNotificationId = notificationId;
-            showNewNotificationToast(notification.message);
-            addNotificationToList(notification.message, formattedTime, notificationList); // Add to modal list
-            notificationCount++;
-            // updateNotificationDotUI(); // This is for the header dot, which is now removed
+    notificationListenerRef = db.ref(`device/${currentDeviceId}/notifications`).limitToLast(1);
+    notificationListenerRef.on('child_added', (snapshot) => {
+        if (snapshot.key !== lastNotificationId) {
+            lastNotificationId = snapshot.key;
+            showNewNotificationToast(snapshot.val().message);
         }
     });
 }
 
-// Fetch and display historical notifications
 async function fetchAndDisplayNotifications() {
-    if (!notificationHistoryList) return;
-    notificationHistoryList.innerHTML = ''; // Clear old list
-    notificationCount = 0; // Reset unread count
-
-    if (!currentDeviceId) {
-        console.log("No deviceId available to fetch notifications.");
-        // updateNotificationDotUI(); // This is for the header dot, which is now removed
-        return;
-    }
-
+    if (!currentDeviceId) return;
+    DOMElements.notificationHistoryList.innerHTML = '<li>กำลังโหลด...</li>';
     try {
-        const snapshot = await db.ref(`device/${currentDeviceId}/notifications`)
-                                .orderByChild('timestamp')
-                                .limitToLast(50) // Load last 50 notifications
-                                .once('value');
-        
+        const snapshot = await db.ref(`device/${currentDeviceId}/notifications`).orderByChild('timestamp').limitToLast(NOTIFICATION_HISTORY_LIMIT).once('value');
+        DOMElements.notificationHistoryList.innerHTML = '';
         const notifications = [];
-        snapshot.forEach(childSnapshot => {
-            notifications.push(childSnapshot.val());
-            lastNotificationId = childSnapshot.key; // Update last ID to prevent re-toast
-        });
+        snapshot.forEach(child => notifications.push(child.val()));
+        
+        if(notifications.length === 0) {
+            DOMElements.notificationHistoryList.innerHTML = '<li>ไม่มีการแจ้งเตือน</li>';
+            return;
+        }
 
-        notifications.sort((a, b) => b.timestamp - a.timestamp); // Sort newest first for history list
-
-        notifications.forEach(notification => {
-            const date = new Date(notification.timestamp);
-            const options = {
-                year: 'numeric', month: 'long', day: 'numeric',
-                hour: 'numeric', minute: 'numeric', second: 'numeric',
-                hour12: false, timeZoneName: 'shortOffset', timeZone: 'Asia/Bangkok'
-            };
-            const formattedTime = date.toLocaleString('th-TH', options);
-            addNotificationToList(notification.message, formattedTime, notificationHistoryList);
+        notifications.sort((a, b) => b.timestamp - a.timestamp).forEach(n => {
+            const li = document.createElement('li');
+            li.innerHTML = `<span>${n.message}</span><span class="notification-timestamp">${new Date(n.timestamp).toLocaleString('th-TH')}</span>`;
+            DOMElements.notificationHistoryList.appendChild(li);
         });
-        // updateNotificationDotUI(); // This is for the header dot, which is now removed
+        
+        cleanupOldNotifications(); // Trigger cleanup after fetching
     } catch (error) {
-        console.error("Error fetching historical notifications:", error);
+        console.error("Error fetching notifications:", error);
+        DOMElements.notificationHistoryList.innerHTML = '<li>เกิดข้อผิดพลาดในการโหลด</li>';
     }
 }
 
-// Add notification item to a list (reusable for toast and history)
-function addNotificationToList(message, timestamp, listElement) {
-    if (!listElement) return;
-    const listItem = document.createElement('li');
-    listItem.innerHTML = `
-        <span>${message}</span>
-        <span class="notification-timestamp">${timestamp}</span>
-    `;
-    listElement.prepend(listItem); // Add to the top
-}
+async function cleanupOldNotifications() {
+    if (!currentDeviceId) return;
+    const ref = db.ref(`device/${currentDeviceId}/notifications`);
+    try {
+        const snapshot = await ref.orderByChild('timestamp').once('value');
+        const notifications = [];
+        snapshot.forEach(child => notifications.push({ key: child.key, ...child.val() }));
 
-// Update notification dot UI (This function is no longer needed for the header, but kept for reference if needed elsewhere)
-function updateNotificationDotUI() {
-    // if (!notificationDot) return; // notificationDot is now removed from header
-    // if (notificationCount > 0) {
-    //     notificationDot.textContent = notificationCount;
-    //     notificationDot.style.display = 'block';
-    // } else {
-    //     notificationDot.style.display = 'none';
-    // }
-}
-
-// Open/Close Notification Modal
-function openNotificationModal() {
-    showModal(notificationModal);
-    // When modal is opened, all notifications are considered "read"
-    notificationCount = 0;
-    // updateNotificationDotUI(); // This is for the header dot, which is now removed
-}
-
-function closeNotificationModal() {
-    hideModal(notificationModal);
+        if (notifications.length > NOTIFICATION_HISTORY_LIMIT) {
+            const updates = {};
+            const notificationsToDelete = notifications.slice(0, notifications.length - NOTIFICATION_HISTORY_LIMIT);
+            notificationsToDelete.forEach(n => {
+                updates[n.key] = null;
+            });
+            await ref.update(updates);
+            console.log(`Cleaned up ${notificationsToDelete.length} old notifications.`);
+        }
+    } catch (error) {
+        console.error("Error cleaning up notifications:", error);
+    }
 }
 
 // ===============================================
-// ✅ System Settings (Time Zone, Bottle Size, Wi-Fi)
+// ✅ System Settings
 // ===============================================
-
-// Load system settings from Firebase
 async function loadSettingsFromFirebase() {
-    if (!currentDeviceId) {
-        console.log("No deviceId available to load system settings.");
-        return;
-    }
+    if (!currentDeviceId) return;
     try {
         const snapshot = await db.ref(`device/${currentDeviceId}/settings`).once('value');
-        const settings = snapshot.val();
+        const settings = snapshot.val() || {};
 
-        if (settings) {
-            // TimeZone
-            if (timeZoneOffsetSelect) {
-                if (settings.timeZoneOffset !== null && !isNaN(parseFloat(settings.timeZoneOffset))) {
-                    timeZoneOffsetSelect.value = settings.timeZoneOffset;
-                } else {
-                    const currentOffsetHours = new Date().getTimezoneOffset() / -60;
-                    let closestOffsetOption = null;
-                    let minDiff = Infinity;
-                    Array.from(timeZoneOffsetSelect.options).forEach(option => {
-                        if (option.value === "") return;
-                        const optionValue = parseFloat(option.value);
-                        const diff = Math.abs(currentOffsetHours - optionValue);
-                        if (diff < minDiff) {
-                            minDiff = diff;
-                            closestOffsetOption = option;
-                        }
-                    });
-                    if (closestOffsetOption) {
-                        timeZoneOffsetSelect.value = closestOffsetOption.value;
-                    }
-                }
-            }
+        // Set global gramsPerSecond
+        gramsPerSecond = settings.calibration?.grams_per_second || null;
 
-            // Bottle Size
-            if (bottleSizeSelect && customBottleHeightInput) {
-                if (settings.bottleSize !== null && settings.bottleSize !== "") {
-                    bottleSizeSelect.value = settings.bottleSize;
-                    if (settings.bottleSize === 'custom') {
-                        customBottleHeightInput.style.display = 'block';
-                        customBottleHeightInput.value = settings.customBottleHeight !== null ? settings.customBottleHeight : '';
-                    } else {
-                        customBottleHeightInput.style.display = 'none';
-                    }
-                } else {
-                    bottleSizeSelect.value = '';
-                    customBottleHeightInput.style.display = 'none';
-                }
-            }
+        // TimeZone
+        DOMElements.timeZoneOffsetSelect.value = settings.timeZoneOffset ?? '7';
 
-            // Wi-Fi Credentials
-            if (wifiSsidInput && wifiPasswordInput) {
-                if (settings.wifiCredentials && settings.wifiCredentials.ssid) {
-                    wifiSsidInput.value = settings.wifiCredentials.ssid;
-                    wifiPasswordInput.value = settings.wifiCredentials.password || '';
-                } else {
-                    wifiSsidInput.value = '';
-                    wifiPasswordInput.value = '';
-                }
-            }
+        // Bottle Size
+        DOMElements.bottleSizeSelect.value = settings.bottleSize ?? '';
+        DOMElements.customBottleHeightInput.style.display = settings.bottleSize === 'custom' ? 'block' : 'none';
+        DOMElements.customBottleHeightInput.value = settings.customBottleHeight ?? '';
 
-            // Calibration (grams_per_second)
-            if (currentGramsPerSecondDisplay) {
-                if (settings.calibration && settings.calibration.grams_per_second !== null) {
-                    currentGramsPerSecondDisplay.textContent = `${settings.calibration.grams_per_second.toFixed(2)} กรัม/วินาที`;
-                } else {
-                    currentGramsPerSecondDisplay.textContent = "- กรัม/วินาที";
-                }
-            }
+        // Wi-Fi
+        DOMElements.wifiSsidInput.value = settings.wifiCredentials?.ssid ?? '';
+        DOMElements.wifiPasswordInput.value = settings.wifiCredentials?.password ?? '';
 
-        } else {
-            console.log("No existing system settings found. Using defaults.");
-            // Set default values if no settings exist
-            if (timeZoneOffsetSelect) timeZoneOffsetSelect.value = '';
-            if (bottleSizeSelect) bottleSizeSelect.value = '';
-            if (customBottleHeightInput) customBottleHeightInput.style.display = 'none';
-            if (wifiSsidInput) wifiSsidInput.value = '';
-            if (wifiPasswordInput) wifiPasswordInput.value = '';
-            if (currentGramsPerSecondDisplay) currentGramsPerSecondDisplay.textContent = "- กรัม/วินาที";
-        }
+        // Calibration Display
+        DOMElements.currentGramsPerSecondDisplay.textContent = gramsPerSecond ? `${gramsPerSecond.toFixed(2)} กรัม/วินาที` : "- กรัม/วินาที";
+
+        // After loading, check if setup is complete
+        await checkInitialSetupComplete();
+
     } catch (error) {
         console.error("Error loading system settings:", error);
-        showCustomAlert("ข้อผิดพลาด", `ไม่สามารถโหลดการตั้งค่าระบบได้: ${error.message}`, "error");
+        showCustomAlert("ข้อผิดพลาด", `ไม่สามารถโหลดการตั้งค่าระบบได้`, "error");
     }
 }
 
-// Save system settings to Firebase (debounced for Wi-Fi)
 const saveSettingsToFirebase = debounce(async (settingType) => {
-    if (!currentDeviceId) {
-        showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์. โปรดรอให้อุปกรณ์เชื่อมต่อ.", "error");
-        return;
-    }
-
+    if (!currentDeviceId) return;
     let settingsToSave = {};
-    let alertMessage = "";
-    let alertType = "success";
-    let isDeviceOnline = deviceStatusCircle.classList.contains('online') || deviceStatusCircle.classList.contains('low-battery'); // Check current UI status
-
     try {
         if (settingType === 'timezone') {
-            const timeZoneOffset = timeZoneOffsetSelect.value;
-            settingsToSave.timeZoneOffset = (timeZoneOffset === "") ? null : parseFloat(timeZoneOffset);
-            alertMessage = `ตั้งค่าโซนเวลาเป็น UTC${settingsToSave.timeZoneOffset >= 0 ? '+' : ''}${settingsToSave.timeZoneOffset}`;
+            settingsToSave.timeZoneOffset = parseFloat(DOMElements.timeZoneOffsetSelect.value);
         } else if (settingType === 'bottlesize') {
-            const bottleSize = bottleSizeSelect.value;
-            let customBottleHeight = null;
-            if (bottleSize === 'custom') {
-                customBottleHeight = parseFloat(customBottleHeightInput.value);
-                settingsToSave.bottleSize = "custom";
-                settingsToSave.customBottleHeight = !isNaN(customBottleHeight) && customBottleHeight > 0 ? customBottleHeight : null;
-                alertMessage = `ตั้งค่าขนาดขวดเป็นแบบกำหนดเอง ${settingsToSave.customBottleHeight || ''} cm`;
-            } else if (bottleSize !== "") {
-                settingsToSave.bottleSize = bottleSize;
-                settingsToSave.customBottleHeight = null; // Clear custom height if preset is selected
-                alertMessage = `ตั้งค่าขนาดขวดเป็น ${bottleSize} cm`;
-            } else {
-                settingsToSave.bottleSize = null;
-                settingsToSave.customBottleHeight = null;
-                alertMessage = "ล้างการตั้งค่าขนาดขวด";
-            }
+            settingsToSave.bottleSize = DOMElements.bottleSizeSelect.value;
+            settingsToSave.customBottleHeight = settingsToSave.bottleSize === 'custom' ? parseFloat(DOMElements.customBottleHeightInput.value) : null;
         } else if (settingType === 'wifi') {
             settingsToSave.wifiCredentials = {
-                ssid: wifiSsidInput.value,
-                password: wifiPasswordInput.value
+                ssid: DOMElements.wifiSsidInput.value,
+                password: DOMElements.wifiPasswordInput.value
             };
-            alertMessage = "บันทึกข้อมูล Wi-Fi แล้ว";
         }
-
         await db.ref(`device/${currentDeviceId}/settings`).update(settingsToSave);
-        console.log(`System settings (${settingType}) saved successfully!`);
-
-        if (!isDeviceOnline) {
-            alertMessage += "\n(ข้อมูลจะถูกส่งไปยังตัวเครื่องเมื่ออุปกรณ์กลับมาออนไลน์)";
-            alertType = "info"; // Use info type for offline sync message
-        }
-        showCustomAlert("สำเร็จ", alertMessage, alertType);
-
+        showCustomAlert("สำเร็จ", "บันทึกการตั้งค่าแล้ว", "success");
+        await checkInitialSetupComplete(); // Re-check setup after saving
     } catch (error) {
         console.error(`Error saving system settings (${settingType}):`, error);
-        showCustomAlert("ข้อผิดพลาด", `ไม่สามารถบันทึกการตั้งค่า ${settingType} ได้: ${error.message}`, "error");
+        showCustomAlert("ข้อผิดพลาด", `ไม่สามารถบันทึกการตั้งค่าได้`, "error");
     }
-}, 1000); // Debounce by 1 second
+}, 1000);
 
 // ===============================================
-// ✅ Calibration (Grams per Second)
+// ✅ Calibration
 // ===============================================
-
-// Open Calibration Modal
 function openCalibrationModal() {
-    showModal(calibrationModal);
-    calibrationStatus.textContent = "กด 'ปล่อยอาหารทดสอบ' เพื่อเริ่ม";
-    calibratedWeightInput.value = '';
-    saveCalibrationBtn.disabled = true;
-    setButtonState(startCalibrationTestBtn, false);
-    
-    // Check if device is online to enable calibration test button
-    const isDeviceOnline = deviceStatusCircle.classList.contains('online') || deviceStatusCircle.classList.contains('low-battery');
-    if (!isDeviceOnline) {
-        startCalibrationTestBtn.disabled = true;
-        calibrationStatus.textContent = "อุปกรณ์ออฟไลน์. ไม่สามารถทำการทดสอบได้.";
-    }
+    showModal(DOMElements.calibrationModal);
+    DOMElements.calibrationStatus.textContent = "กด 'ปล่อยอาหารทดสอบ' เพื่อเริ่ม";
+    DOMElements.calibratedWeightInput.value = '';
+    DOMElements.saveCalibrationBtn.disabled = true;
+    setButtonState(DOMElements.startCalibrationTestBtn, false);
+    DOMElements.startCalibrationTestBtn.disabled = !DOMElements.deviceStatusCircle.classList.contains('online');
 }
 
-// Start Calibration Test
 async function startCalibrationTest() {
-    if (!currentDeviceId) {
-        showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์. โปรดรอให้อุปกรณ์เชื่อมต่อ.", "error");
-        return;
-    }
-    // Re-check online status before sending command
-    const isDeviceOnline = deviceStatusCircle.classList.contains('online') || deviceStatusCircle.classList.contains('low-battery');
-    if (!isDeviceOnline) {
-        showCustomAlert("ข้อผิดพลาด", "อุปกรณ์ออฟไลน์. ไม่สามารถเริ่มการทดสอบได้.", "error");
-        return;
-    }
-
-    setButtonState(startCalibrationTestBtn, true);
-    calibrationStatus.textContent = "กำลังปล่อยอาหาร...";
-    calibratedWeightInput.value = '';
-    saveCalibrationBtn.disabled = true;
-
+    if (!currentDeviceId) return;
+    setButtonState(DOMElements.startCalibrationTestBtn, true);
+    DOMElements.calibrationStatus.textContent = "กำลังปล่อยอาหาร...";
     try {
-        // Send command to ESP32 to dispense food for CALIBRATION_TEST_SECONDS
         await db.ref(`device/${currentDeviceId}/commands/calibrate`).set({
             duration_seconds: CALIBRATION_TEST_SECONDS,
             timestamp: firebase.database.ServerValue.TIMESTAMP
         });
-
-        // ESP32 will send back a confirmation/completion message
-        // For now, we'll just assume it works and enable input after a delay
-        await new Promise(resolve => setTimeout(resolve, CALIBRATION_TEST_SECONDS * 1000 + 1000)); // Wait for dispense + 1 sec buffer
-
-        calibrationStatus.textContent = `ปล่อยอาหารเสร็จสิ้น. กรุณาชั่งน้ำหนักและกรอกข้อมูล.`;
-        calibratedWeightInput.disabled = false;
-        calibratedWeightInput.focus();
-        // Enable save button only when weight is entered
-        calibratedWeightInput.addEventListener('input', () => {
-            saveCalibrationBtn.disabled = isNaN(parseFloat(calibratedWeightInput.value)) || parseFloat(calibratedWeightInput.value) <= 0;
-        }, { once: true }); // Listen only once, then re-add if needed
-
+        await new Promise(resolve => setTimeout(resolve, CALIBRATION_TEST_SECONDS * 1000 + 1000));
+        DOMElements.calibrationStatus.textContent = `ปล่อยอาหารเสร็จสิ้น. กรุณาชั่งน้ำหนักและกรอกข้อมูล.`;
+        DOMElements.calibratedWeightInput.disabled = false;
+        DOMElements.calibratedWeightInput.focus();
     } catch (error) {
-        console.error("Error starting calibration test:", error);
-        calibrationStatus.textContent = `ข้อผิดพลาด: ${error.message}`;
-        showCustomAlert("ข้อผิดพลาด", `ไม่สามารถเริ่มการทดสอบได้: ${error.message}`, "error");
+        DOMElements.calibrationStatus.textContent = `ข้อผิดพลาด: ${error.message}`;
     } finally {
-        setButtonState(startCalibrationTestBtn, false);
+        setButtonState(DOMElements.startCalibrationTestBtn, false);
     }
 }
 
-// Save Calibration Value
 async function saveCalibration() {
-    if (!currentDeviceId) {
-        showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์. โปรดรอให้อุปกรณ์เชื่อมต่อ.", "error");
-        return;
-    }
-    const weight = parseFloat(calibratedWeightInput.value);
+    const weight = parseFloat(DOMElements.calibratedWeightInput.value);
     if (isNaN(weight) || weight <= 0) {
-        showCustomAlert("ข้อผิดพลาด", "กรุณากรอกน้ำหนักที่ถูกต้อง.", "error");
+        showCustomAlert("ข้อมูลผิดพลาด", "กรุณากรอกน้ำหนักที่ถูกต้อง", "error");
         return;
     }
-
-    setButtonState(saveCalibrationBtn, true);
-    calibrationStatus.textContent = "กำลังบันทึก...";
-    let isDeviceOnline = deviceStatusCircle.classList.contains('online') || deviceStatusCircle.classList.contains('low-battery');
-
+    setButtonState(DOMElements.saveCalibrationBtn, true);
     try {
-        const gramsPerSecond = weight / CALIBRATION_TEST_SECONDS;
+        const newGramsPerSecond = weight / CALIBRATION_TEST_SECONDS;
         await db.ref(`device/${currentDeviceId}/settings/calibration`).set({
-            grams_per_second: gramsPerSecond,
+            grams_per_second: newGramsPerSecond,
             last_calibrated: firebase.database.ServerValue.TIMESTAMP
         });
-        currentGramsPerSecondDisplay.textContent = `${gramsPerSecond.toFixed(2)} กรัม/วินาที`;
-        
-        let alertMessage = `บันทึกค่า Calibrate แล้ว: ${gramsPerSecond.toFixed(2)} กรัม/วินาที`;
-        let alertType = "success";
-        if (!isDeviceOnline) {
-            alertMessage += "\n(ข้อมูลจะถูกส่งไปยังตัวเครื่องเมื่ออุปกรณ์กลับมาออนไลน์)";
-            alertType = "info";
-        }
-        showCustomAlert("สำเร็จ", alertMessage, alertType);
-        hideModal(calibrationModal);
+        gramsPerSecond = newGramsPerSecond; // Update global value
+        DOMElements.currentGramsPerSecondDisplay.textContent = `${gramsPerSecond.toFixed(2)} กรัม/วินาที`;
+        showCustomAlert("สำเร็จ", "บันทึกค่า Calibrate แล้ว", "success");
+        hideModal(DOMElements.calibrationModal);
+        await checkInitialSetupComplete();
     } catch (error) {
-        console.error("Error saving calibration:", error);
-        showCustomAlert("ข้อผิดพลาด", `ไม่สามารถบันทึกค่า Calibrate ได้: ${error.message}`, "error");
+        showCustomAlert("ข้อผิดพลาด", `ไม่สามารถบันทึกค่าได้: ${error.message}`, "error");
     } finally {
-        setButtonState(saveCalibrationBtn, false);
+        setButtonState(DOMElements.saveCalibrationBtn, false);
     }
 }
 
 // ===============================================
-// ✅ Meal Schedule Management
+// ✅ Meal Schedule & Time Blocking
 // ===============================================
+function calculateMealBlockDuration(amount) {
+    if (!gramsPerSecond || gramsPerSecond <= 0) return 0;
+    const feedDuration = amount / gramsPerSecond;
+    return Math.ceil(feedDuration + MEAL_BLOCK_DURATION_SECONDS.movementCheck + MEAL_BLOCK_DURATION_SECONDS.cooldown);
+}
 
-const DAYS_OF_WEEK = ['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'];
+function isTimeConflict(newMeal, allMeals) {
+    if (!allMeals) return false;
+    
+    const newMealTime = new Date(`1970-01-01T${newMeal.time}:00`);
+    const newMealDuration = calculateMealBlockDuration(newMeal.amount);
+    const newMealEnd = new Date(newMealTime.getTime() + newMealDuration * 1000);
 
-// Load meals from Firebase and display as cards
-async function loadMeals() {
-    if (!currentDeviceId) {
-        console.log("No deviceId available to load meals.");
-        return;
+    for (const id in allMeals) {
+        if (id === activeMealId) continue;
+        const existingMeal = allMeals[id];
+
+        // Check for conflicts only if days overlap or one is a specific date matching the other's day
+        const daysOverlap = newMeal.days && existingMeal.days && newMeal.days.some(day => existingMeal.days.includes(day));
+        if (!daysOverlap && !newMeal.specificDate && !existingMeal.specificDate) continue;
+
+        const existingMealTime = new Date(`1970-01-01T${existingMeal.time}:00`);
+        const existingMealDuration = calculateMealBlockDuration(existingMeal.amount);
+        const existingMealEnd = new Date(existingMealTime.getTime() + existingMealDuration * 1000);
+
+        // Simple overlap check: (StartA <= EndB) and (EndA >= StartB)
+        if (newMealTime <= existingMealEnd && newMealEnd >= existingMealTime) {
+            return true; // Conflict found
+        }
     }
-    mealListContainer.innerHTML = ''; // Clear existing meals
+    return false;
+}
 
+async function loadMeals() {
+    if (!currentDeviceId) return;
+    DOMElements.mealListContainer.innerHTML = '';
     try {
         const snapshot = await db.ref(`device/${currentDeviceId}/meals`).once('value');
         const mealsData = snapshot.val();
-        const mealsArray = [];
-
-        if (mealsData) {
-            // Convert object of meals to an array and sort by time
-            for (const id in mealsData) {
-                mealsArray.push({ id, ...mealsData[id] });
-            }
-            // Sort meals by time, handling potential non-string 'time' values gracefully
-            mealsArray.sort((a, b) => {
-                const timeA = typeof a.time === 'string' ? a.time.split(':').map(Number) : [0, 0]; // Default to [0,0] if not string
-                const timeB = typeof b.time === 'string' ? b.time.split(':').map(Number) : [0, 0]; // Default to [0,0] if not string
-                if (timeA[0] !== timeB[0]) return timeA[0] - timeB[0];
-                return timeA[1] - timeB[1];
-            });
-        }
-
+        const mealsArray = mealsData ? Object.entries(mealsData).map(([id, data]) => ({ id, ...data })) : [];
+        mealsArray.sort((a, b) => (a.time || "00:00").localeCompare(b.time || "00:00"));
+        
         if (mealsArray.length > 0) {
-            mealsArray.forEach(meal => addMealCard(meal));
+            mealsArray.forEach(addMealCard);
         } else {
-            // Optionally add a placeholder or message if no meals
-            mealListContainer.innerHTML = '<p class="notes" style="text-align: center;">ยังไม่มีมื้ออาหารที่ตั้งค่าไว้</p>';
+            DOMElements.mealListContainer.innerHTML = '<p class="notes" style="text-align: center;">ยังไม่มีมื้ออาหารที่ตั้งค่าไว้</p>';
         }
     } catch (error) {
         console.error("Error loading meals:", error);
-        showCustomAlert("ข้อผิดพลาด", `ไม่สามารถโหลดมื้ออาหารได้: ${error.message}`, "error");
     }
 }
 
-// Add a new meal card to the UI
-function addMealCard(mealData = {}) {
-    const mealCard = document.createElement('div');
-    mealCard.className = 'meal-card';
-    mealCard.dataset.id = mealData.id || Date.now().toString(); // Use existing ID or generate new
+function addMealCard(mealData) {
+    const { id, name, time, days = [], specificDate, enabled = true } = mealData;
+    const card = document.createElement('div');
+    card.className = 'meal-card';
+    card.dataset.id = id;
 
-    const mealTime = mealData.time || '07:00';
-    const mealName = mealData.name || 'มื้ออาหาร';
-    const mealEnabled = mealData.enabled !== undefined ? mealData.enabled : true;
-    const mealDays = mealData.days || []; // Array of selected days e.g., ['Mon', 'Wed']
+    let daysDisplay = '';
+    if (specificDate) {
+        daysDisplay = `<div class="meal-card-specific-date">${new Date(specificDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}</div>`;
+    } else {
+        const dayAbbreviations = {'Mon':'จ', 'Tue':'อ', 'Wed':'พ', 'Thu':'พฤ', 'Fri':'ศ', 'Sat':'ส', 'Sun':'อา'};
+        const displayDaysStr = days.length === 7 ? 'ทุกวัน' : days.map(d => dayAbbreviations[d]).join(' ');
+        daysDisplay = `<div class="meal-card-days">${displayDaysStr || 'ไม่ระบุวัน'}</div>`;
+    }
 
-    // Display days
-    const displayDays = mealDays.length === 7 ? 'ทุกวัน' : 
-                         mealDays.length === 0 ? 'ไม่มีวัน' : 
-                         mealDays.map(d => DAYS_OF_WEEK[DAYS_OF_WEEK.indexOf(d)]).join(', ');
-
-    mealCard.innerHTML = `
+    card.innerHTML = `
         <div class="meal-card-left">
-            <div class="meal-card-time">${mealTime}</div>
-            <div class="meal-card-name">${mealName}</div>
-            <div class="meal-card-days">${displayDays}</div>
+            <div class="meal-card-name">${name || 'ไม่มีชื่อ'}</div>
+            <div class="meal-card-time">${time || '00:00'}</div>
+            ${daysDisplay}
         </div>
         <label class="toggle-label">
-            <input type="checkbox" class="toggle-switch" ${mealEnabled ? 'checked' : ''}>
+            <input type="checkbox" class="toggle-switch" ${enabled ? 'checked' : ''}>
             <span class="toggle-slider"></span>
         </label>
     `;
-
-    // Add event listener to open meal detail modal
-    mealCard.addEventListener('click', (event) => {
-        // Prevent opening modal if toggle switch was clicked
-        if (event.target.classList.contains('toggle-switch') || event.target.classList.contains('toggle-slider')) {
-            return;
-        }
-        openMealDetailModal(mealCard.dataset.id);
+    card.addEventListener('click', e => {
+        if (!e.target.closest('.toggle-label')) openMealDetailModal(id);
     });
-
-    // Add event listener for toggle switch
-    const toggleSwitch = mealCard.querySelector('.toggle-switch');
-    toggleSwitch.addEventListener('change', async () => {
-        const mealId = mealCard.dataset.id;
-        const isEnabled = toggleSwitch.checked;
-        let isDeviceOnline = deviceStatusCircle.classList.contains('online') || deviceStatusCircle.classList.contains('low-battery');
-
-        try {
-            await db.ref(`device/${currentDeviceId}/meals/${mealId}/enabled`).set(isEnabled);
-            let alertMessage = `มื้อ ${mealName} ถูก ${isEnabled ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}`;
-            let alertType = "info";
-            if (!isDeviceOnline) {
-                alertMessage += "\n(ข้อมูลจะถูกส่งไปยังตัวเครื่องเมื่ออุปกรณ์กลับมาออนไลน์)";
-            }
-            showCustomAlert("สำเร็จ", alertMessage, alertType);
-        } catch (error) {
-            console.error("Error toggling meal status:", error);
-            showCustomAlert("ข้อผิดพลาด", `ไม่สามารถเปลี่ยนสถานะมื้ออาหารได้: ${error.message}`, "error");
-        }
+    card.querySelector('.toggle-switch').addEventListener('change', e => {
+        db.ref(`device/${currentDeviceId}/meals/${id}/enabled`).set(e.target.checked);
     });
-
-    mealListContainer.appendChild(mealCard);
+    DOMElements.mealListContainer.appendChild(card);
 }
 
-// Open Meal Detail Modal for Add/Edit
-async function openMealDetailModal(mealId = null) {
+async function openMealDetailModal(mealId = null, prefillData = null) {
     activeMealId = mealId;
-    mealModalTitle.textContent = mealId ? 'แก้ไขมื้ออาหาร' : 'เพิ่มมื้ออาหารใหม่';
-    deleteMealDetailBtn.style.display = mealId ? 'block' : 'none';
+    DOMElements.mealModalTitle.textContent = mealId ? 'แก้ไขมื้ออาหาร' : 'เพิ่มมื้ออาหารใหม่';
+    DOMElements.deleteMealDetailBtn.style.display = mealId ? 'inline-flex' : 'none';
 
-    // Reset form fields
-    mealTimeInput.value = '07:00';
-    mealNameInput.value = '';
-    mealAmountInput.value = 1;
-    mealFanStrengthInput.value = 1;
-    mealFanDirectionInput.value = 90;
-    mealSwingModeCheckbox.checked = false;
-    mealFanDirectionInput.disabled = false; // Ensure it's enabled by default
-    mealAudioInput.value = ''; // Clear file input
-    mealAudioStatus.textContent = 'ไม่มีไฟล์';
-    mealAudioStatus.style.color = 'grey';
-    mealAudioPreview.style.display = 'none';
-    mealAudioPreview.src = '';
-    document.querySelectorAll('.day-btn').forEach(btn => btn.classList.remove('selected'));
+    // Reset form
+    document.querySelectorAll('.day-btn').forEach(btn => btn.classList.remove('selected', 'disabled'));
+    DOMElements.specificDateInput.value = '';
+    DOMElements.specificDateDisplay.textContent = '';
+    DOMElements.mealAudioInput.value = '';
+    DOMElements.mealAudioStatus.textContent = 'ไม่มีไฟล์';
+    DOMElements.mealAudioPreview.style.display = 'none';
 
-    let currentMealData = {};
-    if (mealId) {
-        try {
-            const snapshot = await db.ref(`device/${currentDeviceId}/meals/${mealId}`).once('value');
-            currentMealData = snapshot.val();
-            if (currentMealData) {
-                mealTimeInput.value = currentMealData.time || '07:00';
-                mealNameInput.value = currentMealData.name || '';
-                mealAmountInput.value = currentMealData.amount || 1;
-                mealFanStrengthInput.value = currentMealData.fanStrength || 1;
-                mealFanDirectionInput.value = currentMealData.fanDirection || 90;
-                mealSwingModeCheckbox.checked = currentMealData.swingMode || false;
-                mealFanDirectionInput.disabled = mealSwingModeCheckbox.checked;
-
-                // Set audio status and preview
-                if (currentMealData.audioUrl) {
-                    mealAudioStatus.innerHTML = `ไฟล์: <a href="${currentMealData.audioUrl}" target="_blank">${currentMealData.originalNoiseFileName || currentMealData.audioUrl.split('/').pop()}</a>`;
-                    mealAudioStatus.style.color = 'green';
-                    mealAudioPreview.src = currentMealData.audioUrl;
-                    mealAudioPreview.style.display = 'block';
-                }
-
-                // Set selected days
-                if (currentMealData.days && Array.isArray(currentMealData.days)) {
-                    currentMealData.days.forEach(day => {
-                        const btn = document.querySelector(`.day-btn[data-day="${day}"]`);
-                        if (btn) btn.classList.add('selected');
-                    });
-                }
-            }
-        } catch (error) {
-            console.error("Error loading meal data for editing:", error);
-            showCustomAlert("ข้อผิดพลาด", `ไม่สามารถโหลดข้อมูลมื้ออาหารได้: ${error.message}`, "error");
-            hideModal(mealDetailModal);
-            return;
-        }
+    let mealData = prefillData || {};
+    if (mealId && !prefillData) {
+        const snapshot = await db.ref(`device/${currentDeviceId}/meals/${mealId}`).once('value');
+        mealData = snapshot.val() || {};
     }
 
-    showModal(mealDetailModal);
+    // Populate form
+    const [hours, minutes] = (mealData.time || '07:00').split(':');
+    updateTimePicker(parseInt(hours), parseInt(minutes));
+    
+    DOMElements.mealNameInput.value = mealData.name || '';
+    DOMElements.mealAmountInput.value = mealData.amount || 10;
+    DOMElements.mealFanStrengthInput.value = mealData.fanStrength || 1;
+    DOMElements.mealFanDirectionInput.value = mealData.fanDirection || 90;
+    DOMElements.mealSwingModeCheckbox.checked = mealData.swingMode || false;
+
+    if (mealData.specificDate) {
+        DOMElements.specificDateInput.value = mealData.specificDate;
+        DOMElements.specificDateDisplay.textContent = `วันที่ระบุ: ${new Date(mealData.specificDate).toLocaleDateString('th-TH')}`;
+        document.querySelectorAll('.day-btn:not(.date-btn)').forEach(btn => btn.classList.add('disabled'));
+        DOMElements.specificDateBtn.classList.add('selected');
+    } else if (mealData.days) {
+        mealData.days.forEach(day => document.querySelector(`.day-btn[data-day="${day}"]`)?.classList.add('selected'));
+        DOMElements.specificDateBtn.classList.remove('selected');
+    }
+    
+    if (mealData.audioUrl) {
+        DOMElements.mealAudioStatus.textContent = mealData.originalNoiseFileName || 'ไฟล์ที่บันทึกไว้';
+        DOMElements.mealAudioPreview.src = mealData.audioUrl;
+        DOMElements.mealAudioPreview.style.display = 'block';
+    }
+
+    showModal(DOMElements.mealDetailModal);
 }
 
-// Save Meal Detail
 async function saveMealDetail() {
-    if (!currentDeviceId) {
-        showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์. โปรดรอให้อุปกรณ์เชื่อมต่อ.", "error");
+    if (!gramsPerSecond) {
+        showCustomAlert("ข้อผิดพลาด", "กรุณาทำการ Calibrate ปริมาณอาหารก่อนตั้งค่ามื้ออาหาร", "error");
         return;
     }
 
-    const time = mealTimeInput.value;
-    const name = mealNameInput.value.trim();
-    // ✅ แก้ไข: ไม่จำกัดปริมาณอาหารสูงสุด แต่ต้องไม่ติดลบ
-    const amount = Math.max(1, parseInt(mealAmountInput.value) || 1); // Ensure it's at least 1, default to 1 if NaN or 0
-
-    const fanStrength = clamp(parseInt(mealFanStrengthInput.value), 1, 3);
-    const fanDirection = clamp(parseInt(mealFanDirectionInput.value), 60, 120);
-    const swingMode = mealSwingModeCheckbox.checked;
-    const selectedDays = Array.from(document.querySelectorAll('.day-btn.selected')).map(btn => btn.dataset.day);
-
-    if (!time || !name || isNaN(amount) || amount <= 0 || isNaN(fanStrength) || isNaN(fanDirection) || selectedDays.length === 0) {
-        showCustomAlert("ข้อผิดพลาด", "โปรดกรอกข้อมูลให้ครบถ้วนและถูกต้อง (เวลา, ชื่อ, ปริมาณ, วัน).", "error");
-        return;
-    }
-
-    setButtonState(saveMealDetailBtn, true);
-
-    let audioUrl = mealAudioPreview.src || null; // Use existing preview URL if no new file selected
-    let originalNoiseFileName = mealAudioStatus.textContent.includes('ไฟล์:') ? mealAudioStatus.textContent.replace('ไฟล์: ', '').split(' ')[0] : null;
-    let isDeviceOnline = deviceStatusCircle.classList.contains('online') || deviceStatusCircle.classList.contains('low-battery');
-
-    // Handle new audio file upload if selected
-    const file = mealAudioInput.files[0];
-    if (file) {
-        mealAudioStatus.textContent = "🔄 กำลังอัปโหลด...";
-        mealAudioStatus.style.color = "orange";
-        const uniqueFileName = `${Date.now()}_${sanitizeFileName(file.name)}`;
-        const path = `meal_noises/${activeMealId || Date.now()}/${uniqueFileName}`; // Use activeMealId or new timestamp for path
-
-        try {
-            const { data, error } = await supabaseClient.storage.from("feeder-sounds").upload(path, file);
-            if (error) throw error;
-            const { data: publicData } = supabaseClient.storage.from("feeder-sounds").getPublicUrl(path);
-            audioUrl = publicData.publicUrl;
-            originalNoiseFileName = file.name;
-            mealAudioStatus.innerHTML = `✅ อัปโหลดแล้ว<br><small>(${originalNoiseFileName})</small>`;
-            mealAudioStatus.style.color = "green";
-        } catch (e) {
-            showCustomAlert("อัปโหลดไฟล์เสียงไม่สำเร็จ", "เกิดข้อผิดพลาดขณะอัปโหลดไฟล์: " + e.message, "error");
-            console.error("Supabase Upload Error:", e);
-            setButtonState(saveMealDetailBtn, false);
-            return;
-        }
-    }
-
+    const [hour, minute] = getTimeFromPicker();
     const mealData = {
-        time,
-        name,
-        amount,
-        fanStrength,
-        fanDirection,
-        swingMode,
-        days: selectedDays,
-        audioUrl,
-        originalNoiseFileName,
-        enabled: true // New meals are enabled by default
+        time: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
+        name: DOMElements.mealNameInput.value.trim() || 'มื้ออาหาร',
+        amount: parseInt(DOMElements.mealAmountInput.value) || 10,
+        fanStrength: clamp(parseInt(DOMElements.mealFanStrengthInput.value), 1, 3),
+        fanDirection: clamp(parseInt(DOMElements.mealFanDirectionInput.value), 60, 120),
+        swingMode: DOMElements.mealSwingModeCheckbox.checked,
+        days: DOMElements.specificDateInput.value ? [] : Array.from(document.querySelectorAll('.day-btn.selected:not(.date-btn)')).map(btn => btn.dataset.day),
+        specificDate: DOMElements.specificDateInput.value || null,
+        enabled: true
     };
 
-    try {
-        if (activeMealId) {
-            await db.ref(`device/${currentDeviceId}/meals/${activeMealId}`).update(mealData);
-            let alertMessage = `บันทึกมื้ออาหาร "${name}" เรียบร้อยแล้ว.`;
-            let alertType = "success";
-            if (!isDeviceOnline) {
-                alertMessage += "\n(ข้อมูลจะถูกส่งไปยังตัวเครื่องเมื่ออุปกรณ์กลับมาออนไลน์)";
-                alertType = "info";
-            }
-            showCustomAlert("สำเร็จ", alertMessage, alertType);
-        } else {
-            const newMealRef = db.ref(`device/${currentDeviceId}/meals`).push(); // Push generates a unique ID
-            await newMealRef.set(mealData);
-            let alertMessage = `เพิ่มมื้ออาหาร "${name}" เรียบร้อยแล้ว.`;
-            let alertType = "success";
-            if (!isDeviceOnline) {
-                alertMessage += "\n(ข้อมูลจะถูกส่งไปยังตัวเครื่องเมื่ออุปกรณ์กลับมาออนไลน์)";
-                alertType = "info";
-            }
-            showCustomAlert("สำเร็จ", alertMessage, alertType);
-        }
-        hideModal(mealDetailModal);
-        loadMeals(); // Reload meals to update UI
+    // Time blocking check
+    const existingMealsSnapshot = await db.ref(`device/${currentDeviceId}/meals`).once('value');
+    if (isTimeConflict(mealData, existingMealsSnapshot.val())) {
+        showCustomAlert("เวลาทับซ้อน", "เวลาที่ตั้งค่าทับซ้อนกับมื้ออาหารอื่น กรุณาเลือกเวลาใหม่", "warning");
+        return;
     }
-    catch (error) {
-        console.error("Error saving meal:", error);
-        showCustomAlert("ข้อผิดพลาด", `ไม่สามารถบันทึกมื้ออาหารได้: ${error.message}`, "error");
+
+    setButtonState(DOMElements.saveMealDetailBtn, true);
+    
+    // Audio upload
+    const file = DOMElements.mealAudioInput.files[0];
+    if (file) {
+        const path = `meal_noises/${currentDeviceId}/${Date.now()}_${sanitizeFileName(file.name)}`;
+        try {
+            const { error } = await supabaseClient.storage.from("feeder-sounds").upload(path, file);
+            if (error) throw error;
+            const { data: publicData } = supabaseClient.storage.from("feeder-sounds").getPublicUrl(path);
+            mealData.audioUrl = publicData.publicUrl;
+            mealData.originalNoiseFileName = file.name;
+        } catch (e) {
+            showCustomAlert("อัปโหลดล้มเหลว", e.message, "error");
+            setButtonState(DOMElements.saveMealDetailBtn, false);
+            return;
+        }
+    } else if (activeMealId) {
+        const oldDataSnapshot = await db.ref(`device/${currentDeviceId}/meals/${activeMealId}`).once('value');
+        const oldData = oldDataSnapshot.val();
+        mealData.audioUrl = oldData?.audioUrl || null;
+        mealData.originalNoiseFileName = oldData?.originalNoiseFileName || null;
+    }
+
+    try {
+        const ref = activeMealId ? db.ref(`device/${currentDeviceId}/meals/${activeMealId}`) : db.ref(`device/${currentDeviceId}/meals`).push();
+        await ref.update(mealData);
+        showCustomAlert("สำเร็จ", "บันทึกมื้ออาหารเรียบร้อย", "success");
+        hideModal(DOMElements.mealDetailModal);
+        loadMeals();
+    } catch (error) {
+        showCustomAlert("ผิดพลาด", `ไม่สามารถบันทึกได้: ${error.message}`, "error");
     } finally {
-        setButtonState(saveMealDetailBtn, false);
+        setButtonState(DOMElements.saveMealDetailBtn, false);
     }
 }
 
-// Delete Meal
 async function deleteMealDetail() {
-    if (!currentDeviceId || !activeMealId) {
-        showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์หรือมื้ออาหารที่จะลบ.", "error");
-        return;
-    }
-    const confirmDelete = await showCustomAlert("ยืนยันการลบ", "คุณแน่ใจหรือไม่ที่จะลบมื้ออาหารนี้?", "warning");
-    // For simplicity, customAlert doesn't return true/false directly for confirmation.
-    // In a real app, you'd need a custom confirm modal. For now, just proceed if they click OK.
-    // If you implement a custom confirm, check its result here.
-
-    setButtonState(deleteMealDetailBtn, true);
-    let isDeviceOnline = deviceStatusCircle.classList.contains('online') || deviceStatusCircle.classList.contains('low-battery');
-
+    if (!activeMealId) return;
+    setButtonState(DOMElements.deleteMealDetailBtn, true);
     try {
         await db.ref(`device/${currentDeviceId}/meals/${activeMealId}`).remove();
-        let alertMessage = "ลบมื้ออาหารเรียบร้อยแล้ว.";
-        let alertType = "success";
-        if (!isDeviceOnline) {
-            alertMessage += "\n(ข้อมูลจะถูกส่งไปยังตัวเครื่องเมื่ออุปกรณ์กลับมาออนไลน์)";
-            alertType = "info";
-        }
-        showCustomAlert("สำเร็จ", alertMessage, alertType);
-        hideModal(mealDetailModal);
-        loadMeals(); // Reload meals to update UI
+        showCustomAlert("สำเร็จ", "ลบมื้ออาหารแล้ว", "success");
+        hideModal(DOMElements.mealDetailModal);
+        loadMeals();
     } catch (error) {
-        console.error("Error deleting meal:", error);
-        showCustomAlert("ข้อผิดพลาด", `ไม่สามารถลบมื้ออาหารได้: ${error.message}`, "error");
+        showCustomAlert("ผิดพลาด", `ไม่สามารถลบได้: ${error.message}`, "error");
     } finally {
-        setButtonState(deleteMealDetailBtn, false);
+        setButtonState(DOMElements.deleteMealDetailBtn, false);
     }
 }
 
 // ===============================================
 // ✅ Dashboard Actions
 // ===============================================
+async function sendCommand(command, payload = {}) {
+    if (!DOMElements.deviceStatusCircle.classList.contains('online')) {
+        showCustomAlert("ออฟไลน์", "อุปกรณ์ไม่ได้เชื่อมต่อ ไม่สามารถส่งคำสั่งได้", "error");
+        return false;
+    }
+    try {
+        await db.ref(`device/${currentDeviceId}/commands/${command}`).set({
+            ...payload,
+            timestamp: firebase.database.ServerValue.TIMESTAMP
+        });
+        return true;
+    } catch (error) {
+        showCustomAlert("ผิดพลาด", `ไม่สามารถส่งคำสั่ง ${command} ได้: ${error.message}`, "error");
+        return false;
+    }
+}
 
-// Feed Now
 async function feedNow() {
-    if (!currentDeviceId) {
-        showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์. โปรดรอให้อุปกรณ์เชื่อมต่อ.", "error");
+    setButtonState(DOMElements.feedNowBtn, true);
+    const snapshot = await db.ref(`device/${currentDeviceId}/meals`).orderByChild('enabled').equalTo(true).limitToFirst(1).once('value');
+    const meals = snapshot.val();
+    if (!meals) {
+        showCustomAlert("ผิดพลาด", "ไม่พบมื้ออาหารที่เปิดใช้งาน", "error");
+        setButtonState(DOMElements.feedNowBtn, false);
         return;
     }
-    // Re-check online status before sending command
-    const isDeviceOnline = deviceStatusCircle.classList.contains('online') || deviceStatusCircle.classList.contains('low-battery');
-    if (!isDeviceOnline) {
-        showCustomAlert("ข้อผิดพลาด", "อุปกรณ์ออฟไลน์. ไม่สามารถส่งคำสั่งได้.", "error");
-        return;
-    }
-
-    setButtonState(feedNowBtn, true);
-    try {
-        // Fetch current calibration value
-        const calibrationSnapshot = await db.ref(`device/${currentDeviceId}/settings/calibration/grams_per_second`).once('value');
-        const gramsPerSecond = calibrationSnapshot.val() || 100; // Default to 100g/s if not calibrated
-
-        // Fetch the first enabled meal to use its settings for "feed now"
-        // In a real app, you might want to allow user to select which meal to use
-        const mealsSnapshot = await db.ref(`device/${currentDeviceId}/meals`).once('value');
-        const mealsData = mealsSnapshot.val();
-        let mealToDispense = null;
-        if (mealsData) {
-            for (const mealId in mealsData) {
-                if (mealsData[mealId].enabled) {
-                    mealToDispense = mealsData[mealId];
-                    break; // Take the first enabled meal found
-                }
-            }
-        }
-
-        if (!mealToDispense) {
-            showCustomAlert("ข้อผิดพลาด", "ไม่พบมื้ออาหารที่เปิดใช้งาน. โปรดตั้งค่ามื้ออาหารก่อน.", "error");
-            setButtonState(feedNowBtn, false);
-            return;
-        }
-
-        const durationSeconds = mealToDispense.amount / gramsPerSecond;
-
-        await db.ref(`device/${currentDeviceId}/commands/feedNow`).set({
-            duration_seconds: durationSeconds.toFixed(2), // Send calculated duration
-            fanStrength: mealToDispense.fanStrength, 
-            fanDirection: mealToDispense.fanDirection, 
-            swingMode: mealToDispense.swingMode || false, 
-            noiseFile: mealToDispense.audioUrl || null,
-            originalNoiseFileName: mealToDispense.originalNoiseFileName || null,
-            timestamp: firebase.database.ServerValue.TIMESTAMP
-        });
-        showCustomAlert("กำลังให้อาหาร", `ส่งคำสั่งให้อาหาร ${mealToDispense.amount} กรัม (${durationSeconds.toFixed(1)} วินาที) แล้ว. กรุณารอ...`, "info");
-    } catch (error) {
-        console.error("Error sending feedNow command:", error);
-        showCustomAlert("ข้อผิดพลาด", `ไม่สามารถส่งคำสั่งให้อาหารได้: ${error.message}`, "error");
-    } finally {
-        setButtonState(feedNowBtn, false);
-    }
+    const mealToDispense = Object.values(meals)[0];
+    await sendCommand('feedNow', mealToDispense);
+    setButtonState(DOMElements.feedNowBtn, false);
 }
 
-// Check Food Level
-async function checkFoodLevel() {
-    if (!currentDeviceId) {
-        showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์. โปรดรอให้อุปกรณ์เชื่อมต่อ.", "error");
-        return;
-    }
-    // Re-check online status before sending command
-    const isDeviceOnline = deviceStatusCircle.classList.contains('online') || deviceStatusCircle.classList.contains('low-battery');
-    if (!isDeviceOnline) {
-        showCustomAlert("ข้อผิดพลาด", "อุปกรณ์ออฟไลน์. ไม่สามารถส่งคำสั่งได้.", "error");
-        return;
-    }
-
-    setButtonState(checkFoodLevelBtn, true);
-    try {
-        await db.ref(`device/${currentDeviceId}/commands/checkFoodLevel`).set(firebase.database.ServerValue.TIMESTAMP);
-
-        const resultPromise = new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => {
-                db.ref(`device/${currentDeviceId}/status/foodLevel`).off('value', listener);
-                reject(new Error("การตรวจสอบระดับอาหารใช้เวลานานเกินไป."));
-            }, 15000);
-
-            const listener = db.ref(`device/${currentDeviceId}/status/foodLevel`).on('value', (snapshot) => {
-                const foodLevel = snapshot.val();
-                if (foodLevel !== null) {
-                    clearTimeout(timeout);
-                    db.ref(`device/${currentDeviceId}/status/foodLevel`).off('value', listener);
-                    resolve(foodLevel);
-                }
-            });
-        });
-
-        const foodLevelResult = await resultPromise;
-        
-        let bottleHeight = 0;
-        const bottleSnapshot = await db.ref(`device/${currentDeviceId}/settings/bottleSize`).once('value');
-        const customHeightSnapshot = await db.ref(`device/${currentDeviceId}/settings/customBottleHeight`).once('value');
-        
-        const savedBottleSize = bottleSnapshot.val();
-        const savedCustomHeight = customHeightSnapshot.val();
-
-        if (savedBottleSize === 'custom' && savedCustomHeight !== null) {
-            bottleHeight = parseFloat(savedCustomHeight);
-        } else if (savedBottleSize && savedBottleSize !== "") {
-            bottleHeight = parseFloat(savedBottleSize);
-        }
-
-        if (isNaN(bottleHeight) || bottleHeight <= 0) {
-            showCustomAlert("ข้อผิดพลาด", "โปรดตั้งค่าขนาดขวดใน 'การตั้งค่าอุปกรณ์' ก่อน.", "error");
-            setButtonState(checkFoodLevelBtn, false);
-            return;
-        }
-
-        const remainingHeight = bottleHeight - foodLevelResult;
-        const percentage = clamp((remainingHeight / bottleHeight) * 100, 0, 100);
-
-        let message = `ระดับอาหารที่วัดได้: ${foodLevelResult} cm.`;
-        if (foodLevelResult < 0) {
-             message = "ค่าระดับอาหารไม่ถูกต้อง. โปรดตรวจสอบการติดตั้งเซ็นเซอร์";
-        } else if (foodLevelResult > bottleHeight + 5) {
-            message = `น่าจะไม่มีอาหารในถัง หรือเซ็นเซอร์วัดค่าผิดปกติ (วัดได้ ${foodLevelResult} cm จากขวดสูง ${bottleHeight} cm)`;
-        }
-        else if (foodLevelResult > bottleHeight - 5) {
-            message += `\nอาหารในถังเหลือน้อยมาก (< ${Math.round(percentage)}%).`;
-        } else {
-            message += `\nประมาณ ${Math.round(percentage)}% ของถัง.`;
-        }
-
-        showCustomAlert("ปริมาณอาหาร", message, "info");
-
-    } catch (error) {
-        console.error("Error checking food level:", error);
-        showCustomAlert("ข้อผิดพลาด", `ไม่สามารถตรวจสอบระดับอาหารได้: ${error.message}`, "error");
-    } finally {
-        setButtonState(checkFoodLevelBtn, false);
-    }
-}
-
-// Check Animal Movement
-async function checkAnimalMovement() {
-    if (!currentDeviceId) {
-        showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์. โปรดรอให้อุปกรณ์เชื่อมต่อ.", "error");
-        return;
-    }
-    // Re-check online status before sending command
-    const isDeviceOnline = deviceStatusCircle.classList.contains('online') || deviceStatusCircle.classList.contains('low-battery');
-    if (!isDeviceOnline) {
-        showCustomAlert("ข้อผิดพลาด", "อุปกรณ์ออฟไลน์. ไม่สามารถส่งคำสั่งได้.", "error");
-        return;
-    }
-
-    setButtonState(checkAnimalMovementBtn, true);
-    try {
-        await db.ref(`device/${currentDeviceId}/commands/checkMovement`).set(firebase.database.ServerValue.TIMESTAMP);
-
-        const resultPromise = new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => {
-                db.ref(`device/${currentDeviceId}/status/lastMovementDetected`).off('value', listener);
-                reject(new Error("การตรวจสอบการเคลื่อนไหวใช้เวลานานเกินไป."));
-            }, 15000);
-
-            const listener = db.ref(`device/${currentDeviceId}/status/lastMovementDetected`).on('value', (snapshot) => {
-                const lastDetectedTimestamp = snapshot.val();
-                if (lastDetectedTimestamp !== null) {
-                    clearTimeout(timeout);
-                    db.ref(`device/${currentDeviceId}/status/lastMovementDetected`).off('value', listener);
-                    resolve(lastDetectedTimestamp);
-                }
-            });
-        });
-
-        const lastDetectedTimestamp = await resultPromise;
-
-        let message = "ไม่พบการเคลื่อนไหวล่าสุด.";
-        if (lastDetectedTimestamp && lastDetectedTimestamp > 0) {
-            const date = new Date(lastDetectedTimestamp);
-            const options = {
-                year: 'numeric', month: 'long', day: 'numeric',
-                hour: 'numeric', minute: 'numeric', second: 'numeric',
-                hour12: false, timeZoneName: 'shortOffset', timeZone: 'Asia/Bangkok'
-            };
-            const formattedTime = date.toLocaleString('th-TH', options);
-            message = `ตรวจพบการเคลื่อนไหวล่าสุดเมื่อ: ${formattedTime}`;
-        }
-        showCustomAlert("การเคลื่อนไหวสัตว์", message, "info");
-
-    } catch (error) {
-        console.error("Error checking animal movement:", error);
-        showCustomAlert("ข้อผิดพลาด", `ไม่สามารถตรวจสอบการเคลื่อนไหวได้: ${error.message}`, "error");
-    } finally {
-        setButtonState(checkAnimalMovementBtn, false);
-    }
-}
-
-// Play Make Noise
-let selectedMakeNoiseFile = null;
 async function playMakeNoise() {
-    if (!currentDeviceId) {
-        showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์. โปรดรอให้อุปกรณ์เชื่อมต่อ.", "error");
+    const file = DOMElements.makenoiseAudioInput.files[0];
+    if (!file) {
+        showCustomAlert("ผิดพลาด", "กรุณาเลือกไฟล์เสียงก่อน", "error");
         return;
     }
-    if (!selectedMakeNoiseFile) {
-        showCustomAlert("ข้อผิดพลาด", "โปรดเลือกไฟล์เสียงก่อน.", "error");
-        return;
-    }
-    // Re-check online status before sending command
-    const isDeviceOnline = deviceStatusCircle.classList.contains('online') || deviceStatusCircle.classList.contains('low-battery');
-    if (!isDeviceOnline) {
-        showCustomAlert("ข้อผิดพลาด", "อุปกรณ์ออฟไลน์. ไม่สามารถส่งคำสั่งได้.", "error");
-        return;
-    }
-
-    setButtonState(makenoiseBtn, true);
-    const originalFileName = selectedMakeNoiseFile.name;
-    const sanitizedFileName = sanitizeFileName(originalFileName);
-
+    setButtonState(DOMElements.makenoiseBtn, true);
+    const path = `make_noise/${currentDeviceId}/${Date.now()}_${sanitizeFileName(file.name)}`;
     try {
-        const path = `make_noise/${currentDeviceId}/${sanitizedFileName}`;
-        const { data, error } = await supabaseClient.storage.from("feeder-sounds").upload(path, selectedMakeNoiseFile, {
-            cacheControl: '3600',
-            upsert: true
-        });
-
+        const { error } = await supabaseClient.storage.from("feeder-sounds").upload(path, file, { upsert: true });
         if (error) throw error;
-
-        const { data: publicUrlData } = supabaseClient.storage.from('feeder-sounds').getPublicUrl(path);
-
-        if (!publicUrlData || !publicUrlData.publicUrl) {
-            throw new Error("Failed to get public URL for the uploaded file.");
+        const { data: publicData } = supabaseClient.storage.from('feeder-sounds').getPublicUrl(path);
+        if (await sendCommand('makeNoise', { url: publicData.publicUrl })) {
+            showCustomAlert("สำเร็จ", "ส่งคำสั่งเล่นเสียงแล้ว", "success");
         }
-
-        await db.ref(`device/${currentDeviceId}/commands/makeNoise`).set({
-            url: publicUrlData.publicUrl,
-            timestamp: firebase.database.ServerValue.TIMESTAMP
-        });
-
-        showCustomAlert("สำเร็จ", `ส่งคำสั่งเล่นเสียง: ${originalFileName} แล้ว.`, "success");
-
-    } catch (error) {
-        console.error("Error playing make noise:", error);
-        showCustomAlert("ข้อผิดพลาด", `ไม่สามารถเล่นเสียงได้: ${error.message}`, "error");
+    } catch (e) {
+        showCustomAlert("ผิดพลาด", `ไม่สามารถอัปโหลดหรือเล่นเสียงได้: ${e.message}`, "error");
     } finally {
-        setButtonState(makenoiseBtn, false);
-        makenoiseAudioInput.value = '';
-        makenoiseAudioStatus.textContent = '';
-        selectedMakeNoiseFile = null;
-        makenoiseBtn.disabled = true;
+        setButtonState(DOMElements.makenoiseBtn, false);
     }
 }
 
 // ===============================================
 // ✅ Animal Calculator Integration
 // ===============================================
-
-// Apply recommended amount to meal detail modal
 function applyRecommendedAmount() {
-    const recommendedAmountText = recommendedAmountSpan.textContent;
-    const match = recommendedAmountText.match(/(\d+\.?\d*)\s*กรัม/);
-    if (match && mealAmountInput) {
-        mealAmountInput.value = parseFloat(match[1]);
-        showCustomAlert("สำเร็จ", `นำปริมาณที่แนะนำ ${match[1]} กรัม ไปใส่ในช่องปริมาณแล้ว.`, "success");
-        // Optionally switch to meal schedule tab
+    const recommendedAmountText = DOMElements.recommendedAmount.textContent;
+    const match = recommendedAmountText.match(/(\d+\.?\d*)/);
+    if (match) {
+        const amount = Math.round(parseFloat(match[1]));
+        openMealDetailModal(null, { amount }); // Open new meal modal with prefilled amount
         showSection('meal-schedule-section');
-        hideModal(mealDetailModal); // Close calculator modal if it was open
     } else {
-        showCustomAlert("ข้อผิดพลาด", "ไม่สามารถนำปริมาณที่แนะนำไปใช้ได้.", "error");
+        showCustomAlert("ผิดพลาด", "ไม่สามารถนำปริมาณที่แนะนำไปใช้ได้", "error");
     }
 }
 
+// ===============================================
+// ✅ Custom UI Component Logic (Time Picker, Select)
+// ===============================================
+function setupCustomTimePicker() {
+    const hoursCol = DOMElements.hoursColumn;
+    const minutesCol = DOMElements.minutesColumn;
+
+    for (let i = 0; i < 24; i++) {
+        hoursCol.innerHTML += `<div>${String(i).padStart(2, '0')}</div>`;
+    }
+    for (let i = 0; i < 60; i++) {
+        minutesCol.innerHTML += `<div>${String(i).padStart(2, '0')}</div>`;
+    }
+
+    let scrollTimeout;
+    [hoursCol, minutesCol].forEach(col => {
+        col.addEventListener('scroll', () => {
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                const scrollTop = col.scrollTop;
+                const itemHeight = 50;
+                const selectedIndex = Math.round(scrollTop / itemHeight);
+                col.scrollTo({ top: selectedIndex * itemHeight, behavior: 'smooth' });
+            }, 150);
+        });
+    });
+}
+
+function updateTimePicker(hour, minute) {
+    const itemHeight = 50;
+    DOMElements.hoursColumn.scrollTo({ top: hour * itemHeight, behavior: 'instant' });
+    DOMElements.minutesColumn.scrollTo({ top: minute * itemHeight, behavior: 'instant' });
+}
+
+function getTimeFromPicker() {
+    const itemHeight = 50;
+    const hour = Math.round(DOMElements.hoursColumn.scrollTop / itemHeight);
+    const minute = Math.round(DOMElements.minutesColumn.scrollTop / itemHeight);
+    return [hour, minute];
+}
+
+function setupCustomSelects() {
+    document.addEventListener('click', e => {
+        const wrapper = e.target.closest('.custom-select-wrapper');
+        
+        // Close all other selects
+        document.querySelectorAll('.custom-select-wrapper.open').forEach(openWrapper => {
+            if (openWrapper !== wrapper) {
+                openWrapper.classList.remove('open');
+            }
+        });
+
+        if (e.target.classList.contains('custom-select-trigger')) {
+            wrapper.classList.toggle('open');
+        } else if (e.target.classList.contains('custom-option')) {
+            const trigger = wrapper.querySelector('.custom-select-trigger');
+            trigger.textContent = e.target.textContent;
+            trigger.dataset.value = e.target.dataset.value;
+            wrapper.classList.remove('open');
+            
+            // Update selected state for options
+            wrapper.querySelectorAll('.custom-option').forEach(opt => {
+                opt.classList.toggle('selected', opt.dataset.value === e.target.dataset.value);
+            });
+
+            // Manually trigger change event for our logic
+            const event = new Event('change', { bubbles: true });
+            trigger.dispatchEvent(event);
+        } else if (wrapper && !e.target.closest('.custom-options')) {
+            wrapper.classList.remove('open');
+        }
+    });
+}
 
 // ===============================================
-// ✅ DOMContentLoaded and Event Listeners
+// ✅ DOMContentLoaded (Initialization)
 // ===============================================
-
 document.addEventListener('DOMContentLoaded', () => {
-    // Get all DOM elements
-    deviceIdInput = document.getElementById('deviceIdInput');
-    setDeviceIdBtn = document.getElementById('setDeviceIdBtn');
-    mainContentContainer = document.getElementById('mainContentContainer');
-
-    deviceStatusCircle = document.getElementById('deviceStatusCircle');
-    deviceStatusText = document.getElementById('deviceStatusText');
-    // notificationDot = document.getElementById('notificationDot'); // Removed from HTML
-    // openNotificationBtn = document.getElementById('openNotificationBtn'); // Removed from HTML
-
-    customAlertOverlay = document.getElementById('customAlertOverlay');
-    customAlertContent = document.getElementById('customAlertContent');
-    customAlertTitle = document.getElementById('customAlertTitle');
-    customAlertMessage = document.getElementById('customAlertMessage');
-    customAlertOkButton = document.getElementById('customAlertOkButton');
-
-    newNotificationToast = document.getElementById('newNotificationToast');
-    newNotificationToastMessage = document.getElementById('newNotificationToastMessage');
-
-    notificationModal = document.getElementById('notificationModal');
-    closeNotificationModalBtn = document.getElementById('closeNotificationModalBtn');
-    notificationList = document.getElementById('notificationList');
-    notificationHistoryList = document.getElementById('notificationHistoryList');
-
-    feedNowBtn = document.getElementById('feedNowBtn');
-    checkFoodLevelBtn = document.getElementById('checkFoodLevelBtn');
-    checkAnimalMovementBtn = document.getElementById('checkAnimalMovementBtn');
-    makenoiseAudioInput = document.getElementById('makenoiseAudioInput');
-    makenoiseAudioStatus = document.getElementById('makenoiseAudioStatus');
-    makenoiseBtn = document.getElementById('makenoiseBtn');
-
-    timeZoneOffsetSelect = document.getElementById('timeZoneOffsetSelect');
-    bottleSizeSelect = document.getElementById('bottleSizeSelect');
-    customBottleHeightInput = document.getElementById('customBottleHeightInput');
-    openCalibrationModalBtn = document.getElementById('openCalibrationModalBtn');
-    currentGramsPerSecondDisplay = document.getElementById('currentGramsPerSecondDisplay');
-
-    calibrationModal = document.getElementById('calibrationModal');
-    startCalibrationTestBtn = document.getElementById('startCalibrationTestBtn');
-    calibrationStatus = document.getElementById('calibrationStatus');
-    calibratedWeightInput = document.getElementById('calibratedWeightInput');
-    saveCalibrationBtn = document.getElementById('saveCalibrationBtn');
-    closeCalibrationModalBtn = document.getElementById('closeCalibrationModalBtn');
-
-    mealListContainer = document.getElementById('mealListContainer');
-    addMealCardBtn = document.getElementById('addMealCardBtn');
-    mealDetailModal = document.getElementById('mealDetailModal');
-    mealModalTitle = document.getElementById('mealModalTitle');
-    mealTimeInput = document.getElementById('mealTimeInput');
-    mealNameInput = document.getElementById('mealNameInput');
-    mealAmountInput = document.getElementById('mealAmountInput');
-    mealFanStrengthInput = document.getElementById('mealFanStrengthInput');
-    mealFanDirectionInput = document.getElementById('mealFanDirectionInput');
-    mealSwingModeCheckbox = document.getElementById('mealSwingModeCheckbox');
-    mealAudioInput = document.getElementById('mealAudioInput');
-    mealAudioStatus = document.getElementById('mealAudioStatus');
-    mealAudioPreview = document.getElementById('mealAudioPreview');
-    saveMealDetailBtn = document.getElementById('saveMealDetailBtn');
-    deleteMealDetailBtn = document.getElementById('deleteMealDetailBtn');
-    cancelMealDetailBtn = document.getElementById('cancelMealDetailBtn');
-
-    animalTypeSelect = document.getElementById('animalType');
-    animalSpeciesSelect = document.getElementById('animalSpecies');
-    animalCountInput = document.getElementById('animalCount');
-    animalWeightKgInput = document.getElementById('animalWeightKg');
-    lifeStageActivitySelect = document.getElementById('lifeStageActivity');
-    recommendedAmountSpan = document.getElementById('recommendedAmount');
-    calculationNotesSpan = document.getElementById('calculationNotes');
-    applyRecommendedAmountBtn = document.getElementById('applyRecommendedAmountBtn');
-
-    wifiSsidInput = document.getElementById('wifiSsidInput');
-    wifiPasswordInput = document.getElementById('wifiPasswordInput');
+    // Populate DOMElements object
+    const ids = [
+        'deviceSelectionSection', 'deviceIdInput', 'setDeviceIdBtn', 'mainContentContainer',
+        'deviceStatusCircle', 'deviceStatusText', 'customAlertOverlay', 'customAlertContent',
+        'customAlertTitle', 'customAlertMessage', 'customAlertOkButton', 'newNotificationToast',
+        'newNotificationToastMessage', 'calibrationModal', 'startCalibrationTestBtn',
+        'calibrationStatus', 'calibratedWeightInput', 'saveCalibrationBtn', 'closeCalibrationModalBtn',
+        'mealDetailModal', 'mealModalTitle', 'mealNameInput', 'specificDateBtn', 'specificDateInput',
+        'specificDateDisplay', 'mealAmountInput', 'mealFanStrengthInput', 'mealFanDirectionInput',
+        'mealSwingModeCheckbox', 'mealAudioInput', 'mealAudioStatus', 'mealAudioPreview',
+        'saveMealDetailBtn', 'deleteMealDetailBtn', 'cancelMealDetailBtn', 'forceSetupOverlay',
+        'goToSettingsBtn', 'feedNowBtn', 'checkFoodLevelBtn', 'checkAnimalMovementBtn',
+        'currentFoodLevelDisplay', 'lastMovementDisplay', 'makenoiseAudioInput', 'makenoiseAudioStatus',
+        'makenoiseBtn', 'mealListContainer', 'addMealCardBtn', 'wifiSsidInput', 'wifiPasswordInput',
+        'timeZoneOffsetSelect', 'bottleSizeSelect', 'customBottleHeightInput', 'openCalibrationModalBtn',
+        'currentGramsPerSecondDisplay', 'logoutBtn', 'settingsNavDot', 'notifications-section',
+        'notificationHistoryList', 'animal-calculator-section', 'animalCount', 'weightInputContainer',
+        'animalWeightKg', 'lifeStageActivityContainer', 'recommendedAmount', 'calculationNotes',
+        'applyRecommendedAmountBtn', 'hoursColumn', 'minutesColumn'
+    ];
+    ids.forEach(id => DOMElements[id] = document.getElementById(id));
 
     // --- Initial Setup ---
-    // Check for saved Device ID
+    setupCustomTimePicker();
+    setupCustomSelects();
     const savedDeviceId = localStorage.getItem('pawtonomous_device_id');
     if (savedDeviceId) {
-        deviceIdInput.value = savedDeviceId;
         setAndLoadDeviceId(savedDeviceId);
-        // listenToDeviceStatus() is called inside setAndLoadDeviceId
     } else {
-        // If no saved ID, show device selection section
-        document.querySelector('.device-selection-section').style.display = 'block';
-        mainContentContainer.style.display = 'none';
-        updateDeviceStatusUI(false); // Ensure UI is offline initially
+        DOMElements.deviceSelectionSection.style.display = 'block';
     }
 
     // --- Event Listeners ---
-
-    // Device ID setup
-    setDeviceIdBtn.addEventListener('click', () => {
-        const inputId = deviceIdInput.value.trim();
-        if (inputId) {
-            setAndLoadDeviceId(inputId);
-        } else {
-            showCustomAlert("ข้อผิดพลาด", "กรุณากรอก Device ID.", "error");
-        }
+    DOMElements.setDeviceIdBtn.addEventListener('click', () => {
+        const id = DOMElements.deviceIdInput.value.trim();
+        if (id) setAndLoadDeviceId(id);
     });
 
-    // Tab Navigation
-    document.querySelectorAll('.nav-item').forEach(button => {
-        button.addEventListener('click', (e) => {
-            showSection(e.currentTarget.dataset.target);
+    DOMElements.logoutBtn.addEventListener('click', handleLogout);
+
+    document.querySelectorAll('.nav-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (!btn.disabled) showSection(btn.dataset.target);
         });
     });
+    
+    DOMElements.goToSettingsBtn.addEventListener('click', () => showSection('device-settings-section'));
 
-    // Custom Alert OK button
-    customAlertOkButton.addEventListener('click', () => hideModal(customAlertOverlay));
+    // Modals
+    DOMElements.closeCalibrationModalBtn.addEventListener('click', () => hideModal(DOMElements.calibrationModal));
+    DOMElements.cancelMealDetailBtn.addEventListener('click', () => hideModal(DOMElements.mealDetailModal));
 
-    // Toast Notification click
-    newNotificationToast.addEventListener('click', () => {
-        newNotificationToast.classList.remove('show');
-        openNotificationModal();
+    // Settings
+    [DOMElements.timeZoneOffsetSelect, DOMElements.bottleSizeSelect].forEach(el => el.addEventListener('change', (e) => saveSettingsToFirebase(e.target.id.includes('timeZone') ? 'timezone' : 'bottlesize')));
+    [DOMElements.customBottleHeightInput, DOMElements.wifiSsidInput, DOMElements.wifiPasswordInput].forEach(el => el.addEventListener('input', (e) => saveSettingsToFirebase(e.target.id.includes('wifi') ? 'wifi' : 'bottlesize')));
+    
+    // Calibration
+    DOMElements.openCalibrationModalBtn.addEventListener('click', openCalibrationModal);
+    DOMElements.startCalibrationTestBtn.addEventListener('click', startCalibrationTest);
+    DOMElements.saveCalibrationBtn.addEventListener('click', saveCalibration);
+    DOMElements.calibratedWeightInput.addEventListener('input', () => {
+        DOMElements.saveCalibrationBtn.disabled = isNaN(parseFloat(DOMElements.calibratedWeightInput.value)) || parseFloat(DOMElements.calibratedWeightInput.value) <= 0;
     });
-
-    // Notification Modal buttons
-    // openNotificationBtn.addEventListener('click', openNotificationModal); // Removed from HTML
-    closeNotificationModalBtn.addEventListener('click', closeNotificationModal);
 
     // Dashboard Actions
-    if (feedNowBtn) feedNowBtn.addEventListener('click', feedNow);
-    if (checkFoodLevelBtn) checkFoodLevelBtn.addEventListener('click', checkFoodLevel);
-    if (checkAnimalMovementBtn) checkAnimalMovementBtn.addEventListener('click', checkAnimalMovement);
-    
-    // Make Noise
-    if (makenoiseAudioInput && makenoiseAudioStatus && makenoiseBtn) {
-        makenoiseAudioInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                selectedMakeNoiseFile = e.target.files[0];
-                makenoiseAudioStatus.textContent = `พร้อมอัปโหลด: ${selectedMakeNoiseFile.name}`;
-                // Only enable if a file is selected AND device is online
-                if (deviceStatusCircle.classList.contains('online') || deviceStatusCircle.classList.contains('low-battery')) { 
-                    makenoiseBtn.disabled = false;
-                }
-            } else {
-                selectedMakeNoiseFile = null;
-                makenoiseAudioStatus.textContent = '';
-                makenoiseBtn.disabled = true;
-            }
-        });
-    }
-    if (makenoiseBtn) makenoiseBtn.addEventListener('click', playMakeNoise);
-
-    // System Settings
-    if (timeZoneOffsetSelect) {
-        timeZoneOffsetSelect.addEventListener('change', () => saveSettingsToFirebase('timezone'));
-    }
-    if (bottleSizeSelect && customBottleHeightInput) {
-        bottleSizeSelect.addEventListener('change', () => {
-            if (bottleSizeSelect.value === 'custom') {
-                customBottleHeightInput.style.display = 'block';
-                customBottleHeightInput.focus();
-            } else {
-                customBottleHeightInput.style.display = 'none';
-            }
-            saveSettingsToFirebase('bottlesize');
-        });
-        customBottleHeightInput.addEventListener('input', () => saveSettingsToFirebase('bottlesize'));
-    }
-    if (wifiSsidInput) wifiSsidInput.addEventListener('input', () => saveSettingsToFirebase('wifi'));
-    if (wifiPasswordInput) wifiPasswordInput.addEventListener('input', () => saveSettingsToFirebase('wifi'));
-
-    // Calibration Modal
-    if (openCalibrationModalBtn) openCalibrationModalBtn.addEventListener('click', openCalibrationModal);
-    if (closeCalibrationModalBtn) closeCalibrationModalBtn.addEventListener('click', () => hideModal(calibrationModal));
-    if (startCalibrationTestBtn) startCalibrationTestBtn.addEventListener('click', startCalibrationTest);
-    if (saveCalibrationBtn) saveCalibrationBtn.addEventListener('click', saveCalibration);
-    if (calibratedWeightInput) {
-        calibratedWeightInput.addEventListener('input', () => {
-            saveCalibrationBtn.disabled = isNaN(parseFloat(calibratedWeightInput.value)) || parseFloat(calibratedWeightInput.value) <= 0;
-        });
-    }
+    DOMElements.feedNowBtn.addEventListener('click', feedNow);
+    DOMElements.checkFoodLevelBtn.addEventListener('click', () => sendCommand('checkFoodLevel'));
+    DOMElements.checkAnimalMovementBtn.addEventListener('click', () => sendCommand('checkMovement'));
+    DOMElements.makenoiseAudioInput.addEventListener('change', e => {
+        const file = e.target.files[0];
+        DOMElements.makenoiseAudioStatus.textContent = file ? file.name : '';
+        DOMElements.makenoiseBtn.disabled = !file || !DOMElements.deviceStatusCircle.classList.contains('online');
+    });
+    DOMElements.makenoiseBtn.addEventListener('click', playMakeNoise);
 
     // Meal Schedule
-    if (addMealCardBtn) addMealCardBtn.addEventListener('click', () => openMealDetailModal());
-    if (saveMealDetailBtn) saveMealDetailBtn.addEventListener('click', saveMealDetail);
-    if (deleteMealDetailBtn) deleteMealDetailBtn.addEventListener('click', deleteMealDetail);
-    if (cancelMealDetailBtn) cancelMealDetailBtn.addEventListener('click', () => hideModal(mealDetailModal));
-
-    // Meal Detail Modal specific listeners
-    if (mealSwingModeCheckbox && mealFanDirectionInput) {
-        mealSwingModeCheckbox.addEventListener('change', () => {
-            mealFanDirectionInput.disabled = mealSwingModeCheckbox.checked;
-        });
-    }
-    document.querySelectorAll('.day-btn').forEach(button => {
-        button.addEventListener('click', () => {
-            button.classList.toggle('selected');
-        });
+    DOMElements.addMealCardBtn.addEventListener('click', () => openMealDetailModal());
+    DOMElements.saveMealDetailBtn.addEventListener('click', saveMealDetail);
+    DOMElements.deleteMealDetailBtn.addEventListener('click', deleteMealDetail);
+    
+    // Meal Modal Logic
+    document.querySelectorAll('.day-btn:not(.date-btn)').forEach(btn => btn.addEventListener('click', () => {
+        btn.classList.toggle('selected');
+        DOMElements.specificDateInput.value = ''; // Clear specific date if a day is clicked
+        DOMElements.specificDateDisplay.textContent = '';
+        document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('disabled'));
+        DOMElements.specificDateBtn.classList.remove('selected');
+    }));
+    DOMElements.specificDateBtn.addEventListener('click', () => DOMElements.specificDateInput.click());
+    DOMElements.specificDateInput.addEventListener('change', e => {
+        if (e.target.value) {
+            document.querySelectorAll('.day-btn:not(.date-btn)').forEach(btn => btn.classList.remove('selected'));
+            document.querySelectorAll('.day-btn:not(.date-btn)').forEach(btn => btn.classList.add('disabled'));
+            DOMElements.specificDateDisplay.textContent = `วันที่ระบุ: ${new Date(e.target.value).toLocaleDateString('th-TH')}`;
+            DOMElements.specificDateBtn.classList.add('selected');
+        }
     });
-    if (mealAudioInput && mealAudioStatus && mealAudioPreview) {
-        mealAudioInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                mealAudioStatus.textContent = `ไฟล์: ${file.name}`;
-                mealAudioStatus.style.color = 'grey';
-                const fileURL = URL.createObjectURL(file);
-                mealAudioPreview.src = fileURL;
-                mealAudioPreview.style.display = 'block';
-            } else {
-                mealAudioStatus.textContent = 'ไม่มีไฟล์';
-                mealAudioStatus.style.color = 'grey';
-                mealAudioPreview.src = '';
-                mealAudioPreview.style.display = 'none';
-            }
-        });
-    }
-
+    DOMElements.mealAudioInput.addEventListener('change', e => {
+        const file = e.target.files[0];
+        DOMElements.mealAudioStatus.textContent = file ? file.name : 'ไม่มีไฟล์';
+        DOMElements.mealAudioPreview.src = file ? URL.createObjectURL(file) : '';
+        DOMElements.mealAudioPreview.style.display = file ? 'block' : 'none';
+    });
 
     // Animal Calculator
-    if (animalTypeSelect) {
-        populateAnimalType();
-        animalTypeSelect.addEventListener('change', () => {
-            updateAnimalSpecies();
-            updateRecommendedAmount();
+    populateAnimalType(DOMElements);
+    document.querySelectorAll('.custom-select-trigger').forEach(trigger => {
+        trigger.addEventListener('change', () => {
+            if (trigger.dataset.target === 'animalType') {
+                updateAnimalSpecies(DOMElements);
+            }
+            updateRecommendedAmount(DOMElements);
         });
-    }
-    if (animalSpeciesSelect) animalSpeciesSelect.addEventListener('change', updateRecommendedAmount);
-    if (animalCountInput) animalCountInput.addEventListener('input', updateRecommendedAmount);
-    if (animalWeightKgInput) animalWeightKgInput.addEventListener('input', updateRecommendedAmount);
-    if (lifeStageActivitySelect) lifeStageActivitySelect.addEventListener('change', updateRecommendedAmount);
-    if (applyRecommendedAmountBtn) applyRecommendedAmountBtn.addEventListener('click', applyRecommendedAmount);
-
-    // Initial call for animal calculator
-    updateRecommendedAmount();
+    });
+    [DOMElements.animalCount, DOMElements.animalWeightKg].forEach(input => {
+        input.addEventListener('input', () => updateRecommendedAmount(DOMElements));
+    });
+    DOMElements.applyRecommendedAmountBtn.addEventListener('click', applyRecommendedAmount);
 });

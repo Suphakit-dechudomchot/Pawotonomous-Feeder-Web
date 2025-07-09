@@ -28,15 +28,15 @@ body {
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    min-height: 100vh; /* ทำให้ body สูงเต็ม viewport */
+    min-height: 100vh;
 }
 
 main {
-    flex-grow: 1; /* ทำให้ main ขยายเต็มพื้นที่ที่เหลือ */
-    max-width: 600px; /* จำกัดความกว้างสำหรับ Desktop */
-    width: 100%; /* ใช้เต็มความกว้างใน Mobile */
-    margin: 0 auto; /* จัดกลางใน Desktop */
-    padding-bottom: 80px; /* เผื่อพื้นที่ให้ bottom-nav */
+    flex-grow: 1;
+    max-width: 600px;
+    width: 100%;
+    margin: 0 auto;
+    padding-bottom: 80px;
     box-sizing: border-box;
 }
 
@@ -79,6 +79,9 @@ p.notes {
     background-color: var(--card-background);
     border-bottom: 1px solid var(--border-color);
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    position: sticky;
+    top: 0;
+    z-index: 200;
 }
 
 .device-status-display {
@@ -108,38 +111,6 @@ p.notes {
 .status-circle.low-battery { background-color: var(--warning-color); }
 .status-text.low-battery { color: var(--warning-color); }
 
-.notification-button {
-    background: none;
-    border: none;
-    color: var(--text-light);
-    font-size: 1.2em;
-    padding: 5px;
-    cursor: pointer;
-    position: relative;
-    margin-left: 10px;
-}
-
-.notification-button:hover {
-    color: var(--primary-color);
-}
-
-.notification-dot {
-    position: absolute;
-    top: 0px;
-    right: 0px;
-    background-color: var(--error-color);
-    color: white;
-    border-radius: 50%;
-    padding: 2px 6px;
-    font-size: 0.6em;
-    font-weight: bold;
-    min-width: 15px;
-    text-align: center;
-    line-height: 1;
-    display: none;
-    border: 1px solid var(--card-background);
-}
-
 /* =================== BOTTOM NAVIGATION =================== */
 .bottom-nav {
     position: fixed;
@@ -168,8 +139,9 @@ p.notes {
     cursor: pointer;
     font-size: 0.75em;
     transition: color 0.3s ease;
-    flex: 1; /* ทำให้แต่ละปุ่มมีขนาดเท่ากัน */
-    max-width: 120px; /* จำกัดความกว้างแต่ละปุ่ม */
+    flex: 1;
+    max-width: 120px;
+    position: relative;
 }
 
 .nav-item i {
@@ -183,6 +155,22 @@ p.notes {
 
 .nav-item:hover:not(.active) {
     color: var(--secondary-color);
+}
+
+.nav-item:disabled {
+    color: #444;
+    cursor: not-allowed;
+}
+
+.nav-dot {
+    position: absolute;
+    top: 2px;
+    right: 15px;
+    width: 8px;
+    height: 8px;
+    background-color: var(--error-color);
+    border-radius: 50%;
+    border: 1px solid var(--card-background);
 }
 
 /* =================== GENERAL BUTTONS & INPUTS =================== */
@@ -199,15 +187,15 @@ button {
     justify-content: center;
     gap: 8px;
     white-space: nowrap;
+    font-family: 'Kanit', sans-serif;
 }
 
 .primary-button {
     background-color: var(--primary-color);
     color: white;
 }
-
 .primary-button:hover {
-    background-color: #A06EEA; /* Lighten primary */
+    background-color: #A06EEA;
     box-shadow: 0 4px 15px rgba(187, 134, 252, 0.3);
 }
 
@@ -216,11 +204,9 @@ button {
     color: var(--text-light);
     border: 1px solid var(--border-color);
 }
-
 .secondary-button:hover {
-    background-color: #2A2A2A; /* Darken card background */
-    color: var(--primary-color);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    background-color: #2A2A2A;
+    border-color: var(--secondary-color);
 }
 
 .success-button {
@@ -228,7 +214,7 @@ button {
     color: white;
 }
 .success-button:hover {
-    background-color: #388E3C; /* Darken success */
+    background-color: #388E3C;
 }
 
 .danger-button {
@@ -236,15 +222,15 @@ button {
     color: white;
 }
 .danger-button:hover {
-    background-color: #B71C1C; /* Darken error */
+    background-color: #B0495D;
 }
 
-.action-button { /* For Add Meal, Save Meal */
+.action-button {
     background-color: var(--secondary-color);
     color: var(--background-dark);
 }
 .action-button:hover {
-    background-color: #00BFA5; /* Darken secondary */
+    background-color: #00BFA5;
 }
 
 button:disabled {
@@ -256,14 +242,12 @@ button:disabled {
     transform: none;
 }
 
-/* Loading/Working State for Buttons */
 button.loading {
     cursor: progress;
     position: relative;
     overflow: hidden;
-    color: transparent !important; /* Hide text */
+    color: transparent !important;
 }
-
 button.loading .spinner {
     border: 3px solid rgba(255, 255, 255, 0.3);
     border-top: 3px solid white;
@@ -276,7 +260,6 @@ button.loading .spinner {
     left: 50%;
     transform: translate(-50%, -50%);
 }
-
 @keyframes spin {
     0% { transform: translate(-50%, -50%) rotate(0deg); }
     100% { transform: translate(-50%, -50%) rotate(360deg); }
@@ -285,9 +268,24 @@ button.loading .spinner {
 input[type="text"],
 input[type="number"],
 input[type="password"],
-input[type="time"],
-input[type="file"],
+input[type="date"] {
+    font-family: 'Kanit', sans-serif;
+    font-size: 1em;
+    padding: 12px 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    background-color: var(--card-background);
+    color: var(--text-light);
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+}
+
 select {
+    font-family: 'Kanit', sans-serif;
     font-size: 1em;
     padding: 12px 15px;
     border: 1px solid var(--border-color);
@@ -299,27 +297,6 @@ select {
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
-}
-
-input[type="file"] {
-    padding: 8px 12px; /* Smaller padding for file input */
-}
-
-input[type="file"]::-webkit-file-upload-button {
-    background-color: var(--secondary-color);
-    color: var(--background-dark);
-    padding: 8px 15px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    margin-right: 10px;
-}
-
-input[type="file"]::-webkit-file-upload-button:hover {
-    background-color: #00BFA5;
-}
-
-select {
     background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23BB86FC%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13%205.4l-118%20118.3L37%2074.8a17.6%2017.6%200%200%200-25%2024.7l130.5%20131.7a17.6%2017.6%200%200%200%2025%200l130.5-131.7c6.7-6.4%206.7-17.6%200-24.7z%22%2F%3E%3C%2Fsvg%3E');
     background-repeat: no-repeat;
     background-position: right 15px center;
@@ -335,9 +312,9 @@ select:focus {
 }
 
 .input-group {
-    margin-bottom: 15px;
+    margin-bottom: 20px;
+    text-align: left;
 }
-
 .input-group label {
     display: block;
     margin-bottom: 8px;
@@ -345,40 +322,34 @@ select:focus {
     color: var(--text-medium);
     font-size: 0.95em;
 }
-
 .full-width-button {
     width: 100%;
     margin-top: 10px;
 }
 
-/* =================== CONTENT SECTIONS =================== */
+/* =================== CONTENT SECTIONS & CARDS =================== */
 .main-content-container {
     padding: 20px;
+    position: relative;
 }
-
 .content-section {
-    display: none; /* Hidden by default */
-    padding: 0 10px; /* Add some horizontal padding */
+    display: none;
 }
-
 .content-section.active {
-    display: block; /* Show active section */
+    display: block;
 }
-
 .section-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
 }
-
 .section-header h2 {
     margin: 0;
     text-align: left;
     flex-grow: 1;
 }
 
-/* =================== CARDS =================== */
 .card {
     background-color: var(--card-background);
     border-radius: 12px;
@@ -387,7 +358,6 @@ select:focus {
     box-shadow: 0 4px 15px var(--shadow-color);
     border: 1px solid var(--border-color);
 }
-
 .card h3 {
     color: var(--primary-color);
     margin-top: 0;
@@ -396,41 +366,7 @@ select:focus {
     font-weight: 600;
 }
 
-.dashboard-grid {
-    display: grid;
-    gap: 20px;
-    grid-template-columns: 1fr; /* Single column for mobile */
-}
-
-@media (min-width: 600px) {
-    .dashboard-grid {
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Two columns for larger screens */
-    }
-}
-
-.status-message {
-    text-align: center;
-    font-size: 0.9em;
-    color: var(--text-medium);
-    margin-top: 15px;
-}
-
-.audio-status {
-    display: block;
-    font-size: 0.85em;
-    color: var(--text-dark);
-    margin-top: 5px;
-}
-
-.file-input-label {
-    display: block;
-    margin-bottom: 10px;
-    font-weight: 500;
-    color: var(--text-medium);
-    font-size: 0.95em;
-}
-
-/* =================== DEVICE SELECTION SECTION =================== */
+/* =================== DEVICE SELECTION & SETUP OVERLAY =================== */
 .device-selection-section {
     padding: 20px;
     background-color: var(--card-background);
@@ -442,23 +378,80 @@ select:focus {
 .device-selection-section .input-group {
     display: flex;
     gap: 10px;
-    align-items: flex-end;
-    margin-bottom: 10px;
-}
-.device-selection-section .input-group label {
-    flex-shrink: 0;
-    margin-bottom: 0;
-    align-self: center;
-}
-.device-selection-section .input-group input {
-    flex-grow: 1;
-}
-.device-selection-section .input-group button {
-    flex-shrink: 0;
-    padding: 12px 15px;
+    align-items: center;
 }
 
-/* =================== MEAL SCHEDULE SECTION =================== */
+.force-setup-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(18, 18, 18, 0.9);
+    z-index: 500;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+.force-setup-message {
+    text-align: center;
+    color: var(--text-light);
+    background-color: var(--card-background);
+    padding: 30px;
+    border-radius: 15px;
+}
+.force-setup-message i {
+    font-size: 3em;
+    color: var(--warning-color);
+    margin-bottom: 20px;
+}
+.force-setup-message h3 {
+    color: var(--warning-color);
+}
+.force-setup-message button {
+    margin-top: 20px;
+}
+
+/* =================== DASHBOARD =================== */
+.dashboard-grid {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: 1fr;
+}
+@media (min-width: 600px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+.dashboard-grid .card p {
+    color: var(--text-medium);
+    font-size: 0.9em;
+}
+.dashboard-grid .card strong {
+    color: var(--text-light);
+    font-weight: 600;
+}
+.dashboard-grid .button-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+.dashboard-grid .button-group button {
+    flex: 1;
+}
+.audio-status {
+    display: block;
+    font-size: 0.8em;
+    color: var(--text-dark);
+    margin-top: 8px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* =================== MEAL SCHEDULE =================== */
 .add-meal-card-button {
     background-color: var(--secondary-color);
     color: var(--background-dark);
@@ -466,9 +459,6 @@ select:focus {
     width: 45px;
     height: 45px;
     font-size: 1.5em;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     box-shadow: 0 4px 10px rgba(3, 218, 198, 0.3);
     flex-shrink: 0;
 }
@@ -477,29 +467,15 @@ select:focus {
 }
 
 .meal-list-cards {
-    padding: 0 10px;
-    max-height: calc(100vh - 250px); /* Adjust based on header/footer height */
+    padding: 0;
+    max-height: calc(100vh - 300px);
     overflow-y: auto;
-    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-    padding-right: 5px; /* For scrollbar space */
+    -webkit-overflow-scrolling: touch;
 }
-
-/* Scrollbar styling for dark theme */
-.meal-list-cards::-webkit-scrollbar {
-    width: 8px;
-}
-.meal-list-cards::-webkit-scrollbar-track {
-    background: var(--card-background);
-    border-radius: 10px;
-}
-.meal-list-cards::-webkit-scrollbar-thumb {
-    background: var(--border-color);
-    border-radius: 10px;
-}
-.meal-list-cards::-webkit-scrollbar-thumb:hover {
-    background: var(--text-medium);
-}
-
+.meal-list-cards::-webkit-scrollbar { width: 8px; }
+.meal-list-cards::-webkit-scrollbar-track { background: var(--card-background); }
+.meal-list-cards::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 10px; }
+.meal-list-cards::-webkit-scrollbar-thumb:hover { background: var(--text-medium); }
 
 .meal-card {
     background-color: var(--card-background);
@@ -510,13 +486,12 @@ select:focus {
     align-items: center;
     justify-content: space-between;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    transition: background-color 0.2s ease;
     cursor: pointer;
     border: 1px solid var(--border-color);
+    transition: background-color 0.2s ease;
 }
-
 .meal-card:hover {
-    background-color: #2A2A2A; /* Slightly darker on hover */
+    background-color: #2A2A2A;
 }
 
 .meal-card-left {
@@ -524,74 +499,71 @@ select:focus {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
+    gap: 4px;
 }
-
-.meal-card-time {
-    font-size: 2.2em;
-    font-weight: 700;
-    color: var(--text-light);
-    margin-bottom: 5px;
-}
-
 .meal-card-name {
-    font-size: 1em;
-    color: var(--text-medium);
-    margin-bottom: 5px;
+    font-size: 1.1em;
+    font-weight: 600;
+    color: var(--text-light);
 }
-
+.meal-card-time {
+    font-size: 2em;
+    font-weight: 700;
+    color: var(--primary-color);
+    line-height: 1;
+}
 .meal-card-days {
     font-size: 0.85em;
-    color: var(--text-dark);
+    color: var(--secondary-color);
+    font-weight: 600;
+}
+.meal-card-specific-date {
+    font-size: 0.85em;
+    color: var(--warning-color);
+    font-weight: 600;
 }
 
-/* Toggle Switch (reused from previous design, adapted for dark theme) */
+/* Toggle Switch */
 .toggle-label {
     position: relative;
-    display: inline-block;
-    width: 48px; /* Adjusted width */
-    height: 28px; /* Adjusted height */
-    margin-left: 15px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: auto;
+    cursor: pointer;
 }
-
 .toggle-label input {
     opacity: 0;
     width: 0;
     height: 0;
 }
-
 .toggle-slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    position: relative;
+    width: 48px;
+    height: 28px;
     background-color: var(--inactive-toggle-color);
     transition: .4s;
-    border-radius: 28px; /* Adjusted border-radius */
+    border-radius: 28px;
 }
-
 .toggle-slider:before {
     position: absolute;
     content: "";
-    height: 20px; /* Adjusted height */
-    width: 20px; /* Adjusted width */
+    height: 20px;
+    width: 20px;
     left: 4px;
     bottom: 4px;
     background-color: white;
     transition: .4s;
     border-radius: 50%;
 }
-
 input:checked + .toggle-slider {
     background-color: var(--active-toggle-color);
 }
-
 input:checked + .toggle-slider:before {
-    transform: translateX(20px); /* Adjusted translateX */
+    transform: translateX(20px);
 }
 
-/* Meal Detail Modal specific styles */
+/* =================== MEAL DETAIL MODAL =================== */
 .meal-detail-content {
     text-align: center;
 }
@@ -606,28 +578,9 @@ input:checked + .toggle-slider:before {
 .meal-detail-content .input-group label {
     text-align: left;
 }
-.meal-detail-content .time-picker-group {
-    margin-bottom: 30px;
-}
-.meal-detail-content input[type="time"] {
-    font-size: 2.5em;
-    font-weight: 700;
-    text-align: center;
-    background: none;
-    border: none;
-    color: var(--text-light);
-    padding: 0;
-    margin: 0 auto;
-    display: block;
-    width: fit-content;
-}
-.meal-detail-content input[type="time"]::-webkit-calendar-picker-indicator {
-    filter: invert(1); /* Make time picker icon visible on dark background */
-}
-
 .meal-detail-content .day-buttons {
     display: flex;
-    justify-content: space-around;
+    justify-content: space-between;
     gap: 5px;
     margin-top: 10px;
 }
@@ -641,16 +594,26 @@ input:checked + .toggle-slider:before {
     font-weight: 600;
     padding: 0;
     flex-shrink: 0;
-    transition: background-color 0.2s ease, color 0.2s ease;
 }
 .meal-detail-content .day-btn.selected {
     background-color: var(--primary-color);
     color: white;
 }
-.meal-detail-content .day-btn:hover:not(.selected) {
-    background-color: #444444;
+.meal-detail-content .day-btn.disabled {
+    background-color: #2a2a2a;
+    color: #555;
+    cursor: not-allowed;
 }
-
+.meal-detail-content .day-btn.date-btn.selected {
+    background-color: var(--warning-color);
+    color: var(--background-dark);
+}
+.specific-date-display {
+    color: var(--warning-color);
+    font-weight: bold;
+    margin-top: 10px;
+    display: block;
+}
 .meal-detail-content .modal-buttons {
     display: flex;
     justify-content: space-between;
@@ -660,47 +623,76 @@ input:checked + .toggle-slider:before {
 .meal-detail-content .modal-buttons button {
     flex: 1;
 }
-
-/* =================== SETTINGS CARD =================== */
-.settings-card {
-    padding: 25px;
-}
-.settings-card h3 {
-    font-size: 1.3em;
-    margin-bottom: 20px;
-    color: var(--secondary-color);
-}
-.settings-card .input-group {
-    margin-bottom: 20px;
-}
-.settings-card .input-group label {
-    font-size: 1em;
-    color: var(--text-light);
-}
-
-/* =================== CALIBRATION MODAL =================== */
-#calibrationModal .modal-content {
-    text-align: center;
-}
-#calibrationModal .status-message {
+.meal-options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: center;
     margin: 20px 0;
-    font-size: 1.1em;
-    color: var(--text-light);
 }
-#calibrationModal .input-group {
-    margin-top: 20px;
-    margin-bottom: 20px;
+.swing-mode-group, .audio-upload-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
 }
-#calibrationModal .modal-close-button {
-    margin-top: 20px;
-    background-color: var(--inactive-toggle-color);
-    color: var(--text-light);
-}
-#calibrationModal .modal-close-button:hover {
-    background-color: #444444;
+.meal-audio-preview {
+    display: none;
+    width: 100%;
+    margin-top: 10px;
 }
 
-/* =================== NOTIFICATION MODAL & TOAST =================== */
+/* Custom Time Picker */
+.custom-time-picker-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 150px;
+    position: relative;
+    margin-bottom: 20px;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 30%, black 70%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, black 30%, black 70%, transparent 100%);
+}
+.time-picker-column {
+    width: 60px;
+    height: 100%;
+    overflow-y: scroll;
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+    scroll-snap-type: y mandatory;
+}
+.time-picker-column::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+}
+.time-picker-column div {
+    height: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2em;
+    color: var(--text-medium);
+    scroll-snap-align: center;
+    transition: color 0.3s, transform 0.3s;
+}
+.time-picker-separator {
+    font-size: 2em;
+    color: var(--text-light);
+    padding: 0 10px;
+}
+.time-picker-highlight {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 50px;
+    border-top: 2px solid var(--primary-color);
+    border-bottom: 2px solid var(--primary-color);
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* =================== MODALS & NOTIFICATIONS =================== */
 .modal {
     display: none;
     position: fixed;
@@ -714,7 +706,6 @@ input:checked + .toggle-slider:before {
     justify-content: center;
     align-items: center;
 }
-
 .modal-content {
     background-color: var(--background-dark);
     margin: auto;
@@ -724,27 +715,20 @@ input:checked + .toggle-slider:before {
     width: 90%;
     max-width: 500px;
     position: relative;
-    box-sizing: border-box;
     border: 1px solid var(--border-color);
 }
-
 .modal-close-button {
-    background-color: var(--primary-color);
-    color: white;
+    background-color: var(--inactive-toggle-color);
+    color: var(--text-light);
     width: 100%;
     margin-top: 20px;
 }
-.modal-close-button:hover {
-    background-color: #A06EEA;
-}
-
 .notification-list {
     list-style: none;
     padding: 0;
-    max-height: 300px; /* Limit height for scroll */
+    max-height: 40vh;
     overflow-y: auto;
     margin-top: 20px;
-    padding-right: 5px; /* For scrollbar */
 }
 .notification-list li {
     background-color: var(--card-background);
@@ -752,7 +736,6 @@ input:checked + .toggle-slider:before {
     margin-bottom: 10px;
     padding: 12px 15px;
     border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
     font-size: 0.9em;
     color: var(--text-light);
     display: flex;
@@ -764,12 +747,11 @@ input:checked + .toggle-slider:before {
     color: var(--text-dark);
     text-align: right;
 }
-
 .new-notification-toast {
     position: fixed;
     top: 20px;
     right: 20px;
-    background-color: rgba(187, 134, 252, 0.95); /* primary-color with opacity */
+    background-color: rgba(187, 134, 252, 0.95);
     color: white;
     padding: 15px 20px;
     border-radius: 10px;
@@ -783,28 +765,13 @@ input:checked + .toggle-slider:before {
     opacity: 0;
     visibility: hidden;
     transform: translateX(100%);
-    transition: opacity 0.5s ease, transform 0.5s ease, visibility 0.5s ease;
+    transition: all 0.5s ease;
 }
-
 .new-notification-toast.show {
     opacity: 1;
     visibility: visible;
     transform: translateX(0);
 }
-
-.new-notification-toast i {
-    font-size: 1.2em;
-    flex-shrink: 0;
-}
-
-.new-notification-toast p {
-    margin: 0;
-    font-size: 0.95em;
-    line-height: 1.3;
-    flex-grow: 1;
-}
-
-/* Custom Alert Styles */
 .custom-alert-overlay {
     position: fixed;
     top: 0;
@@ -815,22 +782,19 @@ input:checked + .toggle-slider:before {
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 1002; /* Highest z-index */
+    z-index: 1002;
     opacity: 0;
     visibility: hidden;
-    transition: opacity 0.3s ease, visibility 0.3s ease;
+    transition: opacity 0.3s ease;
 }
-
 .custom-alert-overlay.show {
     opacity: 1;
     visibility: visible;
 }
-
 .custom-alert-content {
     background-color: var(--card-background);
     padding: 30px;
     border-radius: 15px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     text-align: center;
     max-width: 400px;
     width: 90%;
@@ -839,173 +803,121 @@ input:checked + .toggle-slider:before {
     transition: transform 0.3s ease, opacity 0.3s ease;
     border: 1px solid var(--border-color);
 }
-
 .custom-alert-overlay.show .custom-alert-content {
     transform: translateY(0);
     opacity: 1;
 }
 
-.custom-alert-content h3 {
-    color: var(--primary-color);
-    margin-top: 0;
-    margin-bottom: 20px;
-    font-size: 1.6em;
-}
-
-.custom-alert-content p {
-    color: var(--text-light);
-    margin-bottom: 30px;
-    font-size: 1.1em;
-}
-
-.custom-alert-content button {
-    background-color: var(--primary-color);
-    color: white;
-    padding: 12px 30px;
-    border-radius: 8px;
-    font-weight: bold;
-    transition: background-color 0.3s ease;
-    width: auto;
-    display: inline-block;
-}
-
-.custom-alert-content.success h3 { color: var(--success-color); }
-.custom-alert-content.error h3 { color: var(--error-color); }
-.custom-alert-content.warning h3 { color: var(--warning-color); }
-.custom-alert-content.info h3 { color: var(--info-color); }
-
-
-/* =================== ANIMAL CALCULATOR SECTION =================== */
-.calculator-card {
-    padding: 25px;
-}
+/* =================== ANIMAL CALCULATOR & CUSTOM SELECT =================== */
 .calculator-card .result-display {
     text-align: center;
     margin-top: 30px;
     padding: 15px 20px;
-    background-color: #1A1A1A; /* Darker background for result */
+    background-color: #1A1A1A;
     border-radius: 8px;
     border: 1px dashed var(--secondary-color);
     color: var(--text-light);
     font-size: 1.1em;
     font-weight: 500;
 }
-.calculator-card .result-display strong {
-    color: var(--primary-color);
-}
-.calculator-card .highlight-amount {
+.highlight-amount {
     color: var(--secondary-color);
     font-size: 1.2em;
     margin-left: 5px;
 }
-.calculator-card .calculation-notes {
+.calculation-notes {
     font-size: 0.85em;
     color: var(--text-dark);
     margin-top: 10px;
 }
 
+/* Custom Select Dropdown */
+.custom-select-wrapper {
+    position: relative;
+    width: 100%;
+}
+.custom-select-trigger {
+    border: 1px solid var(--border-color);
+    background-color: var(--card-background);
+    color: var(--text-light);
+    padding: 12px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    position: relative;
+    font-size: 1em;
+}
+.custom-select-trigger::after {
+    content: '\f078'; /* Font Awesome down arrow */
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--primary-color);
+    transition: transform 0.3s ease;
+}
+.custom-select-wrapper.open .custom-select-trigger::after {
+    transform: translateY(-50%) rotate(180deg);
+}
+.custom-options {
+    position: absolute;
+    top: 105%;
+    left: 0;
+    right: 0;
+    background-color: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    z-index: 10;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+    box-shadow: 0 4px 15px var(--shadow-color);
+}
+.custom-select-wrapper.open .custom-options {
+    display: block;
+}
+.custom-option {
+    padding: 12px 15px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.custom-option:hover {
+    background-color: #2A2A2A;
+}
+.custom-option.selected {
+    background-color: var(--primary-color);
+    color: white;
+}
+.custom-option::after {
+    content: '\f00c'; /* Font Awesome check mark */
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    color: var(--secondary-color);
+    display: none;
+}
+.custom-option.selected::after {
+    display: inline-block;
+}
+
 /* =================== RESPONSIVE ADJUSTMENTS =================== */
 @media (max-width: 480px) {
-    .header-area {
-        padding: 10px 15px;
-    }
-    h1.app-name {
-        font-size: 1.5em;
-    }
-    .notification-button {
-        font-size: 1em;
-    }
-    .notification-dot {
-        top: -2px;
-        right: -2px;
-        padding: 1px 5px;
-        font-size: 0.55em;
-        min-width: 12px;
-    }
-    .bottom-nav {
-        padding: 8px 0;
-    }
-    .nav-item {
-        font-size: 0.7em;
-        padding: 3px 5px;
-    }
-    .nav-item i {
-        font-size: 1.2em;
-    }
-    main {
-        padding-bottom: 70px; /* Adjust for smaller bottom nav */
-    }
-    .content-section {
-        padding: 0 15px;
-    }
-    h2 {
-        font-size: 1.4em;
-        margin-top: 15px;
-        margin-bottom: 15px;
-    }
-    .card {
-        padding: 15px;
-    }
-    button {
-        padding: 10px 15px;
-        font-size: 0.9em;
-    }
-    input, select {
-        padding: 10px 12px;
-        font-size: 0.9em;
-    }
-    .meal-card {
-        padding: 12px 15px;
-    }
-    .meal-card-time {
-        font-size: 1.8em;
-    }
-    .meal-card-name {
-        font-size: 0.9em;
-    }
-    .meal-card-days {
-        font-size: 0.75em;
-    }
-    .toggle-label {
-        width: 40px;
-        height: 24px;
-    }
-    .toggle-slider:before {
-        height: 18px;
-        width: 18px;
-        left: 3px;
-        bottom: 3px;
-    }
-    input:checked + .toggle-slider:before {
-        transform: translateX(16px);
-    }
-    .meal-detail-content input[type="time"] {
-        font-size: 2em;
-    }
-    .meal-detail-content .day-btn {
-        width: 32px;
-        height: 32px;
-        font-size: 0.8em;
-    }
-    .new-notification-toast {
-        top: 10px;
-        right: 10px;
-        left: 10px;
-        max-width: unset;
-        padding: 12px 15px;
-        font-size: 0.85em;
-    }
-    .custom-alert-content {
-        padding: 20px;
-    }
-    .custom-alert-content h3 {
-        font-size: 1.4em;
-    }
-    .custom-alert-content p {
-        font-size: 1em;
-    }
-    .custom-alert-content button {
-        padding: 10px 20px;
-        font-size: 0.9em;
-    }
+    .header-area { padding: 10px 15px; }
+    h1.app-name { font-size: 1.5em; }
+    .bottom-nav { padding: 8px 0; }
+    .nav-item { font-size: 0.7em; padding: 3px 5px; }
+    .nav-item i { font-size: 1.2em; }
+    main { padding-bottom: 70px; }
+    h2 { font-size: 1.4em; margin: 15px 0; }
+    .card { padding: 15px; }
+    button { padding: 10px 15px; font-size: 0.9em; }
+    input, select { padding: 10px 12px; font-size: 0.9em; }
+    .meal-card-time { font-size: 1.8em; }
+    .meal-card-name { font-size: 1em; }
+    .meal-detail-content .day-btn { width: 34px; height: 34px; font-size: 0.8em; }
+    .new-notification-toast { top: 10px; right: 10px; left: 10px; max-width: unset; }
+    .custom-alert-content { padding: 20px; }
 }
