@@ -33,7 +33,7 @@ const auth = getAuth(firebaseApp);
 // คีย์ควรจะเป็นสตริงเดียว ไม่ใช่การต่อกันของหลายๆ คีย์
 const supabaseClient = supabase.createClient(
     'https://gnkgamizqlosvhkuwzhc.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdua2dhbWl6cWxvc3Zoa3V3emhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0MzY3MTUsImV4cCI6MjA2NjAxMjcxNX0.Dq5oPJ2zV8UUyoNakh4JKzDary8MIGZLDG5BppF_pgc' // ⬅️⬅️⬅️ เปลี่ยนตรงนี้ด้วยคีย์จริงของคุณ
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdua2dhbWl6cWxvc3Zoa3V3emhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0MzY3MTUsImV4cCI6MjA2NjAxMjcxNX0.Dq5oPJ2zV8UUyoNakh4JKzDary8MIGZLDN5BppF_pgc' // ⬅️⬅️⬅️ เปลี่ยนตรงนี้ด้วยคีย์จริงของคุณ
 );
 
 // ===============================================
@@ -55,6 +55,8 @@ let lastNotificationId = '';
 let gramsPerSecond = null; // Store calibration value globally
 let hasShownInitialSetupOverlay = false; // ✅ Flag to show overlay only once per session
 let isAuthReady = false; // ✅ Flag to indicate if Firebase Auth is ready
+let countdownInterval = null; // สำหรับเก็บ Interval ID ของตัวนับถอยหลัง
+let allMealsData = {}; // เก็บข้อมูลมื้ออาหารทั้งหมดสำหรับใช้ใน countdown
 
 // ===============================================
 // ✅ Utility Functions
@@ -82,6 +84,14 @@ function showSection(sectionId) {
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.toggle('active', item.dataset.target === sectionId);
     });
+
+    // จัดการตัวนับถอยหลังเมื่อเปลี่ยน Section
+    if (sectionId === 'meal-schedule-section') {
+        startCountdown();
+    } else {
+        stopCountdown();
+    }
+
     if (sectionId === 'notifications-section') {
         fetchAndDisplayNotifications();
     }
@@ -167,7 +177,7 @@ async function setAndLoadDeviceId(id) {
             // Load all settings and data for the new device ID
             await listenToDeviceStatus(); // Sets up listener, doesn't wait for data to arrive
             await loadSettingsFromFirebase(); // This will also trigger the initial setup check
-            await loadMeals();
+            await loadMeals(); // โหลดมื้ออาหารและจะเรียก updateCountdownDisplay
             await setupNotificationListener(); // Sets up listener
             console.log("All initial data loading functions initiated.");
         } catch (error) {
@@ -661,8 +671,8 @@ async function loadMeals() {
                 resolve(snapshot);
             }, { onlyOnce: true });
         });
-        const mealsData = snapshot.val();
-        const mealsArray = mealsData ? Object.entries(mealsData).map(([id, data]) => ({ id, ...data })) : [];
+        allMealsData = snapshot.val() || {}; // Store all meals globally
+        const mealsArray = allMealsData ? Object.entries(allMealsData).map(([id, data]) => ({ id, ...data })) : [];
         mealsArray.sort((a, b) => (a.time || "00:00").localeCompare(b.time || "00:00"));
         
         DOMElements.mealListContainer.innerHTML = ''; // Clear loading message
@@ -671,6 +681,8 @@ async function loadMeals() {
         } else {
             DOMElements.mealListContainer.innerHTML = '<p class="notes" style="text-align: center;">ยังไม่มีมื้ออาหารที่ตั้งค่าไว้</p>';
         }
+        // อัปเดตตัวนับถอยหลังหลังจากโหลดมื้ออาหาร
+        updateCountdownDisplay();
     } catch (error) {
         console.error("Error loading meals:", error);
         await showCustomAlert("ข้อผิดพลาด", `ไม่สามารถโหลดมื้ออาหารได้: ${error.message}`, "error");
@@ -718,6 +730,7 @@ function addMealCard(mealData) {
             // ✅ Use set() for modular SDK
             await set(ref(db, `device/${currentDeviceId}/meals/${id}/enabled`), isEnabled);
             await showCustomAlert("สำเร็จ", `มื้อ ${name} ถูก ${isEnabled ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}`, "info");
+            updateCountdownDisplay(); // อัปเดตตัวนับถอยหลังเมื่อสถานะมื้ออาหารเปลี่ยน
         } catch (error) {
             console.error("Error toggling meal status:", error);
             await showCustomAlert("ข้อผิดพลาด", `ไม่สามารถเปลี่ยนสถานะมื้ออาหารได้: ${error.message}`, "error");
@@ -730,9 +743,7 @@ function addMealCard(mealData) {
 function closeMealDetailModal() {
     if (!DOMElements.mealDetailModal) return; // Safety check
     hideModal(DOMElements.mealDetailModal);
-    if (DOMElements.applyRecommendedAmountBtn) {
-        DOMElements.applyRecommendedAmountBtn.disabled = true; // Disable when modal is closed
-    }
+    // DOMElements.applyRecommendedAmountBtn.disabled = true; // ปุ่มนี้อยู่ในหน้าคำนวณ ไม่ได้อยู่ใน modal
 }
 
 // Open Meal Detail Modal for Add/Edit
@@ -811,10 +822,6 @@ async function openMealDetailModal(mealId = null, prefillData = null) {
     }
 
     showModal(DOMElements.mealDetailModal);
-    // ✅ 6. เปิดใช้งานปุ่มนำไปสร้างมื้ออาหารเมื่อ Modal เปิด
-    if (DOMElements.applyRecommendedAmountBtn) {
-        DOMElements.applyRecommendedAmountBtn.disabled = false; 
-    }
 }
 
 async function saveMealDetail() {
@@ -902,7 +909,7 @@ async function saveMealDetail() {
         
         await showCustomAlert("สำเร็จ", "บันทึกมื้ออาหารเรียบร้อย", "success");
         closeMealDetailModal(); // ✅ Use new close function
-        loadMeals();
+        loadMeals(); // Reload meals to update the list and countdown
     } catch (error) {
         console.error("Error saving meal:", error);
         await showCustomAlert("ผิดพลาด", `ไม่สามารถบันทึกได้: ${error.message}`, "error");
@@ -917,9 +924,10 @@ async function deleteMealDetail() {
         return;
     }
     
-    const confirm = await showCustomAlert("ยืนยันการลบ", "คุณแน่ใจหรือไม่ที่จะลบมื้ออาหารนี้?", "warning");
-    // In a real confirmation modal, you'd check the user's choice.
-    // For this simple alert, we assume 'OK' means proceed.
+    const confirmDelete = await showCustomAlert("ยืนยันการลบ", "คุณแน่ใจหรือไม่ที่จะลบมื้ออาหารนี้?", "warning");
+    // ในการใช้งานจริง คุณต้องมี modal ยืนยันที่มีปุ่ม Yes/No
+    // สำหรับตอนนี้ showCustomAlert เป็นแค่ alert ธรรมดา จึงไม่มีการตรวจสอบ confirmDelete
+    // หากต้องการการยืนยันจริง ต้องสร้าง modal ยืนยันที่มี callback สำหรับ Yes/No
 
     setButtonState(DOMElements.deleteMealDetailBtn, true);
     try {
@@ -927,7 +935,7 @@ async function deleteMealDetail() {
         await remove(ref(db, `device/${currentDeviceId}/meals/${activeMealId}`));
         await showCustomAlert("สำเร็จ", "ลบมื้ออาหารแล้ว", "success");
         closeMealDetailModal(); // ✅ Use new close function
-        loadMeals();
+        loadMeals(); // Reload meals to update the list and countdown
     } catch (error) {
         await showCustomAlert("ผิดพลาด", `ไม่สามารถลบได้: ${error.message}`, "error");
     } finally {
@@ -978,7 +986,16 @@ async function feedNow() {
             return;
         }
 
-        // ✅ Use query, orderByChild, limitToFirst for modular SDK
+        // ✅ ใช้ค่าจาก input feedNowAmountInput แทนการอิงจากมื้ออาหารแรก
+        const amountToFeed = parseInt(DOMElements.feedNowAmountInput.value);
+        if (isNaN(amountToFeed) || amountToFeed <= 0) {
+            await showCustomAlert("ข้อผิดพลาด", "กรุณาระบุปริมาณอาหารที่ถูกต้อง (อย่างน้อย 1 กรัม)", "error");
+            setButtonState(DOMElements.feedNowBtn, false);
+            return;
+        }
+
+        // ใช้ค่า fanStrength, fanDirection, swingMode จากมื้ออาหารแรกที่เปิดใช้งาน หากมี
+        let mealToDispense = {};
         const mealsQuery = query(ref(db, `device/${currentDeviceId}/meals`), orderByChild('enabled'), limitToFirst(1));
         const mealsSnapshot = await new Promise(resolve => {
             onValue(mealsQuery, (snapshot) => {
@@ -986,14 +1003,11 @@ async function feedNow() {
             }, { onlyOnce: true });
         });
         const meals = mealsSnapshot.val();
-        if (!meals) {
-            await showCustomAlert("ผิดพลาด", "ไม่พบมื้ออาหารที่เปิดใช้งาน", "error");
-            setButtonState(DOMElements.feedNowBtn, false);
-            return;
+        if (meals) {
+            mealToDispense = Object.values(meals)[0];
         }
-        const mealToDispense = Object.values(meals)[0];
-        
-        const durationSeconds = mealToDispense.amount / currentGramsPerSecond;
+
+        const durationSeconds = amountToFeed / currentGramsPerSecond;
         if (durationSeconds <= 0) {
             await showCustomAlert("ข้อผิดพลาด", "ปริมาณอาหารหรือค่าการสอบเทียบไม่ถูกต้อง", "error");
             setButtonState(DOMElements.feedNowBtn, false);
@@ -1002,13 +1016,13 @@ async function feedNow() {
 
         if (await sendCommand('feedNow', {
             duration_seconds: durationSeconds.toFixed(2),
-            fanStrength: mealToDispense.fanStrength || 1,
-            fanDirection: mealToDispense.fanDirection || 90,
-            swingMode: mealToDispense.swingMode || false,
+            fanStrength: mealToDispense.fanStrength || 1, // ใช้ค่าจากมื้อแรกที่เปิดใช้งาน หรือ default
+            fanDirection: mealToDispense.fanDirection || 90, // ใช้ค่าจากมื้อแรกที่เปิดใช้งาน หรือ default
+            swingMode: mealToDispense.swingMode || false, // ใช้ค่าจากมื้อแรกที่เปิดใช้งาน หรือ default
             noiseFile: mealToDispense.audioUrl || null,
             originalNoiseFileName: mealToDispense.originalNoiseFileName || null,
         })) {
-            await showCustomAlert("กำลังให้อาหาร", `ส่งคำสั่งให้อาหาร ${mealToDispense.amount} กรัม (${durationSeconds.toFixed(1)} วินาที) แล้ว. กรุณารอ...`, "info");
+            await showCustomAlert("กำลังให้อาหาร", `ส่งคำสั่งให้อาหาร ${amountToFeed} กรัม (${durationSeconds.toFixed(1)} วินาที) แล้ว. กรุณารอ...`, "info");
         }
     } catch (error) {
         console.error("Error in feedNow:", error);
@@ -1064,6 +1078,163 @@ function applyRecommendedAmount() {
 }
 
 // ===============================================
+// ✅ Next Meal Countdown Logic
+// ===============================================
+
+const dayMap = {
+    'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6
+};
+const dayNamesThai = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+const monthNamesThai = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+
+function findNextMeal(allMeals, timeZoneOffset) {
+    if (!allMeals || Object.keys(allMeals).length === 0 || timeZoneOffset === null) {
+        return { nextMeal: null, nextTimestamp: null };
+    }
+
+    let earliestNextMealTimestamp = Infinity;
+    let nextMealData = null;
+
+    const nowUtc = Date.now(); // Current UTC timestamp in milliseconds
+
+    for (const mealId in allMeals) {
+        const meal = allMeals[mealId];
+        if (!meal.enabled) continue; // Skip disabled meals
+
+        const [mealHour, mealMinute] = meal.time.split(':').map(Number);
+
+        let potentialNextTimestamp = null;
+
+        if (meal.specificDate) {
+            // Specific date meal
+            // Parse specific date into a Date object (UTC midnight)
+            const specificDateUtc = new Date(meal.specificDate + 'T00:00:00Z').getTime();
+
+            // Calculate meal time in UTC based on specific date and timezone offset
+            // mealTimeUtc represents the exact moment the meal should occur in UTC
+            const mealTimeUtc = specificDateUtc + (mealHour * 3600 + mealMinute * 60) * 1000 - (timeZoneOffset * 3600 * 1000);
+
+            if (mealTimeUtc > nowUtc) {
+                potentialNextTimestamp = mealTimeUtc;
+            }
+        } else if (meal.days && meal.days.length > 0) {
+            // Recurring meal
+            const currentDayUtc = new Date(nowUtc).getUTCDay(); // 0 (Sunday) to 6 (Saturday)
+            const currentHourUtc = new Date(nowUtc).getUTCHours();
+            const currentMinuteUtc = new Date(nowUtc).getUTCMinutes();
+
+            for (const dayAbbr of meal.days) {
+                const targetDayOfWeek = dayMap[dayAbbr];
+                if (targetDayOfWeek === undefined) continue;
+
+                let daysToAdd = (targetDayOfWeek - currentDayUtc + 7) % 7;
+
+                // If it's today (daysToAdd === 0) but the meal time (adjusted to UTC) has already passed
+                // We need to compare the meal time in the device's local time with the current local time.
+                // Or, more simply, compare the calculated UTC timestamp of the meal with nowUtc.
+                
+                // Calculate the timestamp for today's meal at the specified time, adjusted for timezone
+                const todayMealUtc = new Date(nowUtc);
+                todayMealUtc.setUTCHours(mealHour, mealMinute, 0, 0);
+                const todayMealUtcAdjustedForTZ = todayMealUtc.getTime() - (timeZoneOffset * 3600 * 1000);
+
+                if (daysToAdd === 0 && todayMealUtcAdjustedForTZ <= nowUtc) {
+                    daysToAdd = 7; // Schedule for next week
+                }
+
+                // Calculate the timestamp for the next occurrence of this meal in UTC
+                const nextOccurrenceUtc = new Date(nowUtc + daysToAdd * 24 * 3600 * 1000);
+                nextOccurrenceUtc.setUTCHours(mealHour, mealMinute, 0, 0);
+
+                // This candidateTimestamp is already in UTC, representing the exact time the meal should occur
+                const candidateTimestamp = nextOccurrenceUtc.getTime() - (timeZoneOffset * 3600 * 1000);
+
+                if (candidateTimestamp > nowUtc) {
+                    if (potentialNextTimestamp === null || candidateTimestamp < potentialNextTimestamp) {
+                        potentialNextTimestamp = candidateTimestamp;
+                    }
+                }
+            }
+        }
+
+        if (potentialNextTimestamp !== null && potentialNextTimestamp < earliestNextMealTimestamp) {
+            earliestNextMealTimestamp = potentialNextTimestamp;
+            nextMealData = meal;
+        }
+    }
+
+    if (nextMealData) {
+        return { nextMeal: nextMealData, nextTimestamp: earliestNextMealTimestamp };
+    } else {
+        return { nextMeal: null, nextTimestamp: null };
+    }
+}
+
+
+function updateCountdownDisplay() {
+    if (!DOMElements.nextMealCountdownDisplay || !DOMElements.nextMealTimeDisplay) return;
+
+    const { nextMeal, nextTimestamp } = findNextMeal(allMealsData, parseFloat(DOMElements.timeZoneOffsetSelect.value));
+
+    if (nextMeal && nextTimestamp !== Infinity) {
+        const now = Date.now();
+        let timeLeft = nextTimestamp - now;
+
+        if (timeLeft <= 0) {
+            // If time has passed, recalculate for the next meal (e.g., if a meal just occurred)
+            // This is a simple re-trigger; for robust systems, a server-side check or more complex client-side logic might be needed
+            // For now, just display a message and let the next second's update re-evaluate
+            DOMElements.nextMealCountdownDisplay.textContent = "กำลังให้อาหาร...";
+            DOMElements.nextMealTimeDisplay.textContent = "";
+            loadMeals(); // Re-load meals to trigger re-evaluation of next meal
+            return;
+        }
+
+        const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+        timeLeft %= (1000 * 60 * 60 * 24);
+        const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+        timeLeft %= (1000 * 60 * 60);
+        const minutes = Math.floor(timeLeft / (1000 * 60));
+        timeLeft %= (1000 * 60);
+        const seconds = Math.floor(timeLeft / 1000);
+
+        let countdownString = "จะให้อาหารในอีก ";
+        if (days > 0) countdownString += `${days} วัน `;
+        countdownString += `${String(hours).padStart(2, '0')} ชั่วโมง ${String(minutes).padStart(2, '0')} นาที ${String(seconds).padStart(2, '0')} วินาที`;
+        
+        DOMElements.nextMealCountdownDisplay.textContent = countdownString;
+
+        // Display exact next meal time
+        const nextMealDateObj = new Date(nextTimestamp + (parseFloat(DOMElements.timeZoneOffsetSelect.value) * 3600 * 1000)); // Adjust to local time for display
+        const dayOfWeek = dayNamesThai[nextMealDateObj.getUTCDay()];
+        const dayOfMonth = nextMealDateObj.getUTCDate();
+        const month = monthNamesThai[nextMealDateObj.getUTCMonth()];
+        const hour = String(nextMealDateObj.getUTCHours()).padStart(2, '0');
+        const minute = String(nextMealDateObj.getUTCMinutes()).padStart(2, '0');
+
+        DOMElements.nextMealTimeDisplay.textContent = `${dayOfWeek}. ${dayOfMonth} ${month} ${hour}:${minute} น.`;
+
+    } else {
+        DOMElements.nextMealCountdownDisplay.textContent = "ไม่มีมื้ออาหารที่กำลังจะมาถึง";
+        DOMElements.nextMealTimeDisplay.textContent = "";
+    }
+}
+
+function startCountdown() {
+    if (countdownInterval) clearInterval(countdownInterval); // Clear any existing interval
+    updateCountdownDisplay(); // Initial display
+    countdownInterval = setInterval(updateCountdownDisplay, 1000); // Update every second
+}
+
+function stopCountdown() {
+    if (countdownInterval) {
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+    }
+}
+
+
+// ===============================================
 // ✅ Custom UI Component Logic (Time Picker, Select)
 // ===============================================
 function setupCustomTimePicker() {
@@ -1093,7 +1264,7 @@ function setupCustomTimePicker() {
 }
 
 function updateTimePicker(hour, minute) {
-    if (!DOMElements['hours-column'] || !DOMElements['minutes-column']) return; // Safety check
+    if (!DOMElements['hours-column'] || !DOMElements['minutes-column']) return [0,0]; // Safety check
     const itemHeight = 50;
     DOMElements['hours-column'].scrollTo({ top: hour * itemHeight, behavior: 'instant' });
     DOMElements['minutes-column'].scrollTo({ top: minute * itemHeight, behavior: 'instant' }); // Fixed typo here
@@ -1162,7 +1333,7 @@ document.addEventListener('DOMContentLoaded', async () => { // Make DOMContentLo
         'currentGramsPerSecondDisplay', 'logoutBtn', 'settingsNavDot', 'notifications-section',
         'notificationHistoryList', 'animal-calculator-section', 'animalCount', 'weightInputContainer',
         'animalWeightKg', 'lifeStageActivityContainer', 'recommendedAmount', 'calculationNotes',
-        'applyRecommendedAmountBtn',
+        'applyRecommendedAmountBtn', 'nextMealCountdownDisplay', 'nextMealTimeDisplay',
         // ✅ แก้ไข ID ให้ตรงกับ HTML
         'hours-column', 'minutes-column' 
     ];
@@ -1265,10 +1436,13 @@ document.addEventListener('DOMContentLoaded', async () => { // Make DOMContentLo
 
     // Modals
     if (DOMElements.closeCalibrationModalBtn) DOMElements.closeCalibrationModalBtn.addEventListener('click', () => hideModal(DOMElements.calibrationModal));
-    if (DOMElements.cancelMealDetailBtn) DOMElements.cancelMealDetailBtn.addEventListener('click', () => hideModal(DOMElements.mealDetailModal));
-
+    if (DOMElements.cancelMealDetailBtn) DOMElements.cancelMealDetailBtn.addEventListener('click', () => closeMealDetailModal()); // ใช้ closeMealDetailModal
+    
     // Settings
-    if (DOMElements.timeZoneOffsetSelect) DOMElements.timeZoneOffsetSelect.addEventListener('change', (e) => saveSettingsToFirebase('timezone'));
+    if (DOMElements.timeZoneOffsetSelect) DOMElements.timeZoneOffsetSelect.addEventListener('change', (e) => {
+        saveSettingsToFirebase('timezone');
+        updateCountdownDisplay(); // Update countdown when timezone changes
+    });
     if (DOMElements.bottleSizeSelect) DOMElements.bottleSizeSelect.addEventListener('change', (e) => {
         if (DOMElements.customBottleHeightInput) {
             DOMElements.customBottleHeightInput.style.display = DOMElements.bottleSizeSelect.value === 'custom' ? 'block' : 'none';
@@ -1310,7 +1484,6 @@ document.addEventListener('DOMContentLoaded', async () => { // Make DOMContentLo
     if (DOMElements.addMealCardBtn) DOMElements.addMealCardBtn.addEventListener('click', () => openMealDetailModal());
     if (DOMElements.saveMealDetailBtn) DOMElements.saveMealDetailBtn.addEventListener('click', saveMealDetail);
     if (DOMElements.deleteMealDetailBtn) DOMElements.deleteMealDetailBtn.addEventListener('click', deleteMealDetail);
-    if (DOMElements.cancelMealDetailBtn) DOMElements.cancelMealDetailBtn.addEventListener('click', () => closeMealDetailModal());
     
     // Meal Modal Logic (Days and Specific Date)
     document.querySelectorAll('.day-btn:not(.date-btn)').forEach(btn => btn.addEventListener('click', () => {
@@ -1340,7 +1513,6 @@ document.addEventListener('DOMContentLoaded', async () => { // Make DOMContentLo
         if (DOMElements.specificDateInput) {
             DOMElements.specificDateInput.style.display = 'block'; // ✅ ทำให้ input แสดงผล
             DOMElements.specificDateInput.focus(); // Focus ไปที่ input
-            // DOMElements.specificDateInput.click(); // ไม่จำเป็นต้องเรียก click() ตรงนี้แล้ว
             DOMElements.specificDateBtn.classList.add('selected'); // Mark specific date button as selected
         }
     });
@@ -1406,3 +1578,4 @@ document.addEventListener('DOMContentLoaded', async () => { // Make DOMContentLo
     // Initial call for animal calculator
     updateRecommendedAmount(DOMElements); 
 });
+

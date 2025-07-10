@@ -97,7 +97,7 @@ export function updateRecommendedAmount(DOMElements) {
     // Reset and hide optional fields initially
     DOMElements.lifeStageActivityContainer.style.display = "none";
     DOMElements.weightInputContainer.style.display = "none";
-    DOMElements.applyRecommendedAmountBtn.disabled = true;
+    DOMElements.applyRecommendedAmountBtn.disabled = true; // ตั้งค่าเริ่มต้นเป็น disabled
     DOMElements.recommendedAmount.textContent = "-";
     DOMElements.calculationNotes.textContent = "";
 
@@ -156,10 +156,10 @@ export function updateRecommendedAmount(DOMElements) {
         const mealsPerDay = animal.meals_per_day || 1;
         const totalPerMeal = (totalDailyGrams * count) / mealsPerDay;
         DOMElements.recommendedAmount.textContent = `${totalPerMeal.toFixed(1)} กรัม / มื้อ`;
-        // ปุ่ม applyRecommendedAmountBtn จะถูกเปิดใช้งาน/ปิดใช้งานใน script.js ตามสถานะของ modal
-        // DOMElements.applyRecommendedAmountBtn.disabled = false;
+        DOMElements.applyRecommendedAmountBtn.disabled = false; // เปิดใช้งานปุ่มเมื่อมีปริมาณที่คำนวณได้
     } else {
         DOMElements.recommendedAmount.textContent = "-";
+        DOMElements.applyRecommendedAmountBtn.disabled = true; // ปิดใช้งานปุ่มเมื่อไม่มีปริมาณที่คำนวณได้
     }
     DOMElements.calculationNotes.textContent = notes;
 }

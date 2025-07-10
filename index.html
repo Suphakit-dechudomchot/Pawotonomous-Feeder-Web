@@ -81,8 +81,7 @@
                     <button class="day-btn" data-day="Sun">อา</button>
                     <button id="specificDateBtn" class="day-btn date-btn"><i class="fa-solid fa-calendar-day"></i></button>
                 </div>
-                <!-- ✅ ลบ style="display: none;" ออกจากตรงนี้ -->
-                <input type="date" id="specificDateInput">
+                <input type="date" id="specificDateInput" style="display: none;">
                 <span id="specificDateDisplay" class="specific-date-display"></span>
             </div>
 
@@ -186,6 +185,11 @@
                     <h2><i class="fa-solid fa-utensils"></i> ตั้งค่ามื้ออาหาร</h2>
                     <button id="addMealCardBtn" class="add-meal-card-button"><i class="fa-solid fa-plus"></i></button>
                 </div>
+                <!-- Countdown Timer Display -->
+                <div id="nextMealCountdownContainer" class="countdown-container">
+                    <p id="nextMealCountdownDisplay" class="countdown-text">กำลังโหลดมื้ออาหาร...</p>
+                    <p id="nextMealTimeDisplay" class="countdown-detail"></p>
+                </div>
                 <p class="subtitle">ตั้งค่าเวลา, ปริมาณ, และเสียงสำหรับแต่ละมื้อ</p>
                 <div id="mealListContainer" class="meal-list-cards">
                     <!-- Meal cards will be dynamically inserted here -->
@@ -214,7 +218,6 @@
                         <label for="timeZoneOffsetSelect">โซนเวลา (UTC+/-H):</label>
                         <select id="timeZoneOffsetSelect">
                             <option value="">-- เลือกโซนเวลา --</option>
-                            <option value="7">UTC+7 (ประเทศไทย)</option>
                             <option value="-12">UTC-12</option><option value="-11">UTC-11</option><option value="-10">UTC-10</option>
                             <option value="-9.5">UTC-9:30</option><option value="-9">UTC-9</option><option value="-8">UTC-8</option>
                             <option value="-7">UTC-7</option><option value="-6">UTC-6</option><option value="-5">UTC-5</option>
