@@ -36,7 +36,12 @@ function createCustomOption(value, text, targetId) {
 }
 
 export function populateAnimalType(DOMElements) {
-    const optionsContainer = document.getElementById("animalType-options");
+    // ใช้ DOMElements ที่ส่งเข้ามา
+    const optionsContainer = DOMElements.animalTypeOptions; 
+    if (!optionsContainer) {
+        console.error("animalTypeOptions element not found in DOMElements.");
+        return;
+    }
     optionsContainer.innerHTML = '';
     for (const type in animalData) {
         optionsContainer.appendChild(createCustomOption(type, type, 'animalType'));
@@ -44,10 +49,18 @@ export function populateAnimalType(DOMElements) {
 }
 
 export function updateAnimalSpecies(DOMElements) {
-    const type = document.querySelector('.custom-select-trigger[data-target="animalType"]').dataset.value;
-    const speciesOptionsContainer = document.getElementById("animalSpecies-options");
+    // ใช้ DOMElements ที่ส่งเข้ามา
+    const typeTrigger = document.querySelector('.custom-select-trigger[data-target="animalType"]');
+    const type = typeTrigger ? typeTrigger.dataset.value : '';
+
+    const speciesOptionsContainer = DOMElements.animalSpeciesOptions;
     const speciesTrigger = document.querySelector('.custom-select-trigger[data-target="animalSpecies"]');
     
+    if (!speciesOptionsContainer || !speciesTrigger) {
+        console.error("animalSpeciesOptions or animalSpecies trigger element not found in DOMElements.");
+        return;
+    }
+
     speciesOptionsContainer.innerHTML = '';
     speciesTrigger.textContent = '-- เลือกชนิดสัตว์ --';
     speciesTrigger.dataset.value = '';
@@ -60,20 +73,33 @@ export function updateAnimalSpecies(DOMElements) {
 }
 
 export function updateRecommendedAmount(DOMElements) {
-    const type = document.querySelector('.custom-select-trigger[data-target="animalType"]').dataset.value;
-    const species = document.querySelector('.custom-select-trigger[data-target="animalSpecies"]').dataset.value;
-    const count = parseInt(DOMElements.animalCount.value) || 1;
-    const weightKg = parseFloat(DOMElements.animalWeightKg.value) || 0;
-    const lifeStageActivity = document.querySelector('.custom-select-trigger[data-target="lifeStageActivity"]')?.dataset.value;
+    // ใช้ DOMElements ที่ส่งเข้ามา
+    const typeTrigger = document.querySelector('.custom-select-trigger[data-target="animalType"]');
+    const type = typeTrigger ? typeTrigger.dataset.value : '';
 
-    const { recommendedAmount, calculationNotes, lifeStageActivityContainer, weightInputContainer, applyRecommendedAmountBtn } = DOMElements;
+    const speciesTrigger = document.querySelector('.custom-select-trigger[data-target="animalSpecies"]');
+    const species = speciesTrigger ? speciesTrigger.dataset.value : '';
+    
+    const count = parseInt(DOMElements.animalCount?.value) || 1;
+    const weightKg = parseFloat(DOMElements.animalWeightKg?.value) || 0;
+    
+    const lifeStageActivityTrigger = document.querySelector('.custom-select-trigger[data-target="lifeStageActivity"]');
+    const lifeStageActivity = lifeStageActivityTrigger ? lifeStageActivityTrigger.dataset.value : '';
+
+    // ตรวจสอบว่า DOMElements ที่จำเป็นมีอยู่จริง
+    if (!DOMElements.recommendedAmount || !DOMElements.calculationNotes || 
+        !DOMElements.lifeStageActivityContainer || !DOMElements.weightInputContainer || 
+        !DOMElements.applyRecommendedAmountBtn) {
+        console.error("One or more DOMElements for calculator not found.");
+        return;
+    }
 
     // Reset and hide optional fields initially
-    lifeStageActivityContainer.style.display = "none";
-    weightInputContainer.style.display = "none";
-    applyRecommendedAmountBtn.disabled = true;
-    recommendedAmount.textContent = "-";
-    calculationNotes.textContent = "";
+    DOMElements.lifeStageActivityContainer.style.display = "none";
+    DOMElements.weightInputContainer.style.display = "none";
+    DOMElements.applyRecommendedAmountBtn.disabled = true;
+    DOMElements.recommendedAmount.textContent = "-";
+    DOMElements.calculationNotes.textContent = "";
 
     if (!type || !species || !animalData[type]?.[species]) {
         return;
@@ -84,16 +110,19 @@ export function updateRecommendedAmount(DOMElements) {
     let notes = animal.notes || "";
 
     // Show/hide and configure optional fields
-    weightInputContainer.style.display = "block";
+    DOMElements.weightInputContainer.style.display = "block";
     if (animal.calculation_type === "RER_DER") {
-        lifeStageActivityContainer.style.display = "block";
-        const lifeStageOptionsContainer = document.getElementById("lifeStageActivity-options");
-        const lifeStageTrigger = document.querySelector('.custom-select-trigger[data-target="lifeStageActivity"]');
-        lifeStageOptionsContainer.innerHTML = '';
-        lifeStageTrigger.textContent = '-- เลือก --';
-        lifeStageTrigger.dataset.value = '';
-        for (const factor in animal.der_factors) {
-            lifeStageOptionsContainer.appendChild(createCustomOption(factor, factor.replace(/_/g, ' '), 'lifeStageActivity'));
+        DOMElements.lifeStageActivityContainer.style.display = "block";
+        const lifeStageOptionsContainer = DOMElements.lifeStageActivityOptions; // ใช้ DOMElements
+        const lifeStageTriggerForPopulation = document.querySelector('.custom-select-trigger[data-target="lifeStageActivity"]'); // ยังคงต้องใช้ querySelector เพื่ออ้างอิง trigger
+        
+        if (lifeStageOptionsContainer && lifeStageTriggerForPopulation) {
+            lifeStageOptionsContainer.innerHTML = '';
+            lifeStageTriggerForPopulation.textContent = '-- เลือก --';
+            lifeStageTriggerForPopulation.dataset.value = '';
+            for (const factor in animal.der_factors) {
+                lifeStageOptionsContainer.appendChild(createCustomOption(factor, factor.replace(/_/g, ' '), 'lifeStageActivity'));
+            }
         }
     }
 
@@ -124,11 +153,13 @@ export function updateRecommendedAmount(DOMElements) {
 
     // Final display
     if (totalDailyGrams > 0) {
-        const totalPerMeal = (totalDailyGrams * count) / (animal.meals_per_day || 1);
-        recommendedAmount.textContent = `${totalPerMeal.toFixed(1)} กรัม / มื้อ`;
-        applyRecommendedAmountBtn.disabled = false;
+        const mealsPerDay = animal.meals_per_day || 1;
+        const totalPerMeal = (totalDailyGrams * count) / mealsPerDay;
+        DOMElements.recommendedAmount.textContent = `${totalPerMeal.toFixed(1)} กรัม / มื้อ`;
+        // ปุ่ม applyRecommendedAmountBtn จะถูกเปิดใช้งาน/ปิดใช้งานใน script.js ตามสถานะของ modal
+        // DOMElements.applyRecommendedAmountBtn.disabled = false;
     } else {
-        recommendedAmount.textContent = "-";
+        DOMElements.recommendedAmount.textContent = "-";
     }
-    calculationNotes.textContent = notes;
+    DOMElements.calculationNotes.textContent = notes;
 }

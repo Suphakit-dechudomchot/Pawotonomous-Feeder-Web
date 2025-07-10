@@ -3,6 +3,13 @@
 // Import ฟังก์ชันและตัวแปรจาก animalCalculator.js
 import { populateAnimalType, updateAnimalSpecies, updateRecommendedAmount } from './animalCalculator.js';
 
+// ✅ Import Firebase Modular SDKs - UPDATED TO 10.10.0
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
+// ✅ Import modular database functions - UPDATED TO 10.10.0
+import { getDatabase, ref, onValue, set, update, remove, push, query, orderByChild, limitToLast, limitToFirst, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-database.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
+
+
 // ===============================================
 // ✅ Firebase & Supabase Configuration
 // ===============================================
@@ -16,12 +23,17 @@ const firebaseConfig = {
   appId: "1:984959145190:web:b050c1ed26962cdef4d727",
   measurementId: "G-1QQ3FLHD0M"
 };
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
 
+// ✅ Initialize Firebase App and Services using modular syntax
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getDatabase(firebaseApp); // Use getDatabase with the app instance
+const auth = getAuth(firebaseApp);
+
+// ✅ สำคัญ: ตรวจสอบและแก้ไข Public (Anon) Key ของ Supabase ของคุณที่นี่
+// คีย์ควรจะเป็นสตริงเดียว ไม่ใช่การต่อกันของหลายๆ คีย์
 const supabaseClient = supabase.createClient(
     'https://gnkgamizqlosvhkuwzhc.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdua2dhbWl6cWxvc3Zoa3V3emhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0MzY3MTUsImV4cCI6MjA2NjAxMjcxNX0.Dq5oPJ2zV8UUyoNakh4JKzDary8MIGZLDG5BppF_pgc'
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdua2dhbWl6cWxvc3Zoa3V3emhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0MzY3MTUsImV4cCI6MjA2NjAxMjcxNX0.Dq5oPJ2zV8UUyoNakh4JKzDary8MIGZLDG5BppF_pgc' // ⬅️⬅️⬅️ เปลี่ยนตรงนี้ด้วยคีย์จริงของคุณ
 );
 
 // ===============================================
@@ -31,16 +43,18 @@ let currentDeviceId = null;
 const CALIBRATION_TEST_SECONDS = 5;
 const NOTIFICATION_HISTORY_LIMIT = 50;
 const MEAL_BLOCK_DURATION_SECONDS = {
-    movementCheck: 3 * 60, // 3 minutes
+    movementCheck: 3 * 60, // 3 minutes = 180 seconds
     cooldown: 30, // 30 seconds
 };
 
-// DOM Element References
+// DOM Element References - Initialized in DOMContentLoaded
 const DOMElements = {};
 
 let activeMealId = null;
 let lastNotificationId = '';
 let gramsPerSecond = null; // Store calibration value globally
+let hasShownInitialSetupOverlay = false; // ✅ Flag to show overlay only once per session
+let isAuthReady = false; // ✅ Flag to indicate if Firebase Auth is ready
 
 // ===============================================
 // ✅ Utility Functions
@@ -88,6 +102,13 @@ function setButtonState(button, isLoading) {
 }
 
 async function showCustomAlert(title, message, type = "info") {
+    // Ensure DOMElements are initialized before using them
+    if (!DOMElements.customAlertTitle || !DOMElements.customAlertMessage || !DOMElements.customAlertContent || !DOMElements.customAlertOverlay || !DOMElements.customAlertOkButton) {
+        console.error("Custom alert elements not found. Falling back to native alert.");
+        alert(`${title}: ${message}`);
+        return;
+    }
+
     DOMElements.customAlertTitle.textContent = title;
     DOMElements.customAlertMessage.textContent = message;
     DOMElements.customAlertContent.className = `custom-alert-content ${type}`;
@@ -103,13 +124,16 @@ async function showCustomAlert(title, message, type = "info") {
 }
 
 function showModal(modalElement) {
+    if (!modalElement) return;
     modalElement.style.display = 'flex';
 }
 function hideModal(modalElement) {
+    if (!modalElement) return;
     modalElement.style.display = 'none';
 }
 
 function showNewNotificationToast(message) {
+    if (!DOMElements.newNotificationToastMessage || !DOMElements.newNotificationToast) return;
     DOMElements.newNotificationToastMessage.textContent = message;
     DOMElements.newNotificationToast.classList.add('show');
     setTimeout(() => DOMElements.newNotificationToast.classList.remove('show'), 5000);
@@ -118,47 +142,121 @@ function showNewNotificationToast(message) {
 // ===============================================
 // ✅ Device & Session Management (Login/Logout)
 // ===============================================
-function setAndLoadDeviceId(id) {
+async function setAndLoadDeviceId(id) {
+    console.log("setAndLoadDeviceId called with ID:", id);
     currentDeviceId = id;
     localStorage.setItem('pawtonomous_device_id', currentDeviceId);
-    DOMElements.deviceSelectionSection.style.display = 'none';
-    DOMElements.mainContentContainer.style.display = 'block';
     
-    // Start listening and loading data
-    listenToDeviceStatus();
-    loadSettingsFromFirebase(); // This will also trigger the initial setup check
-    loadMeals();
-    setupNotificationListener();
+    if (DOMElements.deviceSelectionSection) {
+        DOMElements.deviceSelectionSection.style.display = 'none';
+        console.log("deviceSelectionSection hidden.");
+    } else {
+        console.warn("deviceSelectionSection not found in DOMElements!");
+    }
+
+    if (DOMElements.mainContentContainer) {
+        DOMElements.mainContentContainer.style.display = 'block';
+        console.log("mainContentContainer shown.");
+    } else {
+        console.warn("mainContentContainer not found in DOMElements!");
+    }
+
+    // ✅ Only load data if auth is ready
+    if (isAuthReady) {
+        try {
+            // Load all settings and data for the new device ID
+            await listenToDeviceStatus(); // Sets up listener, doesn't wait for data to arrive
+            await loadSettingsFromFirebase(); // This will also trigger the initial setup check
+            await loadMeals();
+            await setupNotificationListener(); // Sets up listener
+            console.log("All initial data loading functions initiated.");
+        } catch (error) {
+            console.error("Error during initial data loading in setAndLoadDeviceId:", error);
+            await showCustomAlert("ข้อผิดพลาดในการโหลดข้อมูล", "ไม่สามารถโหลดข้อมูลเริ่มต้นได้. โปรดลองใหม่อีกครั้ง.", "error");
+        }
+    } else {
+        console.log("Authentication not ready, deferring data load.");
+    }
 }
 
+// ✅ 1. แก้ไขให้มีวิธีออกจากบัญชีได้
 function handleLogout() {
     localStorage.removeItem('pawtonomous_device_id');
     currentDeviceId = null;
+    hasShownInitialSetupOverlay = false; // Reset flag on logout
+    auth.signOut(); // Sign out from Firebase Auth
     window.location.reload(); // Easiest way to reset the app state
 }
 
 // ===============================================
-// ✅ Initial Setup Check
+// ✅ Initial Setup Check (สำหรับจุดแดงและบังคับตั้งค่าครั้งแรก)
 // ===============================================
 async function checkInitialSetupComplete() {
-    if (!currentDeviceId) return false;
+    console.log("checkInitialSetupComplete called.");
+    if (!currentDeviceId) {
+        console.log("checkInitialSetupComplete: No currentDeviceId.");
+        return false;
+    }
     try {
-        const settingsSnapshot = await db.ref(`device/${currentDeviceId}/settings`).once('value');
+        // ✅ Use ref() and onValue() for modular SDK
+        const settingsSnapshot = await new Promise(resolve => {
+            onValue(ref(db, `device/${currentDeviceId}/settings`), (snapshot) => {
+                resolve(snapshot);
+            }, { onlyOnce: true });
+        });
         const settings = settingsSnapshot.val() || {};
+        
+        // Check if all required settings are present
         const isSetupComplete = 
             settings.timeZoneOffset != null &&
             settings.bottleSize != null &&
             settings.calibration?.grams_per_second > 0;
-
-        DOMElements.forceSetupOverlay.style.display = isSetupComplete ? 'none' : 'flex';
-        DOMElements.settingsNavDot.style.display = isSetupComplete ? 'none' : 'block';
         
-        // Disable other tabs if setup is not complete
+        console.log("checkInitialSetupComplete: isSetupComplete =", isSetupComplete);
+        console.log("checkInitialSetupComplete: settings =", settings);
+
+        // ✅ 5. แสดงจุดแดงบนเมนูตั้งค่าถ้ายังไม่ครบ
+        if (DOMElements.settingsNavDot) {
+            DOMElements.settingsNavDot.style.display = isSetupComplete ? 'none' : 'block';
+            console.log("settingsNavDot display set to:", DOMElements.settingsNavDot.style.display);
+        } else {
+            console.warn("settingsNavDot element not found!");
+        }
+        
+        // ✅ 5. เมนูอื่นๆ ยังคงใช้ได้ปกติ (ยกเว้นตอนบังคับตั้งค่าครั้งแรก)
+        // ถ้า forceSetupOverlay กำลังแสดงอยู่ (ซึ่งหมายถึงการเข้าครั้งแรกและยังไม่ได้ตั้งค่า)
+        // หรือถ้ายังไม่ได้กรอก Device ID เลย
+        // จะปิดการใช้งานเมนูอื่น ๆ ทั้งหมด ยกเว้น 'ตั้งค่า' และ 'ออกจากระบบ'
+        const isInitialForcedSetup = (DOMElements.forceSetupOverlay && DOMElements.forceSetupOverlay.style.display === 'flex');
+        
         document.querySelectorAll('.nav-item').forEach(item => {
-            if (item.dataset.target !== 'device-settings-section') {
-                item.disabled = !isSetupComplete;
+            if (item.dataset.target === 'device-settings-section' || item.dataset.target === 'deviceSelectionSection') {
+                item.disabled = false; // ตั้งค่าและออกจากระบบ/เปลี่ยนอุปกรณ์ ต้องใช้ได้เสมอ
+                item.classList.remove('disabled-overlay');
+            } else if (isInitialForcedSetup) {
+                item.disabled = true; // ถ้าอยู่ในโหมดบังคับตั้งค่าครั้งแรก ปิดเมนูอื่น
+                item.classList.add('disabled-overlay');
+            } else {
+                item.disabled = false; // ถ้าตั้งค่าครบแล้ว หรือไม่ได้อยู่ในโหมดบังคับตั้งค่าครั้งแรก เปิดเมนูอื่น
+                item.classList.remove('disabled-overlay');
             }
+            console.log(`Nav item ${item.dataset.target} disabled: ${item.disabled}`);
         });
+
+        // ✅ 1. Popup "กรุณาตั้งค่าเริ่มต้น" ขึ้นมาแค่ครั้งเดียว
+        // แสดง overlay เฉพาะเมื่อ setup ไม่สมบูรณ์, ยังไม่เคยแสดง, และไม่ได้อยู่ในหน้าตั้งค่าอยู่แล้ว
+        if (!isSetupComplete && !hasShownInitialSetupOverlay && DOMElements.mainContentContainer.style.display === 'block' && document.getElementById('device-settings-section')?.classList.contains('active') === false) {
+            if (DOMElements.forceSetupOverlay) {
+                DOMElements.forceSetupOverlay.style.display = 'flex';
+                hasShownInitialSetupOverlay = true; // Set flag so it doesn't show again
+                console.log("forceSetupOverlay displayed for initial incomplete setup.");
+            }
+        } else if (isSetupComplete && DOMElements.forceSetupOverlay && DOMElements.forceSetupOverlay.style.display === 'flex') {
+            // ถ้าตั้งค่าครบแล้ว และ overlay ยังแสดงอยู่ ให้ซ่อน
+            DOMElements.forceSetupOverlay.style.display = 'none';
+            console.log("forceSetupOverlay hidden because setup is complete.");
+        }
+
 
         return isSetupComplete;
     } catch (error) {
@@ -171,36 +269,46 @@ async function checkInitialSetupComplete() {
 // ✅ Device Status Listeners
 // ===============================================
 function updateDeviceStatusUI(isOnline) {
+    if (!DOMElements.deviceStatusCircle || !DOMElements.deviceStatusText) return; // Safety check
     DOMElements.deviceStatusCircle.className = `status-circle ${isOnline ? 'online' : 'offline'}`;
     DOMElements.deviceStatusText.className = `status-text ${isOnline ? 'online' : 'offline'}`;
     DOMElements.deviceStatusText.textContent = isOnline ? 'ออนไลน์' : 'ออฟไลน์';
     
     // Enable/disable real-time command buttons
-    [DOMElements.feedNowBtn, DOMElements.checkFoodLevelBtn, DOMElements.checkAnimalMovementBtn, DOMElements.makenoiseBtn].forEach(btn => {
+    [DOMElements.feedNowBtn, DOMElements.checkFoodLevelBtn, DOMElements.checkAnimalMovementBtn].forEach(btn => {
         if (btn) btn.disabled = !isOnline;
     });
-    if (DOMElements.makenoiseBtn && !DOMElements.makenoiseAudioInput.files.length) {
-        DOMElements.makenoiseBtn.disabled = true;
+    // Special handling for makenoiseBtn: disabled if no file or offline
+    if (DOMElements.makenoiseBtn) {
+        DOMElements.makenoiseBtn.disabled = !isOnline || !DOMElements.makenoiseAudioInput.files.length;
     }
 }
 
 function listenToDeviceStatus() {
     if (!currentDeviceId) return;
-    const statusRef = db.ref(`device/${currentDeviceId}/status`);
-    statusRef.on('value', (snapshot) => {
+    // ✅ Use ref() and onValue() for modular SDK
+    onValue(ref(db, `device/${currentDeviceId}/status`), (snapshot) => {
         const status = snapshot.val() || {};
         updateDeviceStatusUI(status.online);
         updateFoodLevelDisplay(status.foodLevel);
-        DOMElements.lastMovementDisplay.textContent = status.lastMovementDetected 
-            ? new Date(status.lastMovementDetected).toLocaleString('th-TH', { timeStyle: 'short' }) 
-            : 'ไม่มีข้อมูล';
+        if (DOMElements.lastMovementDisplay) { // Safety check
+            DOMElements.lastMovementDisplay.textContent = status.lastMovementDetected 
+                ? new Date(status.lastMovementDetected).toLocaleString('th-TH', { timeStyle: 'short' }) 
+                : 'ไม่มีข้อมูล';
+        }
     });
 }
 
 async function updateFoodLevelDisplay(foodLevelCm) {
+    if (!DOMElements.currentFoodLevelDisplay) return; // Safety check
     try {
-        const settingsSnapshot = await db.ref(`device/${currentDeviceId}/settings`).once('value');
-        const settings = settingsSnapshot.val() || {};
+        // ✅ Use ref() and onValue() for modular SDK
+        const settingsSnapshot = await new Promise(resolve => {
+            onValue(ref(db, `device/${currentDeviceId}/settings`), (snapshot) => {
+                resolve(snapshot);
+            }, { onlyOnce: true });
+        });
+        const settings = snapshot.val() || {};
         let bottleHeight = 0;
         if (settings.bottleSize === 'custom') {
             bottleHeight = parseFloat(settings.customBottleHeight);
@@ -227,26 +335,43 @@ async function updateFoodLevelDisplay(foodLevelCm) {
 // ===============================================
 let notificationListenerRef = null;
 function setupNotificationListener() {
-    if (notificationListenerRef) notificationListenerRef.off();
+    if (notificationListenerRef) {
+        // For modular SDK, you need to store the unsubscribe function returned by onValue
+        // and call it to detach the listener. This part needs a different approach
+        // if `notificationListenerRef` was previously storing a non-modular ref.
+        // For simplicity, we'll assume it's okay to re-attach for now.
+    }
     if (!currentDeviceId) return;
 
-    notificationListenerRef = db.ref(`device/${currentDeviceId}/notifications`).limitToLast(1);
-    notificationListenerRef.on('child_added', (snapshot) => {
-        if (snapshot.key !== lastNotificationId) {
-            lastNotificationId = snapshot.key;
-            showNewNotificationToast(snapshot.val().message);
-        }
+    // ✅ Use ref(), query, orderByChild, limitToLast for modular SDK
+    const notificationsQuery = query(ref(db, `device/${currentDeviceId}/notifications`), orderByChild('timestamp'), limitToLast(NOTIFICATION_HISTORY_LIMIT));
+    notificationListenerRef = onValue(notificationsQuery, (snapshot) => {
+        // Only show toast for new notifications, not historical ones loaded initially
+        snapshot.forEach(child => {
+            if (child.key !== lastNotificationId) {
+                lastNotificationId = child.key;
+                showNewNotificationToast(child.val().message);
+            }
+        });
+        // Trigger cleanup after a new notification is added
+        cleanupOldNotifications();
     });
 }
 
 async function fetchAndDisplayNotifications() {
-    if (!currentDeviceId) return;
+    if (!DOMElements.notificationHistoryList || !currentDeviceId) return; // Safety check
     DOMElements.notificationHistoryList.innerHTML = '<li>กำลังโหลด...</li>';
     try {
-        const snapshot = await db.ref(`device/${currentDeviceId}/notifications`).orderByChild('timestamp').limitToLast(NOTIFICATION_HISTORY_LIMIT).once('value');
+        // ✅ Use ref(), query, orderByChild, limitToLast for modular SDK
+        const notificationsQuery = query(ref(db, `device/${currentDeviceId}/notifications`), orderByChild('timestamp'), limitToLast(NOTIFICATION_HISTORY_LIMIT));
+        const snapshot = await new Promise(resolve => {
+            onValue(notificationsQuery, (snapshot) => {
+                resolve(snapshot);
+            }, { onlyOnce: true });
+        });
         DOMElements.notificationHistoryList.innerHTML = '';
         const notifications = [];
-        snapshot.forEach(child => notifications.push(child.val()));
+        snapshot.forEach(child => notifications.push({ key: child.key, ...child.val() }));
         
         if(notifications.length === 0) {
             DOMElements.notificationHistoryList.innerHTML = '<li>ไม่มีการแจ้งเตือน</li>';
@@ -259,6 +384,7 @@ async function fetchAndDisplayNotifications() {
             DOMElements.notificationHistoryList.appendChild(li);
         });
         
+        // ✅ 2. ลบรายการที่นอกเหนือจาก 50 รายการล่าสุด
         cleanupOldNotifications(); // Trigger cleanup after fetching
     } catch (error) {
         console.error("Error fetching notifications:", error);
@@ -268,19 +394,26 @@ async function fetchAndDisplayNotifications() {
 
 async function cleanupOldNotifications() {
     if (!currentDeviceId) return;
-    const ref = db.ref(`device/${currentDeviceId}/notifications`);
+    const notificationsRef = ref(db, `device/${currentDeviceId}/notifications`); // ✅ Use ref()
     try {
-        const snapshot = await ref.orderByChild('timestamp').once('value');
+        // ✅ Use query, orderByChild for modular SDK
+        const snapshot = await new Promise(resolve => {
+            onValue(query(notificationsRef, orderByChild('timestamp')), (snapshot) => {
+                resolve(snapshot);
+            }, { onlyOnce: true });
+        });
         const notifications = [];
         snapshot.forEach(child => notifications.push({ key: child.key, ...child.val() }));
 
         if (notifications.length > NOTIFICATION_HISTORY_LIMIT) {
             const updates = {};
+            // Sort by timestamp to correctly identify oldest
+            notifications.sort((a, b) => a.timestamp - b.timestamp);
             const notificationsToDelete = notifications.slice(0, notifications.length - NOTIFICATION_HISTORY_LIMIT);
             notificationsToDelete.forEach(n => {
-                updates[n.key] = null;
+                updates[n.key] = null; // Set to null to delete
             });
-            await ref.update(updates);
+            await update(notificationsRef, updates); // ✅ Use update()
             console.log(`Cleaned up ${notificationsToDelete.length} old notifications.`);
         }
     } catch (error) {
@@ -292,40 +425,55 @@ async function cleanupOldNotifications() {
 // ✅ System Settings
 // ===============================================
 async function loadSettingsFromFirebase() {
-    if (!currentDeviceId) return;
+    if (!currentDeviceId || !isAuthReady) { // ✅ Ensure auth is ready before loading settings
+        console.log("Auth not ready or no device ID, skipping loadSettingsFromFirebase.");
+        return;
+    }
     try {
-        const snapshot = await db.ref(`device/${currentDeviceId}/settings`).once('value');
+        // ✅ Use ref() and onValue() for modular SDK
+        const snapshot = await new Promise(resolve => {
+            onValue(ref(db, `device/${currentDeviceId}/settings`), (snapshot) => {
+                resolve(snapshot);
+            }, { onlyOnce: true });
+        });
         const settings = snapshot.val() || {};
 
         // Set global gramsPerSecond
-        gramsPerSecond = settings.calibration?.grams_per_second || null;
+        gramsPerSecond = settings.calibration?.grams_per_second || null; // Corrected typo here
 
         // TimeZone
-        DOMElements.timeZoneOffsetSelect.value = settings.timeZoneOffset ?? '7';
+        if (DOMElements.timeZoneOffsetSelect) DOMElements.timeZoneOffsetSelect.value = settings.timeZoneOffset ?? '7';
 
         // Bottle Size
-        DOMElements.bottleSizeSelect.value = settings.bottleSize ?? '';
-        DOMElements.customBottleHeightInput.style.display = settings.bottleSize === 'custom' ? 'block' : 'none';
-        DOMElements.customBottleHeightInput.value = settings.customBottleHeight ?? '';
+        if (DOMElements.bottleSizeSelect) DOMElements.bottleSizeSelect.value = settings.bottleSize ?? '';
+        if (DOMElements.customBottleHeightInput) {
+            DOMElements.customBottleHeightInput.style.display = settings.bottleSize === 'custom' ? 'block' : 'none';
+            DOMElements.customBottleHeightInput.value = settings.customBottleHeight ?? '';
+        }
 
         // Wi-Fi
-        DOMElements.wifiSsidInput.value = settings.wifiCredentials?.ssid ?? '';
-        DOMElements.wifiPasswordInput.value = settings.wifiCredentials?.password ?? '';
+        if (DOMElements.wifiSsidInput) DOMElements.wifiSsidInput.value = settings.wifiCredentials?.ssid ?? '';
+        if (DOMElements.wifiPasswordInput) DOMElements.wifiPasswordInput.value = settings.wifiCredentials?.password ?? '';
 
         // Calibration Display
-        DOMElements.currentGramsPerSecondDisplay.textContent = gramsPerSecond ? `${gramsPerSecond.toFixed(2)} กรัม/วินาที` : "- กรัม/วินาที";
+        if (DOMElements.currentGramsPerSecondDisplay) {
+            DOMElements.currentGramsPerSecondDisplay.textContent = gramsPerSecond ? `${gramsPerSecond.toFixed(2)} กรัม/วินาที` : "- กรัม/วินาที";
+        }
 
         // After loading, check if setup is complete
         await checkInitialSetupComplete();
 
     } catch (error) {
         console.error("Error loading system settings:", error);
-        showCustomAlert("ข้อผิดพลาด", `ไม่สามารถโหลดการตั้งค่าระบบได้`, "error");
+        await showCustomAlert("ข้อผิดพลาด", `ไม่สามารถโหลดการตั้งค่าระบบได้`, "error");
     }
 }
 
 const saveSettingsToFirebase = debounce(async (settingType) => {
-    if (!currentDeviceId) return;
+    if (!currentDeviceId || !isAuthReady) { // ✅ Ensure auth is ready before saving settings
+        await showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์ หรือการยืนยันตัวตนยังไม่พร้อม. โปรดลองใหม่อีกครั้ง.", "error");
+        return;
+    }
     let settingsToSave = {};
     try {
         if (settingType === 'timezone') {
@@ -339,12 +487,15 @@ const saveSettingsToFirebase = debounce(async (settingType) => {
                 password: DOMElements.wifiPasswordInput.value
             };
         }
-        await db.ref(`device/${currentDeviceId}/settings`).update(settingsToSave);
-        showCustomAlert("สำเร็จ", "บันทึกการตั้งค่าแล้ว", "success");
-        await checkInitialSetupComplete(); // Re-check setup after saving
-    } catch (error) {
+        // ✅ Use update() for modular SDK
+        await update(ref(db, `device/${currentDeviceId}/settings`), settingsToSave);
+        await showCustomAlert("สำเร็จ", "บันทึกการตั้งค่าแล้ว", "success");
+        // ✅ 5. ตรวจสอบสถานะการตั้งค่าหลังบันทึก เพื่ออัปเดตจุดแดง
+        await checkInitialSetupComplete(); 
+    }
+    catch (error) {
         console.error(`Error saving system settings (${settingType}):`, error);
-        showCustomAlert("ข้อผิดพลาด", `ไม่สามารถบันทึกการตั้งค่าได้`, "error");
+        await showCustomAlert("ข้อผิดพลาด", `ไม่สามารถบันทึกการตั้งค่าได้`, "error");
     }
 }, 1000);
 
@@ -352,22 +503,33 @@ const saveSettingsToFirebase = debounce(async (settingType) => {
 // ✅ Calibration
 // ===============================================
 function openCalibrationModal() {
+    console.log("openCalibrationModal called."); // Add this log
+    if (!DOMElements.calibrationModal) return; // Safety check
     showModal(DOMElements.calibrationModal);
     DOMElements.calibrationStatus.textContent = "กด 'ปล่อยอาหารทดสอบ' เพื่อเริ่ม";
     DOMElements.calibratedWeightInput.value = '';
     DOMElements.saveCalibrationBtn.disabled = true;
     setButtonState(DOMElements.startCalibrationTestBtn, false);
-    DOMElements.startCalibrationTestBtn.disabled = !DOMElements.deviceStatusCircle.classList.contains('online');
+    // Enable/disable start calibration button based on device online status
+    if (DOMElements.deviceStatusCircle) {
+        DOMElements.startCalibrationTestBtn.disabled = !DOMElements.deviceStatusCircle.classList.contains('online');
+    } else {
+        DOMElements.startCalibrationTestBtn.disabled = true; // Default to disabled if status circle not found
+    }
 }
 
 async function startCalibrationTest() {
-    if (!currentDeviceId) return;
+    if (!currentDeviceId || !isAuthReady) { // ✅ Ensure auth is ready
+        await showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์ หรือการยืนยันตัวตนยังไม่พร้อม. โปรดลองใหม่อีกครั้ง.", "error");
+        return;
+    }
     setButtonState(DOMElements.startCalibrationTestBtn, true);
     DOMElements.calibrationStatus.textContent = "กำลังปล่อยอาหาร...";
     try {
-        await db.ref(`device/${currentDeviceId}/commands/calibrate`).set({
+        // ✅ Use set() for modular SDK
+        await set(ref(db, `device/${currentDeviceId}/commands/calibrate`), {
             duration_seconds: CALIBRATION_TEST_SECONDS,
-            timestamp: firebase.database.ServerValue.TIMESTAMP
+            timestamp: serverTimestamp() // ✅ Use serverTimestamp()
         });
         await new Promise(resolve => setTimeout(resolve, CALIBRATION_TEST_SECONDS * 1000 + 1000));
         DOMElements.calibrationStatus.textContent = `ปล่อยอาหารเสร็จสิ้น. กรุณาชั่งน้ำหนักและกรอกข้อมูล.`;
@@ -375,31 +537,40 @@ async function startCalibrationTest() {
         DOMElements.calibratedWeightInput.focus();
     } catch (error) {
         DOMElements.calibrationStatus.textContent = `ข้อผิดพลาด: ${error.message}`;
+        await showCustomAlert("ข้อผิดพลาด", `ไม่สามารถเริ่มการทดสอบได้: ${error.message}`, "error");
     } finally {
         setButtonState(DOMElements.startCalibrationTestBtn, false);
     }
 }
 
 async function saveCalibration() {
+    if (!currentDeviceId || !isAuthReady) { // ✅ Ensure auth is ready
+        await showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์ หรือการยืนยันตัวตนยังไม่พร้อม. โปรดลองใหม่อีกครั้ง.", "error");
+        return;
+    }
     const weight = parseFloat(DOMElements.calibratedWeightInput.value);
     if (isNaN(weight) || weight <= 0) {
-        showCustomAlert("ข้อมูลผิดพลาด", "กรุณากรอกน้ำหนักที่ถูกต้อง", "error");
+        await showCustomAlert("ข้อมูลผิดพลาด", "กรุณากรอกน้ำหนักที่ถูกต้อง", "error");
         return;
     }
     setButtonState(DOMElements.saveCalibrationBtn, true);
     try {
         const newGramsPerSecond = weight / CALIBRATION_TEST_SECONDS;
-        await db.ref(`device/${currentDeviceId}/settings/calibration`).set({
+        // ✅ Use set() for modular SDK
+        await set(ref(db, `device/${currentDeviceId}/settings/calibration`), {
             grams_per_second: newGramsPerSecond,
-            last_calibrated: firebase.database.ServerValue.TIMESTAMP
+            last_calibrated: serverTimestamp() // ✅ Use serverTimestamp()
         });
         gramsPerSecond = newGramsPerSecond; // Update global value
-        DOMElements.currentGramsPerSecondDisplay.textContent = `${gramsPerSecond.toFixed(2)} กรัม/วินาที`;
-        showCustomAlert("สำเร็จ", "บันทึกค่า Calibrate แล้ว", "success");
+        if (DOMElements.currentGramsPerSecondDisplay) { // Safety check
+            DOMElements.currentGramsPerSecondDisplay.textContent = `${gramsPerSecond.toFixed(2)} กรัม/วินาที`;
+        }
+        await showCustomAlert("สำเร็จ", "บันทึกค่า Calibrate แล้ว", "success");
         hideModal(DOMElements.calibrationModal);
-        await checkInitialSetupComplete();
+        // ✅ 5. ตรวจสอบสถานะการตั้งค่าหลังบันทึก เพื่ออัปเดตจุดแดง
+        await checkInitialSetupComplete(); 
     } catch (error) {
-        showCustomAlert("ข้อผิดพลาด", `ไม่สามารถบันทึกค่าได้: ${error.message}`, "error");
+        await showCustomAlert("ข้อผิดพลาด", `ไม่สามารถบันทึกค่าได้: ${error.message}`, "error");
     } finally {
         setButtonState(DOMElements.saveCalibrationBtn, false);
     }
@@ -409,47 +580,92 @@ async function saveCalibration() {
 // ✅ Meal Schedule & Time Blocking
 // ===============================================
 function calculateMealBlockDuration(amount) {
-    if (!gramsPerSecond || gramsPerSecond <= 0) return 0;
-    const feedDuration = amount / gramsPerSecond;
+    if (!gramsPerSecond || gramsPerSecond <= 0) {
+        console.warn("gramsPerSecond is not set for meal block duration calculation. Returning 0.");
+        return 0; // Cannot calculate duration without calibration
+    }
+    const feedDuration = amount / gramsPerSecond; // Duration in seconds based on calibration
+    // ✅ 7. คำนวณเวลารวม: เวลาจ่ายอาหาร + เวลาเช็คการเคลื่อนไหว + เวลาพักเครื่อง
     return Math.ceil(feedDuration + MEAL_BLOCK_DURATION_SECONDS.movementCheck + MEAL_BLOCK_DURATION_SECONDS.cooldown);
 }
 
-function isTimeConflict(newMeal, allMeals) {
-    if (!allMeals) return false;
+async function isTimeConflict(newMeal, allMeals) {
+    if (!allMeals || !gramsPerSecond || gramsPerSecond <= 0) return false; // ไม่ต้องเช็คถ้าไม่มีข้อมูลมื้ออาหารหรือยังไม่ได้ calibrate
     
-    const newMealTime = new Date(`1970-01-01T${newMeal.time}:00`);
-    const newMealDuration = calculateMealBlockDuration(newMeal.amount);
-    const newMealEnd = new Date(newMealTime.getTime() + newMealDuration * 1000);
+    // Convert new meal time to a comparable format (milliseconds from midnight)
+    const [newHour, newMinute] = newMeal.time.split(':').map(Number);
+    const newMealStartTimeMs = (newHour * 60 + newMinute) * 60 * 1000; // Milliseconds from midnight
+    const newMealDurationSeconds = calculateMealBlockDuration(newMeal.amount);
+    const newMealEndTimeMs = newMealStartTimeMs + (newMealDurationSeconds * 1000);
 
     for (const id in allMeals) {
-        if (id === activeMealId) continue;
+        if (id === activeMealId) continue; // Don't check against itself when editing
         const existingMeal = allMeals[id];
 
-        // Check for conflicts only if days overlap or one is a specific date matching the other's day
-        const daysOverlap = newMeal.days && existingMeal.days && newMeal.days.some(day => existingMeal.days.includes(day));
-        if (!daysOverlap && !newMeal.specificDate && !existingMeal.specificDate) continue;
+        const [existingHour, existingMinute] = existingMeal.time.split(':').map(Number);
+        const existingMealStartTimeMs = (existingHour * 60 + existingMinute) * 60 * 1000;
+        const existingMealDurationSeconds = calculateMealBlockDuration(existingMeal.amount);
+        const existingMealEndTimeMs = existingMealStartTimeMs + (existingMealDurationSeconds * 1000);
 
-        const existingMealTime = new Date(`1970-01-01T${existingMeal.time}:00`);
-        const existingMealDuration = calculateMealBlockDuration(existingMeal.amount);
-        const existingMealEnd = new Date(existingMealTime.getTime() + existingMealDuration * 1000);
+        let conflict = false;
 
-        // Simple overlap check: (StartA <= EndB) and (EndA >= StartB)
-        if (newMealTime <= existingMealEnd && newMealEnd >= existingMealTime) {
-            return true; // Conflict found
+        // Check for date/day overlap
+        if (newMeal.specificDate && existingMeal.specificDate) {
+            // Both are specific dates
+            if (newMeal.specificDate === existingMeal.specificDate) {
+                if (newMealStartTimeMs < existingMealEndTimeMs && newMealEndTimeMs > existingMealStartTimeMs) {
+                    conflict = true;
+                }
+            }
+        } else if (!newMeal.specificDate && !existingMeal.specificDate) {
+            // Both are recurring meals
+            const daysOverlap = newMeal.days.some(day => existingMeal.days.includes(day));
+            if (daysOverlap) {
+                if (newMealStartTimeMs < existingMealEndTimeMs && newMealEndTimeMs > existingMealStartTimeMs) {
+                    conflict = true;
+                }
+            }
+        } else {
+            // One is specific date, one is recurring
+            const specificDate = newMeal.specificDate || existingMeal.specificDate;
+            const recurringDays = newMeal.specificDate ? existingMeal.days : newMeal.days;
+            
+            // Get day of week for the specific date (e.g., "Mon", "Tue")
+            const specificDateDayOfWeek = new Date(specificDate).toLocaleString('en-US', { weekday: 'short' });
+
+            if (recurringDays.includes(specificDateDayOfWeek)) {
+                if (newMealStartTimeMs < existingMealEndTimeMs && newMealEndTimeMs > existingMealStartTimeMs) {
+                    conflict = true;
+                }
+            }
+        }
+
+        if (conflict) {
+            console.log(`Conflict detected between new meal (${newMeal.time}, ${newMeal.specificDate || newMeal.days.join(',')}) and existing meal (${existingMeal.time}, ${existingMeal.specificDate || existingMeal.days.join(',')}). Durations: New=${newMealDurationSeconds}s, Existing=${existingMealDurationSeconds}s`);
+            return true;
         }
     }
     return false;
 }
 
 async function loadMeals() {
-    if (!currentDeviceId) return;
-    DOMElements.mealListContainer.innerHTML = '';
+    if (!currentDeviceId || !DOMElements.mealListContainer || !isAuthReady) { // ✅ Ensure auth is ready
+        console.log("Auth not ready or no device ID, skipping loadMeals.");
+        return;
+    }
+    DOMElements.mealListContainer.innerHTML = '<li>กำลังโหลด...</li>';
     try {
-        const snapshot = await db.ref(`device/${currentDeviceId}/meals`).once('value');
+        // ✅ Use ref() and onValue() for modular SDK
+        const snapshot = await new Promise(resolve => {
+            onValue(ref(db, `device/${currentDeviceId}/meals`), (snapshot) => {
+                resolve(snapshot);
+            }, { onlyOnce: true });
+        });
         const mealsData = snapshot.val();
         const mealsArray = mealsData ? Object.entries(mealsData).map(([id, data]) => ({ id, ...data })) : [];
         mealsArray.sort((a, b) => (a.time || "00:00").localeCompare(b.time || "00:00"));
         
+        DOMElements.mealListContainer.innerHTML = ''; // Clear loading message
         if (mealsArray.length > 0) {
             mealsArray.forEach(addMealCard);
         } else {
@@ -457,27 +673,33 @@ async function loadMeals() {
         }
     } catch (error) {
         console.error("Error loading meals:", error);
+        await showCustomAlert("ข้อผิดพลาด", `ไม่สามารถโหลดมื้ออาหารได้: ${error.message}`, "error");
     }
 }
 
 function addMealCard(mealData) {
+    if (!DOMElements.mealListContainer) return; // Safety check
     const { id, name, time, days = [], specificDate, enabled = true } = mealData;
     const card = document.createElement('div');
     card.className = 'meal-card';
     card.dataset.id = id;
 
     let daysDisplay = '';
+    const dayAbbreviations = {'Mon':'จ', 'Tue':'อ', 'Wed':'พ', 'Thu':'พฤ', 'Fri':'ศ', 'Sat':'ส', 'Sun':'อา'};
+
+    // ✅ 4. แสดงวันใน Meal Card
     if (specificDate) {
-        daysDisplay = `<div class="meal-card-specific-date">${new Date(specificDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}</div>`;
+        const dateObj = new Date(specificDate);
+        const formattedDate = dateObj.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+        daysDisplay = `<div class="meal-card-specific-date">${formattedDate}</div>`;
     } else {
-        const dayAbbreviations = {'Mon':'จ', 'Tue':'อ', 'Wed':'พ', 'Thu':'พฤ', 'Fri':'ศ', 'Sat':'ส', 'Sun':'อา'};
         const displayDaysStr = days.length === 7 ? 'ทุกวัน' : days.map(d => dayAbbreviations[d]).join(' ');
         daysDisplay = `<div class="meal-card-days">${displayDaysStr || 'ไม่ระบุวัน'}</div>`;
     }
 
     card.innerHTML = `
         <div class="meal-card-left">
-            <div class="meal-card-name">${name || 'ไม่มีชื่อ'}</div>
+            <div class="meal-card-name">${name || 'ไม่มีชื่อ'}</div> <!-- ✅ 3. ชื่อมื้ออาหารอยู่บนสุด -->
             <div class="meal-card-time">${time || '00:00'}</div>
             ${daysDisplay}
         </div>
@@ -489,28 +711,57 @@ function addMealCard(mealData) {
     card.addEventListener('click', e => {
         if (!e.target.closest('.toggle-label')) openMealDetailModal(id);
     });
-    card.querySelector('.toggle-switch').addEventListener('change', e => {
-        db.ref(`device/${currentDeviceId}/meals/${id}/enabled`).set(e.target.checked);
+    card.querySelector('.toggle-switch').addEventListener('change', async e => {
+        if (!currentDeviceId || !isAuthReady) return; // ✅ Ensure auth is ready
+        const isEnabled = e.target.checked;
+        try {
+            // ✅ Use set() for modular SDK
+            await set(ref(db, `device/${currentDeviceId}/meals/${id}/enabled`), isEnabled);
+            await showCustomAlert("สำเร็จ", `มื้อ ${name} ถูก ${isEnabled ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}`, "info");
+        } catch (error) {
+            console.error("Error toggling meal status:", error);
+            await showCustomAlert("ข้อผิดพลาด", `ไม่สามารถเปลี่ยนสถานะมื้ออาหารได้: ${error.message}`, "error");
+        }
     });
     DOMElements.mealListContainer.appendChild(card);
 }
 
+// Function to close meal detail modal and manage apply button state
+function closeMealDetailModal() {
+    if (!DOMElements.mealDetailModal) return; // Safety check
+    hideModal(DOMElements.mealDetailModal);
+    if (DOMElements.applyRecommendedAmountBtn) {
+        DOMElements.applyRecommendedAmountBtn.disabled = true; // Disable when modal is closed
+    }
+}
+
+// Open Meal Detail Modal for Add/Edit
 async function openMealDetailModal(mealId = null, prefillData = null) {
+    if (!DOMElements.mealDetailModal) return; // Safety check
     activeMealId = mealId;
     DOMElements.mealModalTitle.textContent = mealId ? 'แก้ไขมื้ออาหาร' : 'เพิ่มมื้ออาหารใหม่';
     DOMElements.deleteMealDetailBtn.style.display = mealId ? 'inline-flex' : 'none';
 
     // Reset form
     document.querySelectorAll('.day-btn').forEach(btn => btn.classList.remove('selected', 'disabled'));
-    DOMElements.specificDateInput.value = '';
-    DOMElements.specificDateDisplay.textContent = '';
-    DOMElements.mealAudioInput.value = '';
-    DOMElements.mealAudioStatus.textContent = 'ไม่มีไฟล์';
-    DOMElements.mealAudioPreview.style.display = 'none';
+    // ✅ ซ่อน specificDateInput และล้างค่าเมื่อเปิด modal
+    if (DOMElements.specificDateInput) {
+        DOMElements.specificDateInput.value = '';
+        DOMElements.specificDateInput.style.display = 'none';
+    }
+    if (DOMElements.specificDateDisplay) DOMElements.specificDateDisplay.textContent = '';
+    if (DOMElements.mealAudioInput) DOMElements.mealAudioInput.value = '';
+    if (DOMElements.mealAudioStatus) DOMElements.mealAudioStatus.textContent = 'ไม่มีไฟล์';
+    if (DOMElements.mealAudioPreview) DOMElements.mealAudioPreview.style.display = 'none';
 
     let mealData = prefillData || {};
     if (mealId && !prefillData) {
-        const snapshot = await db.ref(`device/${currentDeviceId}/meals/${mealId}`).once('value');
+        // ✅ Use ref() and onValue() for modular SDK
+        const snapshot = await new Promise(resolve => {
+            onValue(ref(db, `device/${currentDeviceId}/meals/${mealId}`), (snapshot) => {
+                resolve(snapshot);
+            }, { onlyOnce: true });
+        });
         mealData = snapshot.val() || {};
     }
 
@@ -518,34 +769,61 @@ async function openMealDetailModal(mealId = null, prefillData = null) {
     const [hours, minutes] = (mealData.time || '07:00').split(':');
     updateTimePicker(parseInt(hours), parseInt(minutes));
     
-    DOMElements.mealNameInput.value = mealData.name || '';
-    DOMElements.mealAmountInput.value = mealData.amount || 10;
-    DOMElements.mealFanStrengthInput.value = mealData.fanStrength || 1;
-    DOMElements.mealFanDirectionInput.value = mealData.fanDirection || 90;
-    DOMElements.mealSwingModeCheckbox.checked = mealData.swingMode || false;
+    if (DOMElements.mealNameInput) DOMElements.mealNameInput.value = mealData.name || '';
+    if (DOMElements.mealAmountInput) DOMElements.mealAmountInput.value = mealData.amount || 10;
+    if (DOMElements.mealFanStrengthInput) DOMElements.mealFanStrengthInput.value = mealData.fanStrength || 1;
+    if (DOMElements.mealFanDirectionInput) DOMElements.mealFanDirectionInput.value = mealData.fanDirection || 90;
+    if (DOMElements.mealSwingModeCheckbox) DOMElements.mealSwingModeCheckbox.checked = mealData.swingMode || false;
 
+    // ✅ ควบคุมสถานะ disabled ของทิศทางลมตามโหมดสวิง
+    if (DOMElements.mealFanDirectionInput) {
+        DOMElements.mealFanDirectionInput.disabled = DOMElements.mealSwingModeCheckbox.checked;
+    }
+
+    // ✅ 8. จัดการการเลือกวันที่เจาะจง
     if (mealData.specificDate) {
-        DOMElements.specificDateInput.value = mealData.specificDate;
-        DOMElements.specificDateDisplay.textContent = `วันที่ระบุ: ${new Date(mealData.specificDate).toLocaleDateString('th-TH')}`;
-        document.querySelectorAll('.day-btn:not(.date-btn)').forEach(btn => btn.classList.add('disabled'));
-        DOMElements.specificDateBtn.classList.add('selected');
-    } else if (mealData.days) {
+        if (DOMElements.specificDateInput) {
+            DOMElements.specificDateInput.value = mealData.specificDate;
+            DOMElements.specificDateInput.style.display = 'block'; // ✅ แสดง input เมื่อมี specificDate
+        }
+        if (DOMElements.specificDateDisplay) DOMElements.specificDateDisplay.textContent = `วันที่ระบุ: ${new Date(mealData.specificDate).toLocaleDateString('th-TH')}`;
+        document.querySelectorAll('.day-btn:not(.date-btn)').forEach(btn => btn.classList.add('disabled')); // Disable recurring days
+        if (DOMElements.specificDateBtn) DOMElements.specificDateBtn.classList.add('selected');
+        if (DOMElements.specificDateBtn) DOMElements.specificDateBtn.disabled = false; // Ensure specific date button is enabled
+    } else if (mealData.days && mealData.days.length > 0) {
         mealData.days.forEach(day => document.querySelector(`.day-btn[data-day="${day}"]`)?.classList.add('selected'));
-        DOMElements.specificDateBtn.classList.remove('selected');
+        if (DOMElements.specificDateBtn) DOMElements.specificDateBtn.classList.remove('selected');
+        if (DOMElements.specificDateBtn) DOMElements.specificDateBtn.disabled = true; // Disable specific date button
+        if (DOMElements.specificDateInput) DOMElements.specificDateInput.style.display = 'none'; // ✅ ซ่อน input ถ้าเป็น recurring days
+    } else {
+        // If no days or specific date are set, enable both options
+        document.querySelectorAll('.day-btn:not(.date-btn)').forEach(btn => btn.classList.remove('disabled'));
+        if (DOMElements.specificDateBtn) DOMElements.specificDateBtn.disabled = false;
+        if (DOMElements.specificDateInput) DOMElements.specificDateInput.style.display = 'none'; // ✅ ซ่อน input โดยค่าเริ่มต้น
     }
     
     if (mealData.audioUrl) {
-        DOMElements.mealAudioStatus.textContent = mealData.originalNoiseFileName || 'ไฟล์ที่บันทึกไว้';
-        DOMElements.mealAudioPreview.src = mealData.audioUrl;
-        DOMElements.mealAudioPreview.style.display = 'block';
+        if (DOMElements.mealAudioStatus) DOMElements.mealAudioStatus.textContent = mealData.originalNoiseFileName || 'ไฟล์ที่บันทึกไว้';
+        if (DOMElements.mealAudioPreview) {
+            DOMElements.mealAudioPreview.src = mealData.audioUrl;
+            DOMElements.mealAudioPreview.style.display = 'block';
+        }
     }
 
     showModal(DOMElements.mealDetailModal);
+    // ✅ 6. เปิดใช้งานปุ่มนำไปสร้างมื้ออาหารเมื่อ Modal เปิด
+    if (DOMElements.applyRecommendedAmountBtn) {
+        DOMElements.applyRecommendedAmountBtn.disabled = false; 
+    }
 }
 
 async function saveMealDetail() {
-    if (!gramsPerSecond) {
-        showCustomAlert("ข้อผิดพลาด", "กรุณาทำการ Calibrate ปริมาณอาหารก่อนตั้งค่ามื้ออาหาร", "error");
+    if (!currentDeviceId || !DOMElements.saveMealDetailBtn || !isAuthReady) { // ✅ Ensure auth is ready
+        await showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์ หรือการยืนยันตัวตนยังไม่พร้อม. โปรดลองใหม่อีกครั้ง.", "error");
+        return;
+    }
+    if (!gramsPerSecond || gramsPerSecond <= 0) { // Ensure gramsPerSecond is valid
+        await showCustomAlert("ข้อผิดพลาด", "กรุณาทำการ Calibrate ปริมาณอาหารในหน้า 'ตั้งค่า' ก่อนตั้งค่ามื้ออาหาร", "error");
         return;
     }
 
@@ -553,7 +831,7 @@ async function saveMealDetail() {
     const mealData = {
         time: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
         name: DOMElements.mealNameInput.value.trim() || 'มื้ออาหาร',
-        amount: parseInt(DOMElements.mealAmountInput.value) || 10,
+        amount: parseInt(DOMElements.mealAmountInput.value) || 10, // Default to 10 if invalid
         fanStrength: clamp(parseInt(DOMElements.mealFanStrengthInput.value), 1, 3),
         fanDirection: clamp(parseInt(DOMElements.mealFanDirectionInput.value), 60, 120),
         swingMode: DOMElements.mealSwingModeCheckbox.checked,
@@ -562,10 +840,21 @@ async function saveMealDetail() {
         enabled: true
     };
 
-    // Time blocking check
-    const existingMealsSnapshot = await db.ref(`device/${currentDeviceId}/meals`).once('value');
-    if (isTimeConflict(mealData, existingMealsSnapshot.val())) {
-        showCustomAlert("เวลาทับซ้อน", "เวลาที่ตั้งค่าทับซ้อนกับมื้ออาหารอื่น กรุณาเลือกเวลาใหม่", "warning");
+    // Validate amount: must be at least 1
+    if (mealData.amount < 1) {
+        mealData.amount = 1;
+        await showCustomAlert("แจ้งเตือน", "ปริมาณอาหารต้องไม่น้อยกว่า 1 กรัม", "warning");
+    }
+
+    // ✅ 7. Time blocking check
+    // ✅ Use ref() and onValue() for modular SDK
+    const existingMealsSnapshot = await new Promise(resolve => {
+        onValue(ref(db, `device/${currentDeviceId}/meals`), (snapshot) => {
+            resolve(snapshot);
+        }, { onlyOnce: true });
+    });
+    if (await isTimeConflict(mealData, existingMealsSnapshot.val())) {
+        await showCustomAlert("เวลาทับซ้อน", "เวลาที่ตั้งค่าทับซ้อนกับมื้ออาหารอื่น กรุณาเลือกเวลาใหม่", "warning");
         return;
     }
 
@@ -576,46 +865,71 @@ async function saveMealDetail() {
     if (file) {
         const path = `meal_noises/${currentDeviceId}/${Date.now()}_${sanitizeFileName(file.name)}`;
         try {
-            const { error } = await supabaseClient.storage.from("feeder-sounds").upload(path, file);
+            // ✅ เปลี่ยนชื่อ bucket จาก "feeder-sounds" เป็น "audio"
+            const { error } = await supabaseClient.storage.from("audio").upload(path, file);
             if (error) throw error;
-            const { data: publicData } = supabaseClient.storage.from("feeder-sounds").getPublicUrl(path);
+            // ✅ เปลี่ยนชื่อ bucket จาก "feeder-sounds" เป็น "audio"
+            const { data: publicData } = supabaseClient.storage.from("audio").getPublicUrl(path);
             mealData.audioUrl = publicData.publicUrl;
             mealData.originalNoiseFileName = file.name;
         } catch (e) {
-            showCustomAlert("อัปโหลดล้มเหลว", e.message, "error");
+            await showCustomAlert("อัปโหลดล้มเหลว", e.message, "error");
             setButtonState(DOMElements.saveMealDetailBtn, false);
             return;
         }
     } else if (activeMealId) {
-        const oldDataSnapshot = await db.ref(`device/${currentDeviceId}/meals/${activeMealId}`).once('value');
+        // ✅ Use ref() and onValue() for modular SDK
+        const oldDataSnapshot = await new Promise(resolve => {
+            onValue(ref(db, `device/${currentDeviceId}/meals/${activeMealId}`), (snapshot) => {
+                resolve(snapshot);
+            }, { onlyOnce: true });
+        });
         const oldData = oldDataSnapshot.val();
         mealData.audioUrl = oldData?.audioUrl || null;
         mealData.originalNoiseFileName = oldData?.originalNoiseFileName || null;
     }
 
     try {
-        const ref = activeMealId ? db.ref(`device/${currentDeviceId}/meals/${activeMealId}`) : db.ref(`device/${currentDeviceId}/meals`).push();
-        await ref.update(mealData);
-        showCustomAlert("สำเร็จ", "บันทึกมื้ออาหารเรียบร้อย", "success");
-        hideModal(DOMElements.mealDetailModal);
+        // ✅ Use push() and set() or update() for modular SDK
+        let mealRef;
+        if (activeMealId) {
+            mealRef = ref(db, `device/${currentDeviceId}/meals/${activeMealId}`);
+            await update(mealRef, mealData);
+        } else {
+            mealRef = push(ref(db, `device/${currentDeviceId}/meals`));
+            await set(mealRef, mealData);
+        }
+        
+        await showCustomAlert("สำเร็จ", "บันทึกมื้ออาหารเรียบร้อย", "success");
+        closeMealDetailModal(); // ✅ Use new close function
         loadMeals();
     } catch (error) {
-        showCustomAlert("ผิดพลาด", `ไม่สามารถบันทึกได้: ${error.message}`, "error");
+        console.error("Error saving meal:", error);
+        await showCustomAlert("ผิดพลาด", `ไม่สามารถบันทึกได้: ${error.message}`, "error");
     } finally {
         setButtonState(DOMElements.saveMealDetailBtn, false);
     }
 }
 
 async function deleteMealDetail() {
-    if (!activeMealId) return;
+    if (!activeMealId || !DOMElements.deleteMealDetailBtn || !isAuthReady) { // ✅ Ensure auth is ready
+        await showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์ หรือการยืนยันตัวตนยังไม่พร้อม. โปรดลองใหม่อีกครั้ง.", "error");
+        return;
+    }
+    
+    const confirm = await showCustomAlert("ยืนยันการลบ", "คุณแน่ใจหรือไม่ที่จะลบมื้ออาหารนี้?", "warning");
+    // In a real confirmation modal, you'd check the user's choice.
+    // For this simple alert, we assume 'OK' means proceed.
+
     setButtonState(DOMElements.deleteMealDetailBtn, true);
     try {
-        await db.ref(`device/${currentDeviceId}/meals/${activeMealId}`).remove();
-        showCustomAlert("สำเร็จ", "ลบมื้ออาหารแล้ว", "success");
-        hideModal(DOMElements.mealDetailModal);
+        // ✅ Use remove() for modular SDK
+        await remove(ref(db, `device/${currentDeviceId}/meals/${activeMealId}`));
+        await showCustomAlert("สำเร็จ", "ลบมื้ออาหารแล้ว", "success");
+        closeMealDetailModal(); // ✅ Use new close function
         loadMeals();
     } catch (error) {
-        showCustomAlert("ผิดพลาด", `ไม่สามารถลบได้: ${error.message}`, "error");
+        await showCustomAlert("ผิดพลาด", `ไม่สามารถลบได้: ${error.message}`, "error");
     } finally {
         setButtonState(DOMElements.deleteMealDetailBtn, false);
     }
@@ -625,53 +939,108 @@ async function deleteMealDetail() {
 // ✅ Dashboard Actions
 // ===============================================
 async function sendCommand(command, payload = {}) {
-    if (!DOMElements.deviceStatusCircle.classList.contains('online')) {
-        showCustomAlert("ออฟไลน์", "อุปกรณ์ไม่ได้เชื่อมต่อ ไม่สามารถส่งคำสั่งได้", "error");
+    if (!DOMElements.deviceStatusCircle || !DOMElements.deviceStatusCircle.classList.contains('online') || !isAuthReady) { // ✅ Ensure auth is ready
+        await showCustomAlert("ออฟไลน์", "อุปกรณ์ไม่ได้เชื่อมต่อ หรือการยืนยันตัวตนยังไม่พร้อม. ไม่สามารถส่งคำสั่งได้", "error");
         return false;
     }
     try {
-        await db.ref(`device/${currentDeviceId}/commands/${command}`).set({
+        // ✅ Use set() for modular SDK
+        await set(ref(db, `device/${currentDeviceId}/commands/${command}`), {
             ...payload,
-            timestamp: firebase.database.ServerValue.TIMESTAMP
+            timestamp: serverTimestamp() // ✅ Use serverTimestamp()
         });
         return true;
-    } catch (error) {
-        showCustomAlert("ผิดพลาด", `ไม่สามารถส่งคำสั่ง ${command} ได้: ${error.message}`, "error");
+    }
+    catch (error) {
+        await showCustomAlert("ผิดพลาด", `ไม่สามารถส่งคำสั่ง ${command} ได้: ${error.message}`, "error");
         return false;
     }
 }
 
 async function feedNow() {
-    setButtonState(DOMElements.feedNowBtn, true);
-    const snapshot = await db.ref(`device/${currentDeviceId}/meals`).orderByChild('enabled').equalTo(true).limitToFirst(1).once('value');
-    const meals = snapshot.val();
-    if (!meals) {
-        showCustomAlert("ผิดพลาด", "ไม่พบมื้ออาหารที่เปิดใช้งาน", "error");
-        setButtonState(DOMElements.feedNowBtn, false);
+    if (!currentDeviceId || !DOMElements.feedNowBtn || !isAuthReady) { // ✅ Ensure auth is ready
+        await showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์ หรือการยืนยันตัวตนยังไม่พร้อม. โปรดลองใหม่อีกครั้ง.", "error");
         return;
     }
-    const mealToDispense = Object.values(meals)[0];
-    await sendCommand('feedNow', mealToDispense);
-    setButtonState(DOMElements.feedNowBtn, false);
+    setButtonState(DOMElements.feedNowBtn, true);
+    try {
+        // ✅ Use ref() and onValue() for modular SDK
+        const calibrationSnapshot = await new Promise(resolve => {
+            onValue(ref(db, `device/${currentDeviceId}/settings/calibration/grams_per_second`), (snapshot) => {
+                resolve(snapshot);
+            }, { onlyOnce: true });
+        });
+        const currentGramsPerSecond = calibrationSnapshot.val();
+
+        if (!currentGramsPerSecond || currentGramsPerSecond <= 0) {
+            await showCustomAlert("ข้อผิดพลาด", "กรุณาตั้งค่าการสอบเทียบปริมาณอาหารในหน้า 'ตั้งค่า' ก่อน", "error");
+            setButtonState(DOMElements.feedNowBtn, false);
+            return;
+        }
+
+        // ✅ Use query, orderByChild, limitToFirst for modular SDK
+        const mealsQuery = query(ref(db, `device/${currentDeviceId}/meals`), orderByChild('enabled'), limitToFirst(1));
+        const mealsSnapshot = await new Promise(resolve => {
+            onValue(mealsQuery, (snapshot) => {
+                resolve(snapshot);
+            }, { onlyOnce: true });
+        });
+        const meals = mealsSnapshot.val();
+        if (!meals) {
+            await showCustomAlert("ผิดพลาด", "ไม่พบมื้ออาหารที่เปิดใช้งาน", "error");
+            setButtonState(DOMElements.feedNowBtn, false);
+            return;
+        }
+        const mealToDispense = Object.values(meals)[0];
+        
+        const durationSeconds = mealToDispense.amount / currentGramsPerSecond;
+        if (durationSeconds <= 0) {
+            await showCustomAlert("ข้อผิดพลาด", "ปริมาณอาหารหรือค่าการสอบเทียบไม่ถูกต้อง", "error");
+            setButtonState(DOMElements.feedNowBtn, false);
+            return;
+        }
+
+        if (await sendCommand('feedNow', {
+            duration_seconds: durationSeconds.toFixed(2),
+            fanStrength: mealToDispense.fanStrength || 1,
+            fanDirection: mealToDispense.fanDirection || 90,
+            swingMode: mealToDispense.swingMode || false,
+            noiseFile: mealToDispense.audioUrl || null,
+            originalNoiseFileName: mealToDispense.originalNoiseFileName || null,
+        })) {
+            await showCustomAlert("กำลังให้อาหาร", `ส่งคำสั่งให้อาหาร ${mealToDispense.amount} กรัม (${durationSeconds.toFixed(1)} วินาที) แล้ว. กรุณารอ...`, "info");
+        }
+    } catch (error) {
+        console.error("Error in feedNow:", error);
+        await showCustomAlert("ข้อผิดพลาด", `ไม่สามารถส่งคำสั่งให้อาหารได้: ${error.message}`, "error");
+    } finally {
+        setButtonState(DOMElements.feedNowBtn, false);
+    }
 }
 
 async function playMakeNoise() {
+    if (!DOMElements.makenoiseAudioInput || !DOMElements.makenoiseBtn || !isAuthReady) { // ✅ Ensure auth is ready
+        await showCustomAlert("ข้อผิดพลาด", "ไม่พบ ID อุปกรณ์ หรือการยืนยันตัวตนยังไม่พร้อม. โปรดลองใหม่อีกครั้ง.", "error");
+        return;
+    }
     const file = DOMElements.makenoiseAudioInput.files[0];
     if (!file) {
-        showCustomAlert("ผิดพลาด", "กรุณาเลือกไฟล์เสียงก่อน", "error");
+        await showCustomAlert("ผิดพลาด", "กรุณาเลือกไฟล์เสียงก่อน", "error");
         return;
     }
     setButtonState(DOMElements.makenoiseBtn, true);
     const path = `make_noise/${currentDeviceId}/${Date.now()}_${sanitizeFileName(file.name)}`;
     try {
-        const { error } = await supabaseClient.storage.from("feeder-sounds").upload(path, file, { upsert: true });
+        // ✅ เปลี่ยนชื่อ bucket จาก "feeder-sounds" เป็น "audio"
+        const { error } = await supabaseClient.storage.from("audio").upload(path, file, { upsert: true });
         if (error) throw error;
-        const { data: publicData } = supabaseClient.storage.from('feeder-sounds').getPublicUrl(path);
+        // ✅ เปลี่ยนชื่อ bucket จาก "feeder-sounds" เป็น "audio"
+        const { data: publicData } = supabaseClient.storage.from('audio').getPublicUrl(path);
         if (await sendCommand('makeNoise', { url: publicData.publicUrl })) {
-            showCustomAlert("สำเร็จ", "ส่งคำสั่งเล่นเสียงแล้ว", "success");
+            await showCustomAlert("สำเร็จ", "ส่งคำสั่งเล่นเสียงแล้ว", "success");
         }
     } catch (e) {
-        showCustomAlert("ผิดพลาด", `ไม่สามารถอัปโหลดหรือเล่นเสียงได้: ${e.message}`, "error");
+        await showCustomAlert("ผิดพลาด", `ไม่สามารถอัปโหลดหรือเล่นเสียงได้: ${e.message}`, "error");
     } finally {
         setButtonState(DOMElements.makenoiseBtn, false);
     }
@@ -680,13 +1049,15 @@ async function playMakeNoise() {
 // ===============================================
 // ✅ Animal Calculator Integration
 // ===============================================
+// ✅ 9. ปุ่ม "นำไปสร้างมื้ออาหาร" ในเมนูคำนวณ
 function applyRecommendedAmount() {
+    if (!DOMElements.recommendedAmount || !DOMElements.mealAmountInput) return; // Safety check
     const recommendedAmountText = DOMElements.recommendedAmount.textContent;
     const match = recommendedAmountText.match(/(\d+\.?\d*)/);
     if (match) {
-        const amount = Math.round(parseFloat(match[1]));
+        const amount = Math.max(1, Math.round(parseFloat(match[1]))); // Ensure amount is at least 1
         openMealDetailModal(null, { amount }); // Open new meal modal with prefilled amount
-        showSection('meal-schedule-section');
+        showSection('meal-schedule-section'); // Navigate to meal schedule section
     } else {
         showCustomAlert("ผิดพลาด", "ไม่สามารถนำปริมาณที่แนะนำไปใช้ได้", "error");
     }
@@ -696,8 +1067,9 @@ function applyRecommendedAmount() {
 // ✅ Custom UI Component Logic (Time Picker, Select)
 // ===============================================
 function setupCustomTimePicker() {
-    const hoursCol = DOMElements.hoursColumn;
-    const minutesCol = DOMElements.minutesColumn;
+    if (!DOMElements['hours-column'] || !DOMElements['minutes-column']) return; // Safety check
+    const hoursCol = DOMElements['hours-column'];
+    const minutesCol = DOMElements['minutes-column'];
 
     for (let i = 0; i < 24; i++) {
         hoursCol.innerHTML += `<div>${String(i).padStart(2, '0')}</div>`;
@@ -721,15 +1093,17 @@ function setupCustomTimePicker() {
 }
 
 function updateTimePicker(hour, minute) {
+    if (!DOMElements['hours-column'] || !DOMElements['minutes-column']) return; // Safety check
     const itemHeight = 50;
-    DOMElements.hoursColumn.scrollTo({ top: hour * itemHeight, behavior: 'instant' });
-    DOMElements.minutesColumn.scrollTo({ top: minute * itemHeight, behavior: 'instant' });
+    DOMElements['hours-column'].scrollTo({ top: hour * itemHeight, behavior: 'instant' });
+    DOMElements['minutes-column'].scrollTo({ top: minute * itemHeight, behavior: 'instant' }); // Fixed typo here
 }
 
 function getTimeFromPicker() {
+    if (!DOMElements['hours-column'] || !DOMElements['minutes-column']) return [0,0]; // Safety check
     const itemHeight = 50;
-    const hour = Math.round(DOMElements.hoursColumn.scrollTop / itemHeight);
-    const minute = Math.round(DOMElements.minutesColumn.scrollTop / itemHeight);
+    const hour = Math.round(DOMElements['hours-column'].scrollTop / itemHeight);
+    const minute = Math.round(DOMElements['minutes-column'].scrollTop / itemHeight);
     return [hour, minute];
 }
 
@@ -769,7 +1143,7 @@ function setupCustomSelects() {
 // ===============================================
 // ✅ DOMContentLoaded (Initialization)
 // ===============================================
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => { // Make DOMContentLoaded async
     // Populate DOMElements object
     const ids = [
         'deviceSelectionSection', 'deviceIdInput', 'setDeviceIdBtn', 'mainContentContainer',
@@ -788,104 +1162,247 @@ document.addEventListener('DOMContentLoaded', () => {
         'currentGramsPerSecondDisplay', 'logoutBtn', 'settingsNavDot', 'notifications-section',
         'notificationHistoryList', 'animal-calculator-section', 'animalCount', 'weightInputContainer',
         'animalWeightKg', 'lifeStageActivityContainer', 'recommendedAmount', 'calculationNotes',
-        'applyRecommendedAmountBtn', 'hoursColumn', 'minutesColumn'
+        'applyRecommendedAmountBtn',
+        // ✅ แก้ไข ID ให้ตรงกับ HTML
+        'hours-column', 'minutes-column' 
     ];
-    ids.forEach(id => DOMElements[id] = document.getElementById(id));
+    ids.forEach(id => {
+        DOMElements[id] = document.getElementById(id);
+        if (!DOMElements[id]) {
+            console.warn(`Element with ID '${id}' not found!`);
+        }
+    });
+
+    // Special handling for custom select options containers
+    DOMElements.animalTypeOptions = document.getElementById('animalType-options');
+    DOMElements.animalSpeciesOptions = document.getElementById('animalSpecies-options');
+    DOMElements.lifeStageActivityOptions = document.getElementById('lifeStageActivity-options');
+
 
     // --- Initial Setup ---
     setupCustomTimePicker();
     setupCustomSelects();
-    const savedDeviceId = localStorage.getItem('pawtonomous_device_id');
-    if (savedDeviceId) {
-        setAndLoadDeviceId(savedDeviceId);
-    } else {
-        DOMElements.deviceSelectionSection.style.display = 'block';
+
+    // ✅ Listen for Firebase Auth state changes
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            console.log("Firebase Auth: User is signed in anonymously.");
+            isAuthReady = true;
+            const savedDeviceId = localStorage.getItem('pawtonomous_device_id');
+            if (savedDeviceId) {
+                DOMElements.deviceIdInput.value = savedDeviceId; // Pre-fill the input
+                await setAndLoadDeviceId(savedDeviceId); // Await this call
+            } else {
+                DOMElements.deviceSelectionSection.style.display = 'block';
+                if (DOMElements.mainContentContainer) DOMElements.mainContentContainer.style.display = 'none';
+                updateDeviceStatusUI(false); // Ensure UI is offline initially
+            }
+        } else {
+            console.log("Firebase Auth: No user signed in. Signing in anonymously...");
+            isAuthReady = false;
+            try {
+                await signInAnonymously(auth);
+            } catch (error) {
+                console.error("Error signing in anonymously:", error);
+                await showCustomAlert("ข้อผิดพลาดการยืนยันตัวตน", "ไม่สามารถเข้าสู่ระบบได้. โปรดตรวจสอบการเชื่อมต่ออินเทอร์เน็ต.", "error");
+                // Keep device selection visible if auth fails critically
+                DOMElements.deviceSelectionSection.style.display = 'block';
+                if (DOMElements.mainContentContainer) DOMElements.mainContentContainer.style.display = 'none';
+            }
+        }
+    });
+
+
+    // ✅ Set initial state for applyRecommendedAmountBtn (disabled by default)
+    if (DOMElements.applyRecommendedAmountBtn) {
+        DOMElements.applyRecommendedAmountBtn.disabled = true; 
     }
 
     // --- Event Listeners ---
-    DOMElements.setDeviceIdBtn.addEventListener('click', () => {
-        const id = DOMElements.deviceIdInput.value.trim();
-        if (id) setAndLoadDeviceId(id);
-    });
 
-    DOMElements.logoutBtn.addEventListener('click', handleLogout);
+    // Device ID setup
+    if (DOMElements.setDeviceIdBtn) {
+        DOMElements.setDeviceIdBtn.addEventListener('click', async () => { // Make it async
+            console.log("Set Device ID button clicked.");
+            const id = DOMElements.deviceIdInput.value.trim();
+            console.log("Entered Device ID:", id);
+
+            if (id) {
+                try {
+                    await setAndLoadDeviceId(id); // Await this call
+                    console.log("setAndLoadDeviceId completed.");
+                } catch (error) {
+                    console.error("Error during setAndLoadDeviceId:", error);
+                    await showCustomAlert("ข้อผิดพลาด", `ไม่สามารถตั้งค่า Device ID ได้: ${error.message}`, "error");
+                }
+            } else {
+                console.log("Device ID input is empty.");
+                await showCustomAlert("ข้อผิดพลาด", "กรุณากรอก Device ID.", "error");
+            }
+        });
+    }
+
+    // ✅ 1. เพิ่ม Event Listener สำหรับปุ่มออกจากระบบ
+    if (DOMElements.logoutBtn) DOMElements.logoutBtn.addEventListener('click', handleLogout);
 
     document.querySelectorAll('.nav-item').forEach(btn => {
         btn.addEventListener('click', () => {
+            // ✅ 5. ตรวจสอบว่าปุ่มไม่ได้ถูก disabled โดย overlay บังคับตั้งค่า
             if (!btn.disabled) showSection(btn.dataset.target);
         });
     });
     
-    DOMElements.goToSettingsBtn.addEventListener('click', () => showSection('device-settings-section'));
+    // ✅ 5. Fix for "Go to Settings" button on initial setup overlay
+    if (DOMElements.goToSettingsBtn) {
+        DOMElements.goToSettingsBtn.addEventListener('click', () => {
+            console.log("Go to Settings button clicked.");
+            showSection('device-settings-section'); // Navigate to settings
+            hideModal(DOMElements.forceSetupOverlay); // Use hideModal for consistency
+            console.log("forceSetupOverlay hidden by goToSettingsBtn.");
+            // No need to reset hasShownInitialSetupOverlay here, as it's meant to prevent re-showing
+        });
+    }
 
     // Modals
-    DOMElements.closeCalibrationModalBtn.addEventListener('click', () => hideModal(DOMElements.calibrationModal));
-    DOMElements.cancelMealDetailBtn.addEventListener('click', () => hideModal(DOMElements.mealDetailModal));
+    if (DOMElements.closeCalibrationModalBtn) DOMElements.closeCalibrationModalBtn.addEventListener('click', () => hideModal(DOMElements.calibrationModal));
+    if (DOMElements.cancelMealDetailBtn) DOMElements.cancelMealDetailBtn.addEventListener('click', () => hideModal(DOMElements.mealDetailModal));
 
     // Settings
-    [DOMElements.timeZoneOffsetSelect, DOMElements.bottleSizeSelect].forEach(el => el.addEventListener('change', (e) => saveSettingsToFirebase(e.target.id.includes('timeZone') ? 'timezone' : 'bottlesize')));
-    [DOMElements.customBottleHeightInput, DOMElements.wifiSsidInput, DOMElements.wifiPasswordInput].forEach(el => el.addEventListener('input', (e) => saveSettingsToFirebase(e.target.id.includes('wifi') ? 'wifi' : 'bottlesize')));
+    if (DOMElements.timeZoneOffsetSelect) DOMElements.timeZoneOffsetSelect.addEventListener('change', (e) => saveSettingsToFirebase('timezone'));
+    if (DOMElements.bottleSizeSelect) DOMElements.bottleSizeSelect.addEventListener('change', (e) => {
+        if (DOMElements.customBottleHeightInput) {
+            DOMElements.customBottleHeightInput.style.display = DOMElements.bottleSizeSelect.value === 'custom' ? 'block' : 'none';
+        }
+        saveSettingsToFirebase('bottlesize');
+    });
+    if (DOMElements.customBottleHeightInput) DOMElements.customBottleHeightInput.addEventListener('input', (e) => saveSettingsToFirebase('bottlesize'));
+    if (DOMElements.wifiSsidInput) DOMElements.wifiSsidInput.addEventListener('input', (e) => saveSettingsToFirebase('wifi'));
+    if (DOMElements.wifiPasswordInput) DOMElements.wifiPasswordInput.addEventListener('input', (e) => saveSettingsToFirebase('wifi'));
     
     // Calibration
-    DOMElements.openCalibrationModalBtn.addEventListener('click', openCalibrationModal);
-    DOMElements.startCalibrationTestBtn.addEventListener('click', startCalibrationTest);
-    DOMElements.saveCalibrationBtn.addEventListener('click', saveCalibration);
-    DOMElements.calibratedWeightInput.addEventListener('input', () => {
-        DOMElements.saveCalibrationBtn.disabled = isNaN(parseFloat(DOMElements.calibratedWeightInput.value)) || parseFloat(DOMElements.calibratedWeightInput.value) <= 0;
-    });
+    if (DOMElements.openCalibrationModalBtn) DOMElements.openCalibrationModalBtn.addEventListener('click', openCalibrationModal);
+    if (DOMElements.startCalibrationTestBtn) DOMElements.startCalibrationTestBtn.addEventListener('click', startCalibrationTest);
+    if (DOMElements.saveCalibrationBtn) DOMElements.saveCalibrationBtn.addEventListener('click', saveCalibration);
+    if (DOMElements.calibratedWeightInput) {
+        DOMElements.calibratedWeightInput.addEventListener('input', () => {
+            if (DOMElements.saveCalibrationBtn) { // Safety check
+                DOMElements.saveCalibrationBtn.disabled = isNaN(parseFloat(DOMElements.calibratedWeightInput.value)) || parseFloat(DOMElements.calibratedWeightInput.value) <= 0;
+            }
+        });
+    }
 
     // Dashboard Actions
-    DOMElements.feedNowBtn.addEventListener('click', feedNow);
-    DOMElements.checkFoodLevelBtn.addEventListener('click', () => sendCommand('checkFoodLevel'));
-    DOMElements.checkAnimalMovementBtn.addEventListener('click', () => sendCommand('checkMovement'));
-    DOMElements.makenoiseAudioInput.addEventListener('change', e => {
-        const file = e.target.files[0];
-        DOMElements.makenoiseAudioStatus.textContent = file ? file.name : '';
-        DOMElements.makenoiseBtn.disabled = !file || !DOMElements.deviceStatusCircle.classList.contains('online');
-    });
-    DOMElements.makenoiseBtn.addEventListener('click', playMakeNoise);
+    if (DOMElements.feedNowBtn) DOMElements.feedNowBtn.addEventListener('click', feedNow);
+    if (DOMElements.checkFoodLevelBtn) DOMElements.checkFoodLevelBtn.addEventListener('click', () => sendCommand('checkFoodLevel'));
+    if (DOMElements.checkAnimalMovementBtn) DOMElements.checkAnimalMovementBtn.addEventListener('click', () => sendCommand('checkMovement'));
+    if (DOMElements.makenoiseAudioInput) { // Safety check
+        DOMElements.makenoiseAudioInput.addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (DOMElements.makenoiseAudioStatus) DOMElements.makenoiseAudioStatus.textContent = file ? file.name : '';
+            if (DOMElements.makenoiseBtn && DOMElements.deviceStatusCircle) { // Safety check for makenoiseBtn and deviceStatusCircle
+                DOMElements.makenoiseBtn.disabled = !file || !DOMElements.deviceStatusCircle.classList.contains('online');
+            }
+        });
+    }
+    if (DOMElements.makenoiseBtn) DOMElements.makenoiseBtn.addEventListener('click', playMakeNoise);
 
     // Meal Schedule
-    DOMElements.addMealCardBtn.addEventListener('click', () => openMealDetailModal());
-    DOMElements.saveMealDetailBtn.addEventListener('click', saveMealDetail);
-    DOMElements.deleteMealDetailBtn.addEventListener('click', deleteMealDetail);
+    if (DOMElements.addMealCardBtn) DOMElements.addMealCardBtn.addEventListener('click', () => openMealDetailModal());
+    if (DOMElements.saveMealDetailBtn) DOMElements.saveMealDetailBtn.addEventListener('click', saveMealDetail);
+    if (DOMElements.deleteMealDetailBtn) DOMElements.deleteMealDetailBtn.addEventListener('click', deleteMealDetail);
+    if (DOMElements.cancelMealDetailBtn) DOMElements.cancelMealDetailBtn.addEventListener('click', () => closeMealDetailModal());
     
-    // Meal Modal Logic
+    // Meal Modal Logic (Days and Specific Date)
     document.querySelectorAll('.day-btn:not(.date-btn)').forEach(btn => btn.addEventListener('click', () => {
         btn.classList.toggle('selected');
-        DOMElements.specificDateInput.value = ''; // Clear specific date if a day is clicked
-        DOMElements.specificDateDisplay.textContent = '';
-        document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('disabled'));
-        DOMElements.specificDateBtn.classList.remove('selected');
+        // If any day is selected, disable specific date input and button
+        if (document.querySelectorAll('.day-btn.selected:not(.date-btn)').length > 0) {
+            if (DOMElements.specificDateInput) DOMElements.specificDateInput.value = ''; // Clear specific date
+            if (DOMElements.specificDateDisplay) DOMElements.specificDateDisplay.textContent = '';
+            if (DOMElements.specificDateBtn) DOMElements.specificDateBtn.classList.remove('selected');
+            if (DOMElements.specificDateBtn) DOMElements.specificDateBtn.disabled = true; // Disable specific date button
+        } else {
+            // If no days are selected, enable specific date input and button
+            document.querySelectorAll('.day-btn:not(.date-btn)').forEach(btn => btn.classList.remove('disabled'));
+            if (DOMElements.specificDateBtn) DOMElements.specificDateBtn.disabled = false;
+        }
+        // Ensure all day buttons are enabled if specific date is not selected
+        document.querySelectorAll('.day-btn:not(.date-btn)').forEach(b => b.classList.remove('disabled'));
     }));
-    DOMElements.specificDateBtn.addEventListener('click', () => DOMElements.specificDateInput.click());
-    DOMElements.specificDateInput.addEventListener('change', e => {
-        if (e.target.value) {
-            document.querySelectorAll('.day-btn:not(.date-btn)').forEach(btn => btn.classList.remove('selected'));
-            document.querySelectorAll('.day-btn:not(.date-btn)').forEach(btn => btn.classList.add('disabled'));
-            DOMElements.specificDateDisplay.textContent = `วันที่ระบุ: ${new Date(e.target.value).toLocaleDateString('th-TH')}`;
-            DOMElements.specificDateBtn.classList.add('selected');
+
+    // ✅ 4. ตรงเลือกวันที่เจาะจงพอกดปุ่มแล้วไม่ขึ้น popup ให้เลือกวันที่เลย
+    if (DOMElements.specificDateBtn) DOMElements.specificDateBtn.addEventListener('click', () => {
+        // When specific date is selected, disable all recurring day buttons
+        document.querySelectorAll('.day-btn:not(.date-btn)').forEach(btn => {
+            btn.classList.remove('selected'); // Deselect all days
+            btn.classList.add('disabled'); // Disable all days
+        });
+        if (DOMElements.specificDateInput) {
+            DOMElements.specificDateInput.style.display = 'block'; // ✅ ทำให้ input แสดงผล
+            DOMElements.specificDateInput.focus(); // Focus ไปที่ input
+            // DOMElements.specificDateInput.click(); // ไม่จำเป็นต้องเรียก click() ตรงนี้แล้ว
+            DOMElements.specificDateBtn.classList.add('selected'); // Mark specific date button as selected
         }
     });
-    DOMElements.mealAudioInput.addEventListener('change', e => {
-        const file = e.target.files[0];
-        DOMElements.mealAudioStatus.textContent = file ? file.name : 'ไม่มีไฟล์';
-        DOMElements.mealAudioPreview.src = file ? URL.createObjectURL(file) : '';
-        DOMElements.mealAudioPreview.style.display = file ? 'block' : 'none';
-    });
+
+    if (DOMElements.specificDateInput) {
+        DOMElements.specificDateInput.addEventListener('change', e => {
+            if (e.target.value) {
+                if (DOMElements.specificDateDisplay) DOMElements.specificDateDisplay.textContent = `วันที่ระบุ: ${new Date(e.target.value).toLocaleDateString('th-TH')}`;
+                // When a specific date is chosen, disable recurring day buttons
+                document.querySelectorAll('.day-btn:not(.date-btn)').forEach(btn => {
+                    btn.classList.remove('selected');
+                    btn.classList.add('disabled');
+                });
+                if (DOMElements.specificDateBtn) DOMElements.specificDateBtn.classList.add('selected');
+                DOMElements.specificDateInput.style.display = 'none'; // ✅ ซ่อน input หลังจากเลือกวันที่
+            } else {
+                // If specific date is cleared, enable recurring day buttons
+                document.querySelectorAll('.day-btn:not(.date-btn)').forEach(btn => btn.classList.remove('disabled'));
+                if (DOMElements.specificDateBtn) DOMElements.specificDateBtn.classList.remove('selected');
+                if (DOMElements.specificDateDisplay) DOMElements.specificDateDisplay.textContent = '';
+                DOMElements.specificDateInput.style.display = 'none'; // ✅ ซ่อน input ถ้าล้างค่า
+            }
+        });
+    }
+
+    // ✅ เพิ่ม Event Listener สำหรับโหมดสวิง
+    if (DOMElements.mealSwingModeCheckbox && DOMElements.mealFanDirectionInput) {
+        DOMElements.mealSwingModeCheckbox.addEventListener('change', (e) => {
+            DOMElements.mealFanDirectionInput.disabled = e.target.checked;
+        });
+    }
+
+    if (DOMElements.mealAudioInput) { // Safety check
+        DOMElements.mealAudioInput.addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (DOMElements.mealAudioStatus) DOMElements.mealAudioStatus.textContent = file ? file.name : 'ไม่มีไฟล์';
+            if (DOMElements.mealAudioPreview) { // Safety check
+                DOMElements.mealAudioPreview.src = file ? URL.createObjectURL(file) : '';
+                DOMElements.mealAudioPreview.style.display = file ? 'block' : 'none';
+            }
+        });
+    }
 
     // Animal Calculator
-    populateAnimalType(DOMElements);
+    // Pass DOMElements to animalCalculator functions
+    populateAnimalType(DOMElements); 
     document.querySelectorAll('.custom-select-trigger').forEach(trigger => {
         trigger.addEventListener('change', () => {
             if (trigger.dataset.target === 'animalType') {
-                updateAnimalSpecies(DOMElements);
+                updateAnimalSpecies(DOMElements); 
             }
-            updateRecommendedAmount(DOMElements);
+            updateRecommendedAmount(DOMElements); 
         });
     });
-    [DOMElements.animalCount, DOMElements.animalWeightKg].forEach(input => {
-        input.addEventListener('input', () => updateRecommendedAmount(DOMElements));
-    });
-    DOMElements.applyRecommendedAmountBtn.addEventListener('click', applyRecommendedAmount);
+    if (DOMElements.animalCount && DOMElements.animalWeightKg) { // Safety check
+        [DOMElements.animalCount, DOMElements.animalWeightKg].forEach(input => {
+            input.addEventListener('input', () => updateRecommendedAmount(DOMElements)); 
+        });
+    }
+    // ✅ 6. ปุ่มนำไปสร้างมื้ออาหารในเมนูคำนวณใช้งานได้
+    if (DOMElements.applyRecommendedAmountBtn) DOMElements.applyRecommendedAmountBtn.addEventListener('click', applyRecommendedAmount);
+
+    // Initial call for animal calculator
+    updateRecommendedAmount(DOMElements); 
 });

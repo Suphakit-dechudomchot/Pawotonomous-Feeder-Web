@@ -921,3 +921,87 @@ input:checked + .toggle-slider:before {
     .new-notification-toast { top: 10px; right: 10px; left: 10px; max-width: unset; }
     .custom-alert-content { padding: 20px; }
 }
+/* สไตล์พื้นฐานสำหรับ input type="date" */
+#specificDateInput {
+    padding: 10px 15px;
+    border: 1px solid var(--border-color); /* ใช้สีขอบจากตัวแปรธีม */
+    border-radius: 8px; /* ทำให้มีมุมโค้งมน */
+    background-color: var(--card-background); /* ใช้สีพื้นหลังจากการ์ด */
+    color: var(--text-light); /* ใช้สีข้อความสว่าง */
+    font-size: 1em;
+    width: 100%; /* ให้เต็มความกว้าง */
+    box-sizing: border-box; /* สำคัญเพื่อให้ padding ไม่ขยายความกว้าง */
+    margin-top: 10px; /* เพิ่มระยะห่างด้านบน */
+    cursor: pointer; /* แสดงว่าสามารถคลิกได้ */
+    transition: border-color 0.3s ease, box-shadow 0.3s ease; /* เพิ่ม transition */
+}
+
+/* สไตล์เมื่อ input type="date" ได้รับการโฟกัส */
+#specificDateInput:focus {
+    outline: none; /* ลบ outline เริ่มต้นของเบราว์เซอร์ */
+    border-color: var(--primary-color); /* เปลี่ยนสีขอบเป็นสีหลักของธีม */
+    /* ใช้ rgba เพื่อให้เงาดูโปร่งแสงและเข้ากับธีม */
+    box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.3);
+}
+.toggle-label {
+    position: relative;
+    display: inline-block;
+    width: 50px; /* ความกว้างของสวิตช์ */
+    height: 28px; /* ความสูงของสวิตช์ */
+    vertical-align: middle;
+}
+
+.toggle-label input {
+    opacity: 0; /* ซ่อน checkbox เดิม */
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--inactive-toggle-color); /* สีเทาเมื่อปิด */
+    transition: .4s; /* เพิ่ม animation ให้ดูสมูท */
+    border-radius: 28px; /* ทำให้เป็นวงรี */
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 20px; /* ขนาดของวงกลมเลื่อน */
+    width: 20px; /* ขนาดของวงกลมเลื่อน */
+    left: 4px; /* ตำแหน่งเริ่มต้นด้านซ้าย */
+    bottom: 4px;
+    background-color: white; /* สีของวงกลมเลื่อน */
+    transition: .4s; /* เพิ่ม animation ให้ดูสมูท */
+    border-radius: 50%; /* ทำให้เป็นวงกลม */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2); /* เพิ่มเงาให้วงกลม */
+}
+
+/* เมื่อ checkbox ถูกเลือก (เปิด) */
+input:checked + .toggle-slider {
+    background-color: var(--active-toggle-color); /* เปลี่ยนเป็นสีเขียวอมฟ้าเมื่อเปิด */
+}
+
+/* เมื่อ checkbox ได้รับการโฟกัส */
+input:focus + .toggle-slider {
+    box-shadow: 0 0 1px var(--active-toggle-color);
+}
+
+/* เมื่อ checkbox ถูกเลือก (เปิด) ให้เลื่อนวงกลมไปทางขวา */
+input:checked + .toggle-slider:before {
+    transform: translateX(22px); /* เลื่อนไปทางขวา 22px */
+}
+
+/* สไตล์สำหรับ input ทิศทางลมเมื่อ disabled */
+.input-group input[type="number"]:disabled {
+    background-color: var(--card-background); /* สีพื้นหลังเมื่อ disabled */
+    color: var(--text-dark); /* สีข้อความเมื่อ disabled */
+    border-color: var(--border-color); /* สีขอบเมื่อ disabled */
+    cursor: not-allowed;
+    opacity: 0.7;
+}

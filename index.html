@@ -17,6 +17,7 @@
             <span id="deviceStatusCircle" class="status-circle offline" title="สถานะอุปกรณ์: ออฟไลน์"></span>
             <span id="deviceStatusText" class="status-text offline">ออฟไลน์</span>
         </div>
+        <!-- ✅ นำปุ่มกระดิ่งด้านบนออกตามคำขอ -->
     </div>
 
     <!-- Custom Alert Modal Structure -->
@@ -24,7 +25,7 @@
         <div id="customAlertContent" class="custom-alert-content">
             <h3 id="customAlertTitle"></h3>
             <p id="customAlertMessage"></p>
-            <button id="customAlertOkButton">ตกลง</button>
+            <button id="customAlertOkButton" class="button primary">ตกลง</button>
         </div>
     </div>
 
@@ -80,7 +81,8 @@
                     <button class="day-btn" data-day="Sun">อา</button>
                     <button id="specificDateBtn" class="day-btn date-btn"><i class="fa-solid fa-calendar-day"></i></button>
                 </div>
-                <input type="date" id="specificDateInput" style="display: none;">
+                <!-- ✅ ลบ style="display: none;" ออกจากตรงนี้ -->
+                <input type="date" id="specificDateInput">
                 <span id="specificDateDisplay" class="specific-date-display"></span>
             </div>
 
@@ -151,7 +153,7 @@
             </div>
 
             <!-- 1. Dashboard Section (ปุ่มและฟังก์ชันต่างๆ) -->
-            <section id="dashboard-section" class="content-section active">
+            <section id="dashboard-section" class="content-section">
                 <h2><i class="fa-solid fa-bolt"></i> ควบคุมด่วน</h2>
                 <div class="dashboard-grid">
                     <div class="card action-card">
@@ -171,7 +173,7 @@
                     <div class="card action-card">
                         <h3>เล่นเสียงเรียกสัตว์</h3>
                         <input type="file" accept="audio/*" id="makenoiseAudioInput" style="display:none;">
-                         <button type="button" class="secondary-button full-width-button" onclick="document.getElementById('makenoiseAudioInput').click();"><i class="fa-solid fa-music"></i> เลือกไฟล์เสียง</button>
+                         <button type="button" class="secondary-button full-width-button" onclick="document.getElementById('makenoiseAudioInput').click();"><i class="fa-solid fa-music"></i> เลือกไฟล์</button>
                         <span id="makenoiseAudioStatus" class="audio-status"></span>
                         <button id="makenoiseBtn" class="primary-button full-width-button" disabled><i class="fa-solid fa-volume-high"></i> เล่นเสียงนี้</button>
                     </div>
@@ -343,9 +345,6 @@
         </button>
     </nav>
     
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
