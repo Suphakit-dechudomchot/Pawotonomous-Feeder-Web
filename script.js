@@ -58,6 +58,10 @@ let isAuthReady = false; // ✅ Flag to indicate if Firebase Auth is ready
 let countdownInterval = null; // สำหรับเก็บ Interval ID ของตัวนับถอยหลัง
 let allMealsData = {}; // เก็บข้อมูลมื้ออาหารทั้งหมดสำหรับใช้ใน countdown
 
+// Constants for time picker looping
+const TIME_PICKER_BUFFER = 5; // Number of elements to duplicate at start/end
+const TIME_PICKER_ITEM_HEIGHT = 50; // Height of each time slot div
+
 // ===============================================
 // ✅ Utility Functions
 // ===============================================
@@ -152,7 +156,7 @@ function showNewNotificationToast(message) {
 // ===============================================
 // ✅ Device & Session Management (Login/Logout)
 // ===============================================
-async function setAndLoadDeviceId(id) {
+async function setAndLoadDeviceId(id, navigateToMealSchedule = false) { // เพิ่ม parameter ใหม่
     console.log("setAndLoadDeviceId called with ID:", id);
     currentDeviceId = id;
     localStorage.setItem('pawtonomous_device_id', currentDeviceId);
@@ -177,8 +181,22 @@ async function setAndLoadDeviceId(id) {
             // Load all settings and data for the new device ID
             await listenToDeviceStatus(); // Sets up listener, doesn't wait for data to arrive
             await loadSettingsFromFirebase(); // This will also trigger the initial setup check
-            await loadMeals(); // โหลดมื้ออาหารและจะเรียก updateCountdownDisplay
             await setupNotificationListener(); // Sets up listener
+            
+            // ✅ 5. ถ้าตั้งค่าครบแล้วให้เด้งไปที่หน้ามื้ออาหาร
+            const isSetupComplete = await checkInitialSetupComplete(); // เรียกใช้เพื่อตรวจสอบสถานะ
+            if (isSetupComplete && navigateToMealSchedule) {
+                showSection('meal-schedule-section');
+            } else if (!isSetupComplete) {
+                // ถ้ายังตั้งค่าไม่ครบ ให้แสดง overlay บังคับตั้งค่า
+                if (DOMElements.forceSetupOverlay) {
+                    DOMElements.forceSetupOverlay.style.display = 'flex';
+                    hasShownInitialSetupOverlay = true;
+                }
+            }
+            // Always load meals, regardless of setup completion, as countdown depends on it.
+            // The countdown display will show appropriate message if settings are incomplete.
+            await loadMeals(); 
             console.log("All initial data loading functions initiated.");
         } catch (error) {
             console.error("Error during initial data loading in setAndLoadDeviceId:", error);
@@ -216,16 +234,47 @@ async function checkInitialSetupComplete() {
         });
         const settings = settingsSnapshot.val() || {};
         
-        // Check if all required settings are present
-        const isSetupComplete = 
-            settings.timeZoneOffset != null &&
-            settings.bottleSize != null &&
-            settings.calibration?.grams_per_second > 0;
-        
-        console.log("checkInitialSetupComplete: isSetupComplete =", isSetupComplete);
-        console.log("checkInitialSetupComplete: settings =", settings);
+        // Define required settings for the red dot
+        let isSetupComplete = true;
+        let missingSettings = [];
 
-        // ✅ 5. แสดงจุดแดงบนเมนูตั้งค่าถ้ายังไม่ครบ
+        // Check Time Zone
+        if (settings.timeZoneOffset == null || isNaN(parseFloat(settings.timeZoneOffset))) {
+            isSetupComplete = false;
+            missingSettings.push("โซนเวลา");
+        }
+
+        // Check Bottle Size and Custom Height (if applicable)
+        if (settings.bottleSize == null || settings.bottleSize === '') {
+            isSetupComplete = false;
+            missingSettings.push("ขนาดขวด");
+        } else if (settings.bottleSize === 'custom') {
+            if (settings.customBottleHeight == null || isNaN(parseFloat(settings.customBottleHeight)) || parseFloat(settings.customBottleHeight) <= 0) {
+                isSetupComplete = false;
+                missingSettings.push("ความสูงถังอาหาร (กำหนดเอง)");
+            }
+        }
+
+        // Check Calibration
+        if (settings.calibration?.grams_per_second == null || settings.calibration.grams_per_second <= 0) {
+            isSetupComplete = false;
+            missingSettings.push("ค่าการสอบเทียบปริมาณอาหาร");
+        }
+
+        // ✅ 2. เพิ่มการเช็ค Wi-Fi SSID และ Password
+        if (!settings.wifiCredentials || !settings.wifiCredentials.ssid || settings.wifiCredentials.ssid.trim() === '') {
+            isSetupComplete = false;
+            missingSettings.push("ชื่อ Wi-Fi (SSID)");
+        }
+        if (!settings.wifiCredentials || !settings.wifiCredentials.password || settings.wifiCredentials.password.trim() === '') {
+            isSetupComplete = false;
+            missingSettings.push("รหัสผ่าน Wi-Fi");
+        }
+
+        console.log("checkInitialSetupComplete: isSetupComplete =", isSetupComplete);
+        console.log("checkInitialSetupComplete: Missing settings =", missingSettings.join(', ') || "None");
+
+        // ✅ 4. แสดงจุดแดงบนเมนูตั้งค่าถ้ายังไม่ครบ
         if (DOMElements.settingsNavDot) {
             DOMElements.settingsNavDot.style.display = isSetupComplete ? 'none' : 'block';
             console.log("settingsNavDot display set to:", DOMElements.settingsNavDot.style.display);
@@ -233,40 +282,33 @@ async function checkInitialSetupComplete() {
             console.warn("settingsNavDot element not found!");
         }
         
-        // ✅ 5. เมนูอื่นๆ ยังคงใช้ได้ปกติ (ยกเว้นตอนบังคับตั้งค่าครั้งแรก)
-        // ถ้า forceSetupOverlay กำลังแสดงอยู่ (ซึ่งหมายถึงการเข้าครั้งแรกและยังไม่ได้ตั้งค่า)
-        // หรือถ้ายังไม่ได้กรอก Device ID เลย
-        // จะปิดการใช้งานเมนูอื่น ๆ ทั้งหมด ยกเว้น 'ตั้งค่า' และ 'ออกจากระบบ'
         const isInitialForcedSetup = (DOMElements.forceSetupOverlay && DOMElements.forceSetupOverlay.style.display === 'flex');
         
         document.querySelectorAll('.nav-item').forEach(item => {
             if (item.dataset.target === 'device-settings-section' || item.dataset.target === 'deviceSelectionSection') {
-                item.disabled = false; // ตั้งค่าและออกจากระบบ/เปลี่ยนอุปกรณ์ ต้องใช้ได้เสมอ
+                item.disabled = false;
                 item.classList.remove('disabled-overlay');
-            } else if (isInitialForcedSetup) {
-                item.disabled = true; // ถ้าอยู่ในโหมดบังคับตั้งค่าครั้งแรก ปิดเมนูอื่น
+            } else if (isInitialForcedSetup || !isSetupComplete) { // Disable if forced setup or if setup is incomplete
+                item.disabled = true;
                 item.classList.add('disabled-overlay');
             } else {
-                item.disabled = false; // ถ้าตั้งค่าครบแล้ว หรือไม่ได้อยู่ในโหมดบังคับตั้งค่าครั้งแรก เปิดเมนูอื่น
+                item.disabled = false;
                 item.classList.remove('disabled-overlay');
             }
             console.log(`Nav item ${item.dataset.target} disabled: ${item.disabled}`);
         });
 
-        // ✅ 1. Popup "กรุณาตั้งค่าเริ่มต้น" ขึ้นมาแค่ครั้งเดียว
         // แสดง overlay เฉพาะเมื่อ setup ไม่สมบูรณ์, ยังไม่เคยแสดง, และไม่ได้อยู่ในหน้าตั้งค่าอยู่แล้ว
         if (!isSetupComplete && !hasShownInitialSetupOverlay && DOMElements.mainContentContainer.style.display === 'block' && document.getElementById('device-settings-section')?.classList.contains('active') === false) {
             if (DOMElements.forceSetupOverlay) {
                 DOMElements.forceSetupOverlay.style.display = 'flex';
-                hasShownInitialSetupOverlay = true; // Set flag so it doesn't show again
+                hasShownInitialSetupOverlay = true;
                 console.log("forceSetupOverlay displayed for initial incomplete setup.");
             }
         } else if (isSetupComplete && DOMElements.forceSetupOverlay && DOMElements.forceSetupOverlay.style.display === 'flex') {
-            // ถ้าตั้งค่าครบแล้ว และ overlay ยังแสดงอยู่ ให้ซ่อน
             DOMElements.forceSetupOverlay.style.display = 'none';
             console.log("forceSetupOverlay hidden because setup is complete.");
         }
-
 
         return isSetupComplete;
     } catch (error) {
@@ -318,7 +360,7 @@ async function updateFoodLevelDisplay(foodLevelCm) {
                 resolve(snapshot);
             }, { onlyOnce: true });
         });
-        const settings = snapshot.val() || {};
+        const settings = settingsSnapshot.val() || {}; // Corrected: use settingsSnapshot.val()
         let bottleHeight = 0;
         if (settings.bottleSize === 'custom') {
             bottleHeight = parseFloat(settings.customBottleHeight);
@@ -384,7 +426,7 @@ async function fetchAndDisplayNotifications() {
         snapshot.forEach(child => notifications.push({ key: child.key, ...child.val() }));
         
         if(notifications.length === 0) {
-            DOMElements.notificationHistoryList.innerHTML = '<li>ไม่มีการแจ้งเตือน</li>';
+            DOMElements.notificationHistoryList.innerHTML = '<p class="empty-state">ไม่มีการแจ้งเตือน</p>'; // Changed to p tag for consistency
             return;
         }
 
@@ -452,7 +494,7 @@ async function loadSettingsFromFirebase() {
         gramsPerSecond = settings.calibration?.grams_per_second || null; // Corrected typo here
 
         // TimeZone
-        if (DOMElements.timeZoneOffsetSelect) DOMElements.timeZoneOffsetSelect.value = settings.timeZoneOffset ?? '7';
+        if (DOMElements.timeZoneOffsetSelect) DOMElements.timeZoneOffsetSelect.value = settings.timeZoneOffset ?? ''; // Default to empty if not set
 
         // Bottle Size
         if (DOMElements.bottleSizeSelect) DOMElements.bottleSizeSelect.value = settings.bottleSize ?? '';
@@ -500,8 +542,10 @@ const saveSettingsToFirebase = debounce(async (settingType) => {
         // ✅ Use update() for modular SDK
         await update(ref(db, `device/${currentDeviceId}/settings`), settingsToSave);
         await showCustomAlert("สำเร็จ", "บันทึกการตั้งค่าแล้ว", "success");
-        // ✅ 5. ตรวจสอบสถานะการตั้งค่าหลังบันทึก เพื่ออัปเดตจุดแดง
+        // ✅ 4. ตรวจสอบสถานะการตั้งค่าหลังบันทึก เพื่ออัปเดตจุดแดง
         await checkInitialSetupComplete(); 
+        // ✅ 2. อัปเดตตัวนับถอยหลังเมื่อ TimeZone เปลี่ยน
+        updateCountdownDisplay();
     }
     catch (error) {
         console.error(`Error saving system settings (${settingType}):`, error);
@@ -577,7 +621,7 @@ async function saveCalibration() {
         }
         await showCustomAlert("สำเร็จ", "บันทึกค่า Calibrate แล้ว", "success");
         hideModal(DOMElements.calibrationModal);
-        // ✅ 5. ตรวจสอบสถานะการตั้งค่าหลังบันทึก เพื่ออัปเดตจุดแดง
+        // ✅ 4. ตรวจสอบสถานะการตั้งค่าหลังบันทึก เพื่ออัปเดตจุดแดง
         await checkInitialSetupComplete(); 
     } catch (error) {
         await showCustomAlert("ข้อผิดพลาด", `ไม่สามารถบันทึกค่าได้: ${error.message}`, "error");
@@ -666,23 +710,21 @@ async function loadMeals() {
     DOMElements.mealListContainer.innerHTML = '<li>กำลังโหลด...</li>';
     try {
         // ✅ Use ref() and onValue() for modular SDK
-        const snapshot = await new Promise(resolve => {
-            onValue(ref(db, `device/${currentDeviceId}/meals`), (snapshot) => {
-                resolve(snapshot);
-            }, { onlyOnce: true });
+        // Use onValue for real-time updates of meals
+        onValue(ref(db, `device/${currentDeviceId}/meals`), (snapshot) => {
+            allMealsData = snapshot.val() || {}; // Store all meals globally
+            const mealsArray = allMealsData ? Object.entries(allMealsData).map(([id, data]) => ({ id, ...data })) : [];
+            mealsArray.sort((a, b) => (a.time || "00:00").localeCompare(b.time || "00:00"));
+            
+            DOMElements.mealListContainer.innerHTML = ''; // Clear loading message
+            if (mealsArray.length > 0) {
+                mealsArray.forEach(addMealCard);
+            } else {
+                DOMElements.mealListContainer.innerHTML = '<p class="notes" style="text-align: center;">ไม่มีมื้ออาหารที่ตั้งค่าไว้</p>';
+            }
+            // อัปเดตตัวนับถอยหลังหลังจากโหลดมื้ออาหาร
+            updateCountdownDisplay();
         });
-        allMealsData = snapshot.val() || {}; // Store all meals globally
-        const mealsArray = allMealsData ? Object.entries(allMealsData).map(([id, data]) => ({ id, ...data })) : [];
-        mealsArray.sort((a, b) => (a.time || "00:00").localeCompare(b.time || "00:00"));
-        
-        DOMElements.mealListContainer.innerHTML = ''; // Clear loading message
-        if (mealsArray.length > 0) {
-            mealsArray.forEach(addMealCard);
-        } else {
-            DOMElements.mealListContainer.innerHTML = '<p class="notes" style="text-align: center;">ยังไม่มีมื้ออาหารที่ตั้งค่าไว้</p>';
-        }
-        // อัปเดตตัวนับถอยหลังหลังจากโหลดมื้ออาหาร
-        updateCountdownDisplay();
     } catch (error) {
         console.error("Error loading meals:", error);
         await showCustomAlert("ข้อผิดพลาด", `ไม่สามารถโหลดมื้ออาหารได้: ${error.message}`, "error");
@@ -730,7 +772,7 @@ function addMealCard(mealData) {
             // ✅ Use set() for modular SDK
             await set(ref(db, `device/${currentDeviceId}/meals/${id}/enabled`), isEnabled);
             await showCustomAlert("สำเร็จ", `มื้อ ${name} ถูก ${isEnabled ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}`, "info");
-            updateCountdownDisplay(); // อัปเดตตัวนับถอยหลังเมื่อสถานะมื้ออาหารเปลี่ยน
+            // updateCountdownDisplay() is called by the onValue listener on meals
         } catch (error) {
             console.error("Error toggling meal status:", error);
             await showCustomAlert("ข้อผิดพลาด", `ไม่สามารถเปลี่ยนสถานะมื้ออาหารได้: ${error.message}`, "error");
@@ -782,7 +824,8 @@ async function openMealDetailModal(mealId = null, prefillData = null) {
     
     if (DOMElements.mealNameInput) DOMElements.mealNameInput.value = mealData.name || '';
     if (DOMElements.mealAmountInput) DOMElements.mealAmountInput.value = mealData.amount || 10;
-    if (DOMElements.mealFanStrengthInput) DOMElements.mealFanStrengthInput.value = mealData.fanStrength || 1;
+    // ✅ 6. เปลี่ยนความแรงลมจาก 1-3 เป็น 0-100%
+    if (DOMElements.mealFanStrengthInput) DOMElements.mealFanStrengthInput.value = mealData.fanStrength ?? 50; // Default to 50%
     if (DOMElements.mealFanDirectionInput) DOMElements.mealFanDirectionInput.value = mealData.fanDirection || 90;
     if (DOMElements.mealSwingModeCheckbox) DOMElements.mealSwingModeCheckbox.checked = mealData.swingMode || false;
 
@@ -835,15 +878,37 @@ async function saveMealDetail() {
     }
 
     const [hour, minute] = getTimeFromPicker();
+    let selectedDays = Array.from(document.querySelectorAll('.day-btn.selected:not(.date-btn)')).map(btn => btn.dataset.day);
+    let specificDate = DOMElements.specificDateInput.value || null;
+
+    // ✅ 2. ปรับให้ถ้าผู้ใช้ไม่ได้ระบุวัน ให้เซตไปที่เวลาล่าสุดที่จะถึง
+    if (!specificDate && selectedDays.length === 0) {
+        const now = new Date();
+        const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
+        const mealTimeInMinutes = hour * 60 + minute;
+
+        // Create a Date object for the meal time today (in local timezone)
+        const mealDateTimeToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0);
+
+        if (mealDateTimeToday.getTime() <= now.getTime()) {
+            // If the meal time has already passed today, set it for tomorrow
+            now.setDate(now.getDate() + 1);
+        }
+        // Set specificDate to today or tomorrow's date
+        specificDate = now.toISOString().split('T')[0];
+        await showCustomAlert("แจ้งเตือน", `เนื่องจากไม่ได้ระบุวัน มื้ออาหารนี้จะถูกตั้งค่าสำหรับวันที่ ${new Date(specificDate).toLocaleDateString('th-TH')}`, "info");
+    }
+
+
     const mealData = {
         time: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
         name: DOMElements.mealNameInput.value.trim() || 'มื้ออาหาร',
         amount: parseInt(DOMElements.mealAmountInput.value) || 10, // Default to 10 if invalid
-        fanStrength: clamp(parseInt(DOMElements.mealFanStrengthInput.value), 1, 3),
+        fanStrength: clamp(parseInt(DOMElements.mealFanStrengthInput.value), 0, 100), // ✅ 6. เปลี่ยนเป็น 0-100
         fanDirection: clamp(parseInt(DOMElements.mealFanDirectionInput.value), 60, 120),
         swingMode: DOMElements.mealSwingModeCheckbox.checked,
-        days: DOMElements.specificDateInput.value ? [] : Array.from(document.querySelectorAll('.day-btn.selected:not(.date-btn)')).map(btn => btn.dataset.day),
-        specificDate: DOMElements.specificDateInput.value || null,
+        days: selectedDays, // Use the determined selectedDays
+        specificDate: specificDate, // Use the determined specificDate
         enabled: true
     };
 
@@ -909,7 +974,7 @@ async function saveMealDetail() {
         
         await showCustomAlert("สำเร็จ", "บันทึกมื้ออาหารเรียบร้อย", "success");
         closeMealDetailModal(); // ✅ Use new close function
-        loadMeals(); // Reload meals to update the list and countdown
+        // No need to call loadMeals() here, as onValue listener will handle updates
     } catch (error) {
         console.error("Error saving meal:", error);
         await showCustomAlert("ผิดพลาด", `ไม่สามารถบันทึกได้: ${error.message}`, "error");
@@ -924,10 +989,38 @@ async function deleteMealDetail() {
         return;
     }
     
-    const confirmDelete = await showCustomAlert("ยืนยันการลบ", "คุณแน่ใจหรือไม่ที่จะลบมื้ออาหารนี้?", "warning");
-    // ในการใช้งานจริง คุณต้องมี modal ยืนยันที่มีปุ่ม Yes/No
-    // สำหรับตอนนี้ showCustomAlert เป็นแค่ alert ธรรมดา จึงไม่มีการตรวจสอบ confirmDelete
-    // หากต้องการการยืนยันจริง ต้องสร้าง modal ยืนยันที่มี callback สำหรับ Yes/No
+    // Custom Confirmation Modal
+    const confirmed = await new Promise(resolve => {
+        // Check if elements are available before using them
+        if (!DOMElements.confirmModal || !DOMElements.confirmModalTitle || !DOMElements.confirmModalMessage || !DOMElements.confirmYesBtn || !DOMElements.confirmNoBtn) {
+            console.error("Confirmation modal elements not found. Falling back to simple alert.");
+            resolve(confirm("คุณแน่ใจหรือไม่ที่จะลบมื้ออาหารนี้?"));
+            return;
+        }
+        DOMElements.confirmModalTitle.textContent = "ยืนยันการลบ";
+        DOMElements.confirmModalMessage.textContent = "คุณแน่ใจหรือไม่ที่จะลบมื้ออาหารนี้?";
+        showModal(DOMElements.confirmModal);
+
+        const yesHandler = () => {
+            hideModal(DOMElements.confirmModal);
+            DOMElements.confirmYesBtn.removeEventListener('click', yesHandler);
+            DOMElements.confirmNoBtn.removeEventListener('click', noHandler);
+            resolve(true);
+        };
+        const noHandler = () => {
+            hideModal(DOMElements.confirmModal);
+            DOMElements.confirmYesBtn.removeEventListener('click', yesHandler);
+            DOMElements.confirmNoBtn.removeEventListener('click', noHandler);
+            resolve(false);
+        };
+        DOMElements.confirmYesBtn.addEventListener('click', yesHandler);
+        DOMElements.confirmNoBtn.addEventListener('click', noHandler);
+    });
+
+    if (!confirmed) {
+        setButtonState(DOMElements.deleteMealDetailBtn, false);
+        return;
+    }
 
     setButtonState(DOMElements.deleteMealDetailBtn, true);
     try {
@@ -935,7 +1028,7 @@ async function deleteMealDetail() {
         await remove(ref(db, `device/${currentDeviceId}/meals/${activeMealId}`));
         await showCustomAlert("สำเร็จ", "ลบมื้ออาหารแล้ว", "success");
         closeMealDetailModal(); // ✅ Use new close function
-        loadMeals(); // Reload meals to update the list and countdown
+        // No need to call loadMeals() here, as onValue listener will handle updates
     } catch (error) {
         await showCustomAlert("ผิดพลาด", `ไม่สามารถลบได้: ${error.message}`, "error");
     } finally {
@@ -1016,7 +1109,7 @@ async function feedNow() {
 
         if (await sendCommand('feedNow', {
             duration_seconds: durationSeconds.toFixed(2),
-            fanStrength: mealToDispense.fanStrength || 1, // ใช้ค่าจากมื้อแรกที่เปิดใช้งาน หรือ default
+            fanStrength: mealToDispense.fanStrength ?? 50, // ใช้ค่าจากมื้อแรกที่เปิดใช้งาน หรือ default 50%
             fanDirection: mealToDispense.fanDirection || 90, // ใช้ค่าจากมื้อแรกที่เปิดใช้งาน หรือ default
             swingMode: mealToDispense.swingMode || false, // ใช้ค่าจากมื้อแรกที่เปิดใช้งาน หรือ default
             noiseFile: mealToDispense.audioUrl || null,
@@ -1097,57 +1190,61 @@ function findNextMeal(allMeals, timeZoneOffset) {
 
     const nowUtc = Date.now(); // Current UTC timestamp in milliseconds
 
-    for (const mealId in allMeals) {
-        const meal = allMeals[mealId];
-        if (!meal.enabled) continue; // Skip disabled meals
+    // Filter out disabled meals and past specific date meals
+    const activeMeals = Object.values(allMeals).filter(meal => {
+        if (!meal.enabled) return false;
+        if (meal.specificDate) {
+            // For specific date meals, calculate their exact UTC timestamp
+            // The specificDate is assumed to be YYYY-MM-DD. We add T00:00:00Z to parse it as UTC midnight.
+            const specificDateMidnightUtc = new Date(meal.specificDate + 'T00:00:00Z').getTime();
+            const [mealHour, mealMinute] = meal.time.split(':').map(Number);
+            
+            // Convert meal time (HH:MM in device's local timezone) to UTC timestamp
+            // mealTimeUtc represents the exact moment the meal should occur in UTC
+            const mealTimeUtc = specificDateMidnightUtc + (mealHour * 3600 + mealMinute * 60) * 1000 - (timeZoneOffset * 3600 * 1000);
+            
+            // Only consider if the meal time is in the future
+            return mealTimeUtc > nowUtc;
+        }
+        return true; // Recurring meals are always considered active if enabled
+    });
 
+    for (const meal of activeMeals) {
         const [mealHour, mealMinute] = meal.time.split(':').map(Number);
-
         let potentialNextTimestamp = null;
 
         if (meal.specificDate) {
-            // Specific date meal
-            // Parse specific date into a Date object (UTC midnight)
-            const specificDateUtc = new Date(meal.specificDate + 'T00:00:00Z').getTime();
-
-            // Calculate meal time in UTC based on specific date and timezone offset
-            // mealTimeUtc represents the exact moment the meal should occur in UTC
-            const mealTimeUtc = specificDateUtc + (mealHour * 3600 + mealMinute * 60) * 1000 - (timeZoneOffset * 3600 * 1000);
-
-            if (mealTimeUtc > nowUtc) {
-                potentialNextTimestamp = mealTimeUtc;
-            }
+            // Specific date meal (already filtered if in past by activeMeals filter)
+            const specificDateMidnightUtc = new Date(meal.specificDate + 'T00:00:00Z').getTime();
+            potentialNextTimestamp = specificDateMidnightUtc + (mealHour * 3600 + mealMinute * 60) * 1000 - (timeZoneOffset * 3600 * 1000);
         } else if (meal.days && meal.days.length > 0) {
             // Recurring meal
-            const currentDayUtc = new Date(nowUtc).getUTCDay(); // 0 (Sunday) to 6 (Saturday)
-            const currentHourUtc = new Date(nowUtc).getUTCHours();
-            const currentMinuteUtc = new Date(nowUtc).getUTCMinutes();
+            // Get current day of week in the *device's local time*
+            // To do this, we take nowUtc, apply the timezone offset, then get the day of the week.
+            const nowLocal = new Date(nowUtc + (timeZoneOffset * 3600 * 1000));
+            const currentDayLocal = nowLocal.getUTCDay(); // 0 (Sunday) to 6 (Saturday)
 
             for (const dayAbbr of meal.days) {
                 const targetDayOfWeek = dayMap[dayAbbr];
                 if (targetDayOfWeek === undefined) continue;
 
-                let daysToAdd = (targetDayOfWeek - currentDayUtc + 7) % 7;
+                let daysToAdd = (targetDayOfWeek - currentDayLocal + 7) % 7;
 
-                // If it's today (daysToAdd === 0) but the meal time (adjusted to UTC) has already passed
-                // We need to compare the meal time in the device's local time with the current local time.
-                // Or, more simply, compare the calculated UTC timestamp of the meal with nowUtc.
-                
-                // Calculate the timestamp for today's meal at the specified time, adjusted for timezone
-                const todayMealUtc = new Date(nowUtc);
-                todayMealUtc.setUTCHours(mealHour, mealMinute, 0, 0);
-                const todayMealUtcAdjustedForTZ = todayMealUtc.getTime() - (timeZoneOffset * 3600 * 1000);
+                // Calculate the timestamp for the meal on the current day (adjusted for timezone)
+                const todayLocalTimeAtMeal = new Date(nowUtc + (timeZoneOffset * 3600 * 1000));
+                todayLocalTimeAtMeal.setUTCHours(mealHour, mealMinute, 0, 0); // Set hours/minutes in UTC for this adjusted date
+                const todayMealUtc = todayLocalTimeAtMeal.getTime() - (timeZoneOffset * 3600 * 1000); // Convert back to UTC
 
-                if (daysToAdd === 0 && todayMealUtcAdjustedForTZ <= nowUtc) {
+                // If it's today (daysToAdd === 0) but the meal time (in device's local time) has already passed
+                if (daysToAdd === 0 && todayMealUtc <= nowUtc) {
                     daysToAdd = 7; // Schedule for next week
                 }
 
                 // Calculate the timestamp for the next occurrence of this meal in UTC
-                const nextOccurrenceUtc = new Date(nowUtc + daysToAdd * 24 * 3600 * 1000);
-                nextOccurrenceUtc.setUTCHours(mealHour, mealMinute, 0, 0);
+                const nextOccurrenceLocal = new Date(nowLocal.getTime() + daysToAdd * 24 * 3600 * 1000);
+                nextOccurrenceLocal.setUTCHours(mealHour, mealMinute, 0, 0); // Set hours/minutes in UTC for this adjusted date
 
-                // This candidateTimestamp is already in UTC, representing the exact time the meal should occur
-                const candidateTimestamp = nextOccurrenceUtc.getTime() - (timeZoneOffset * 3600 * 1000);
+                const candidateTimestamp = nextOccurrenceLocal.getTime() - (timeZoneOffset * 3600 * 1000);
 
                 if (candidateTimestamp > nowUtc) {
                     if (potentialNextTimestamp === null || candidateTimestamp < potentialNextTimestamp) {
@@ -1172,21 +1269,27 @@ function findNextMeal(allMeals, timeZoneOffset) {
 
 
 function updateCountdownDisplay() {
-    if (!DOMElements.nextMealCountdownDisplay || !DOMElements.nextMealTimeDisplay) return;
+    if (!DOMElements.nextMealCountdownDisplay || !DOMElements.nextMealTimeDisplay || !DOMElements.timeZoneOffsetSelect) return;
 
-    const { nextMeal, nextTimestamp } = findNextMeal(allMealsData, parseFloat(DOMElements.timeZoneOffsetSelect.value));
+    const timeZoneOffset = parseFloat(DOMElements.timeZoneOffsetSelect.value);
+    if (isNaN(timeZoneOffset)) {
+        DOMElements.nextMealCountdownDisplay.textContent = "กรุณาตั้งค่าโซนเวลาในหน้า 'ตั้งค่า'";
+        DOMElements.nextMealTimeDisplay.textContent = "";
+        return;
+    }
+
+    const { nextMeal, nextTimestamp } = findNextMeal(allMealsData, timeZoneOffset);
 
     if (nextMeal && nextTimestamp !== Infinity) {
         const now = Date.now();
         let timeLeft = nextTimestamp - now;
 
         if (timeLeft <= 0) {
-            // If time has passed, recalculate for the next meal (e.g., if a meal just occurred)
-            // This is a simple re-trigger; for robust systems, a server-side check or more complex client-side logic might be needed
-            // For now, just display a message and let the next second's update re-evaluate
-            DOMElements.nextMealCountdownDisplay.textContent = "กำลังให้อาหาร...";
+            // If time has passed, re-evaluate next meal immediately
+            DOMElements.nextMealCountdownDisplay.textContent = "กำลังคำนวณมื้อถัดไป...";
             DOMElements.nextMealTimeDisplay.textContent = "";
-            loadMeals(); // Re-load meals to trigger re-evaluation of next meal
+            // Trigger a re-evaluation by calling updateCountdownDisplay again after a short delay
+            setTimeout(updateCountdownDisplay, 1000); 
             return;
         }
 
@@ -1204,13 +1307,14 @@ function updateCountdownDisplay() {
         
         DOMElements.nextMealCountdownDisplay.textContent = countdownString;
 
-        // Display exact next meal time
-        const nextMealDateObj = new Date(nextTimestamp + (parseFloat(DOMElements.timeZoneOffsetSelect.value) * 3600 * 1000)); // Adjust to local time for display
-        const dayOfWeek = dayNamesThai[nextMealDateObj.getUTCDay()];
-        const dayOfMonth = nextMealDateObj.getUTCDate();
-        const month = monthNamesThai[nextMealDateObj.getUTCMonth()];
-        const hour = String(nextMealDateObj.getUTCHours()).padStart(2, '0');
-        const minute = String(nextMealDateObj.getUTCMinutes()).padStart(2, '0');
+        // Display exact next meal time in device's local time
+        const localNextMealDate = new Date(nextTimestamp + (timeZoneOffset * 3600 * 1000));
+
+        const dayOfWeek = dayNamesThai[localNextMealDate.getUTCDay()]; // Use getUTCDay as date is already adjusted
+        const dayOfMonth = localNextMealDate.getUTCDate();
+        const month = monthNamesThai[localNextMealDate.getUTCMonth()];
+        const hour = String(localNextMealDate.getUTCHours()).padStart(2, '0');
+        const minute = String(localNextMealDate.getUTCMinutes()).padStart(2, '0');
 
         DOMElements.nextMealTimeDisplay.textContent = `${dayOfWeek}. ${dayOfMonth} ${month} ${hour}:${minute} น.`;
 
@@ -1238,45 +1342,130 @@ function stopCountdown() {
 // ✅ Custom UI Component Logic (Time Picker, Select)
 // ===============================================
 function setupCustomTimePicker() {
-    if (!DOMElements['hours-column'] || !DOMElements['minutes-column']) return; // Safety check
+    if (!DOMElements['hours-column'] || !DOMElements['minutes-column']) return;
+
     const hoursCol = DOMElements['hours-column'];
     const minutesCol = DOMElements['minutes-column'];
 
+    hoursCol.innerHTML = '';
+    minutesCol.innerHTML = '';
+
+    // Add duplicates for looping (end of range at start)
+    for (let i = 24 - TIME_PICKER_BUFFER; i < 24; i++) {
+        const hourDiv = document.createElement('div');
+        hourDiv.textContent = String(i).padStart(2, '0');
+        hourDiv.classList.add('time-picker-duplicate'); // Optional: for debugging/styling
+        hoursCol.appendChild(hourDiv);
+    }
+    // Add real hours
     for (let i = 0; i < 24; i++) {
-        hoursCol.innerHTML += `<div>${String(i).padStart(2, '0')}</div>`;
+        const hourDiv = document.createElement('div');
+        hourDiv.textContent = String(i).padStart(2, '0');
+        hoursCol.appendChild(hourDiv);
+    }
+    // Add duplicates for looping (start of range at end)
+    for (let i = 0; i < TIME_PICKER_BUFFER; i++) {
+        const hourDiv = document.createElement('div');
+        hourDiv.textContent = String(i).padStart(2, '0');
+        hourDiv.classList.add('time-picker-duplicate');
+        hoursCol.appendChild(hourDiv);
+    }
+
+    // Same for minutes
+    for (let i = 60 - TIME_PICKER_BUFFER; i < 60; i++) {
+        const minuteDiv = document.createElement('div');
+        minuteDiv.textContent = String(i).padStart(2, '0');
+        minuteDiv.classList.add('time-picker-duplicate');
+        minutesCol.appendChild(minuteDiv);
     }
     for (let i = 0; i < 60; i++) {
-        minutesCol.innerHTML += `<div>${String(i).padStart(2, '0')}</div>`;
+        const minuteDiv = document.createElement('div');
+        minuteDiv.textContent = String(i).padStart(2, '0');
+        minutesCol.appendChild(minuteDiv);
+    }
+    for (let i = 0; i < TIME_PICKER_BUFFER; i++) {
+        const minuteDiv = document.createElement('div');
+        minuteDiv.textContent = String(i).padStart(2, '0');
+        minuteDiv.classList.add('time-picker-duplicate');
+        minutesCol.appendChild(minuteDiv);
     }
 
     let scrollTimeout;
-    [hoursCol, minutesCol].forEach(col => {
+    [hoursCol, minutesCol].forEach((col, index) => {
         col.addEventListener('scroll', () => {
             clearTimeout(scrollTimeout);
             scrollTimeout = setTimeout(() => {
                 const scrollTop = col.scrollTop;
-                const itemHeight = 50;
+                const itemHeight = TIME_PICKER_ITEM_HEIGHT;
+                const realItems = (index === 0) ? 24 : 60; // 24 hours or 60 minutes
+
+                // Calculate the index of the visually centered item
                 const selectedIndex = Math.round(scrollTop / itemHeight);
-                col.scrollTo({ top: selectedIndex * itemHeight, behavior: 'smooth' });
+                
+                // If scrolled into the "start duplicates" (showing end values)
+                if (selectedIndex < TIME_PICKER_BUFFER) {
+                    col.scrollTo({ top: (selectedIndex + realItems) * itemHeight, behavior: 'instant' });
+                } 
+                // If scrolled into the "end duplicates" (showing start values)
+                else if (selectedIndex >= (realItems + TIME_PICKER_BUFFER)) {
+                    col.scrollTo({ top: (selectedIndex - realItems) * itemHeight, behavior: 'instant' });
+                } else {
+                    // Snap to the closest item in the "real" range
+                    col.scrollTo({ top: selectedIndex * itemHeight, behavior: 'smooth' });
+                }
             }, 150);
         });
     });
 }
 
 function updateTimePicker(hour, minute) {
-    if (!DOMElements['hours-column'] || !DOMElements['minutes-column']) return [0,0]; // Safety check
-    const itemHeight = 50;
-    DOMElements['hours-column'].scrollTo({ top: hour * itemHeight, behavior: 'instant' });
-    DOMElements['minutes-column'].scrollTo({ top: minute * itemHeight, behavior: 'instant' }); // Fixed typo here
+    if (!DOMElements['hours-column'] || !DOMElements['minutes-column']) return;
+
+    // Scroll to the correct "real" position (after the initial duplicates)
+    DOMElements['hours-column'].scrollTop = (hour + TIME_PICKER_BUFFER) * TIME_PICKER_ITEM_HEIGHT;
+    DOMElements['minutes-column'].scrollTop = (minute + TIME_PICKER_BUFFER) * TIME_PICKER_ITEM_HEIGHT;
+
+    // Trigger scroll event to ensure snapping/centering logic is applied
+    DOMElements['hours-column'].dispatchEvent(new Event('scroll'));
+    DOMElements['minutes-column'].dispatchEvent(new Event('scroll'));
 }
 
 function getTimeFromPicker() {
-    if (!DOMElements['hours-column'] || !DOMElements['minutes-column']) return [0,0]; // Safety check
-    const itemHeight = 50;
-    const hour = Math.round(DOMElements['hours-column'].scrollTop / itemHeight);
-    const minute = Math.round(DOMElements['minutes-column'].scrollTop / itemHeight);
-    return [hour, minute];
+    if (!DOMElements['hours-column'] || !DOMElements['minutes-column']) return [0, 0];
+
+    const hoursCol = DOMElements['hours-column'];
+    const minutesCol = DOMElements['minutes-column'];
+
+    // Calculate the scroll position that corresponds to the center of the highlight area
+    const centerOfHighlight = TIME_PICKER_ITEM_HEIGHT * TIME_PICKER_BUFFER + (TIME_PICKER_ITEM_HEIGHT / 2);
+
+    // Find the hour element that is closest to the center of the highlight
+    let selectedHour = 0;
+    let minHourDiff = Infinity;
+    hoursCol.querySelectorAll('div').forEach((div, index) => {
+        const divCenter = div.offsetTop + (div.offsetHeight / 2);
+        const diff = Math.abs(divCenter - (hoursCol.scrollTop + (hoursCol.offsetHeight / 2)));
+        if (diff < minHourDiff) {
+            minHourDiff = diff;
+            selectedHour = parseInt(div.textContent);
+        }
+    });
+
+    // Find the minute element that is closest to the center of the highlight
+    let selectedMinute = 0;
+    let minMinuteDiff = Infinity;
+    minutesCol.querySelectorAll('div').forEach((div, index) => {
+        const divCenter = div.offsetTop + (div.offsetHeight / 2);
+        const diff = Math.abs(divCenter - (minutesCol.scrollTop + (minutesCol.offsetHeight / 2)));
+        if (diff < minMinuteDiff) {
+            minMinuteDiff = diff;
+            selectedMinute = parseInt(div.textContent);
+        }
+    });
+
+    return [selectedHour, selectedMinute];
 }
+
 
 function setupCustomSelects() {
     document.addEventListener('click', e => {
@@ -1334,8 +1523,8 @@ document.addEventListener('DOMContentLoaded', async () => { // Make DOMContentLo
         'notificationHistoryList', 'animal-calculator-section', 'animalCount', 'weightInputContainer',
         'animalWeightKg', 'lifeStageActivityContainer', 'recommendedAmount', 'calculationNotes',
         'applyRecommendedAmountBtn', 'nextMealCountdownDisplay', 'nextMealTimeDisplay',
-        // ✅ แก้ไข ID ให้ตรงกับ HTML
-        'hours-column', 'minutes-column' 
+        'hours-column', 'minutes-column', 'confirmModal', 'confirmModalTitle', 'confirmModalMessage',
+        'confirmYesBtn', 'confirmNoBtn'
     ];
     ids.forEach(id => {
         DOMElements[id] = document.getElementById(id);
@@ -1362,7 +1551,8 @@ document.addEventListener('DOMContentLoaded', async () => { // Make DOMContentLo
             const savedDeviceId = localStorage.getItem('pawtonomous_device_id');
             if (savedDeviceId) {
                 DOMElements.deviceIdInput.value = savedDeviceId; // Pre-fill the input
-                await setAndLoadDeviceId(savedDeviceId); // Await this call
+                // ✅ 5. ถ้าเข้าไอดีที่ตั้งค่าครบแล้วให้เด้งไปที่หน้ามื้ออาหาร
+                await setAndLoadDeviceId(savedDeviceId, true); // Pass true to navigate
             } else {
                 DOMElements.deviceSelectionSection.style.display = 'block';
                 if (DOMElements.mainContentContainer) DOMElements.mainContentContainer.style.display = 'none';
@@ -1400,7 +1590,8 @@ document.addEventListener('DOMContentLoaded', async () => { // Make DOMContentLo
 
             if (id) {
                 try {
-                    await setAndLoadDeviceId(id); // Await this call
+                    // ✅ 5. ถ้าเข้าไอดีที่ตั้งค่าครบแล้วให้เด้งไปที่หน้ามื้ออาหาร
+                    await setAndLoadDeviceId(id, true); // Pass true to navigate
                     console.log("setAndLoadDeviceId completed.");
                 } catch (error) {
                     console.error("Error during setAndLoadDeviceId:", error);
@@ -1441,7 +1632,7 @@ document.addEventListener('DOMContentLoaded', async () => { // Make DOMContentLo
     // Settings
     if (DOMElements.timeZoneOffsetSelect) DOMElements.timeZoneOffsetSelect.addEventListener('change', (e) => {
         saveSettingsToFirebase('timezone');
-        updateCountdownDisplay(); // Update countdown when timezone changes
+        // updateCountdownDisplay(); // Called inside saveSettingsToFirebase now
     });
     if (DOMElements.bottleSizeSelect) DOMElements.bottleSizeSelect.addEventListener('change', (e) => {
         if (DOMElements.customBottleHeightInput) {
@@ -1514,6 +1705,7 @@ document.addEventListener('DOMContentLoaded', async () => { // Make DOMContentLo
             DOMElements.specificDateInput.style.display = 'block'; // ✅ ทำให้ input แสดงผล
             DOMElements.specificDateInput.focus(); // Focus ไปที่ input
             DOMElements.specificDateBtn.classList.add('selected'); // Mark specific date button as selected
+            DOMElements.specificDateInput.showPicker(); // ✅ แสดง Date Picker
         }
     });
 

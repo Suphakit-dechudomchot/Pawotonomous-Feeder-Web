@@ -91,8 +91,8 @@
             </div>
 
             <div class="input-group">
-                <label for="mealFanStrengthInput">ความแรงลม (1-3):</label>
-                <input type="number" id="mealFanStrengthInput" value="1" min="1" max="3">
+                <label for="mealFanStrengthInput">ความแรงลม (0-100%):</label>
+                <input type="number" id="mealFanStrengthInput" value="50" min="0" max="100">
             </div>
 
             <div class="input-group">
@@ -122,6 +122,18 @@
                 <button id="saveMealDetailBtn" class="primary-button"><i class="fa-solid fa-save"></i> บันทึก</button>
                 <button id="deleteMealDetailBtn" class="danger-button" style="display:none;"><i class="fa-solid fa-trash"></i> ลบ</button>
                 <button id="cancelMealDetailBtn" class="secondary-button"><i class="fa-solid fa-times"></i> ยกเลิก</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Confirmation Modal (สำหรับยืนยันการลบ) -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <h3 id="confirmModalTitle"></h3>
+            <p id="confirmModalMessage"></p>
+            <div class="modal-buttons">
+                <button id="confirmYesBtn" class="danger-button">ใช่</button>
+                <button id="confirmNoBtn" class="secondary-button">ไม่</button>
             </div>
         </div>
     </div>
@@ -218,19 +230,45 @@
                         <label for="timeZoneOffsetSelect">โซนเวลา (UTC+/-H):</label>
                         <select id="timeZoneOffsetSelect">
                             <option value="">-- เลือกโซนเวลา --</option>
-                            <option value="-12">UTC-12</option><option value="-11">UTC-11</option><option value="-10">UTC-10</option>
-                            <option value="-9.5">UTC-9:30</option><option value="-9">UTC-9</option><option value="-8">UTC-8</option>
-                            <option value="-7">UTC-7</option><option value="-6">UTC-6</option><option value="-5">UTC-5</option>
-                            <option value="-4">UTC-4</option><option value="-3.5">UTC-3:30</option><option value="-3">UTC-3</option>
-                            <option value="-2">UTC-2</option><option value="-1">UTC-1</option><option value="0">UTC+0</option>
-                            <option value="1">UTC+1</option><option value="2">UTC+2</option><option value="3">UTC+3</option>
-                            <option value="3.5">UTC+3:30</option><option value="4">UTC+4</option><option value="4.5">UTC+4:30</option>
-                            <option value="5">UTC+5</option><option value="5.5">UTC+5:30</option><option value="5.75">UTC+5:45</option>
-                            <option value="6">UTC+6</option><option value="6.5">UTC+6:30</option><option value="8">UTC+8</option>
-                            <option value="8.75">UTC+8:45</option><option value="9">UTC+9</option><option value="9.5">UTC+9:30</option>
-                            <option value="10">UTC+10</option><option value="10.5">UTC+10:30</option><option value="11">UTC+11</option>
-                            <option value="12">UTC+12</option><option value="12.75">UTC+12:45</option><option value="13">UTC+13</option>
-                            <option value="14">UTC+14</option>
+                            <option value="-12">UTC-12:00 (Baker Island)</option>
+                            <option value="-11">UTC-11:00 (Samoa Time)</option>
+                            <option value="-10">UTC-10:00 (Hawaii-Aleutian Standard Time)</option>
+                            <option value="-9.5">UTC-09:30 (Marquesas Islands)</option>
+                            <option value="-9">UTC-09:00 (Alaska Standard Time)</option>
+                            <option value="-8">UTC-08:00 (Pacific Standard Time)</option>
+                            <option value="-7">UTC-07:00 (Mountain Standard Time)</option>
+                            <option value="-6">UTC-06:00 (Central Standard Time)</option>
+                            <option value="-5">UTC-05:00 (Eastern Standard Time)</option>
+                            <option value="-4.5">UTC-04:30 (Caracas)</option>
+                            <option value="-4">UTC-04:00 (Atlantic Standard Time)</option>
+                            <option value="-3.5">UTC-03:30 (Newfoundland Standard Time)</option>
+                            <option value="-3">UTC-03:00 (Argentina, Brazil)</option>
+                            <option value="-2">UTC-02:00 (Mid-Atlantic)</option>
+                            <option value="-1">UTC-01:00 (Azores)</option>
+                            <option value="0">UTC+00:00 (Greenwich Mean Time)</option>
+                            <option value="1">UTC+01:00 (Central European Time)</option>
+                            <option value="2">UTC+02:00 (Eastern European Time)</option>
+                            <option value="3">UTC+03:00 (Moscow Standard Time)</option>
+                            <option value="3.5">UTC+03:30 (Tehran)</option>
+                            <option value="4">UTC+04:00 (Azerbaijan Standard Time)</option>
+                            <option value="4.5">UTC+04:30 (Afghanistan)</option>
+                            <option value="5">UTC+05:00 (Pakistan Standard Time)</option>
+                            <option value="5.5">UTC+05:30 (Indian Standard Time)</option>
+                            <option value="5.75">UTC+05:45 (Nepal Time)</option>
+                            <option value="6">UTC+06:00 (Bangladesh Standard Time)</option>
+                            <option value="6.5">UTC+06:30 (Myanmar Standard Time)</option>
+                            <option value="7">UTC+07:00 (Indochina Time - Bangkok)</option>
+                            <option value="8">UTC+08:00 (China, Singapore Standard Time)</option>
+                            <option value="8.75">UTC+08:45 (Australian Central Western Standard Time - unofficial)</option>
+                            <option value="9">UTC+09:00 (Japan Standard Time)</option>
+                            <option value="9.5">UTC+09:30 (Australian Central Standard Time)</option>
+                            <option value="10">UTC+10:00 (Australian Eastern Standard Time)</option>
+                            <option value="10.5">UTC+10:30 (Lord Howe Standard Time)</option>
+                            <option value="11">UTC+11:00 (Solomon Islands)</option>
+                            <option value="12">UTC+12:00 (New Zealand Standard Time)</option>
+                            <option value="12.75">UTC+12:45 (Chatham Standard Time)</option>
+                            <option value="13">UTC+13:00 (Phoenix Islands)</option>
+                            <option value="14">UTC+14:00 (Line Islands)</option>
                         </select>
                     </div>
                     <div class="input-group">
