@@ -466,6 +466,30 @@ select:focus {
     background-color: #00BFA5;
 }
 
+/* Countdown Container */
+.countdown-container {
+    background-color: var(--card-background);
+    border-radius: 12px;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 15px var(--shadow-color);
+    border: 1px solid var(--border-color);
+    text-align: center;
+}
+
+.countdown-text {
+    font-size: 1.2em;
+    font-weight: 600;
+    color: var(--secondary-color);
+    margin-bottom: 5px;
+}
+
+.countdown-detail {
+    font-size: 0.9em;
+    color: var(--text-medium);
+}
+
+
 .meal-list-cards {
     padding: 0;
     max-height: calc(100vh - 300px);
@@ -674,6 +698,14 @@ input:checked + .toggle-slider:before {
     scroll-snap-align: center;
     transition: color 0.3s, transform 0.3s;
 }
+/* Style for the selected time item */
+.time-picker-column div.selected-time-item {
+    color: var(--primary-color); /* Highlight color */
+    font-weight: 700; /* Bolder */
+    font-size: 2.5em; /* Larger */
+    transform: scale(1.1); /* Slightly larger scale */
+}
+
 .time-picker-separator {
     font-size: 2em;
     color: var(--text-light);
@@ -807,6 +839,32 @@ input:checked + .toggle-slider:before {
     transform: translateY(0);
     opacity: 1;
 }
+
+/* Settings Save Toast (New) */
+.settings-save-toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--success-color);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.settings-save-toast.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+
 
 /* =================== ANIMAL CALCULATOR & CUSTOM SELECT =================== */
 .calculator-card .result-display {

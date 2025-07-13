@@ -541,7 +541,7 @@ const saveSettingsToFirebase = debounce(async (settingType) => {
         }
         // ✅ Use update() for modular SDK
         await update(ref(db, `device/${currentDeviceId}/settings`), settingsToSave);
-        await showCustomAlert("สำเร็จ", "บันทึกการตั้งค่าแล้ว", "success");
+        
         // ✅ 4. ตรวจสอบสถานะการตั้งค่าหลังบันทึก เพื่ออัปเดตจุดแดง
         await checkInitialSetupComplete(); 
         // ✅ 2. อัปเดตตัวนับถอยหลังเมื่อ TimeZone เปลี่ยน
