@@ -169,7 +169,34 @@
                 <div class="dashboard-grid">
                     <div class="card action-card">
                         <h3>ให้อาหารทันที</h3>
-                        <p class="notes"><small>จะให้อาหารทันทีโดยอิงข้อมูลจากมื้ออาหารแรกที่เปิดใช้งาน</small></p>
+                        <!-- เพิ่ม Input สำหรับการให้อาหารทันที -->
+                        <div class="input-group">
+                            <label for="feedNowAmountInput">ปริมาณ (กรัม):</label>
+                            <input type="number" id="feedNowAmountInput" value="10" min="1">
+                        </div>
+                        <div class="input-group">
+                            <label for="feedNowFanStrengthInput">ความแรงลม (0-100%):</label>
+                            <input type="number" id="feedNowFanStrengthInput" value="50" min="0" max="100">
+                        </div>
+                        <div class="input-group">
+                            <label for="feedNowFanDirectionInput">ทิศทางลม (60°-120°):</label>
+                            <input type="number" id="feedNowFanDirectionInput" value="90" min="60" max="120">
+                        </div>
+                        <div class="input-group swing-mode-group">
+                            <label for="feedNowSwingModeCheckbox">โหมดสวิง</label>
+                            <label class="toggle-label">
+                                <input type="checkbox" id="feedNowSwingModeCheckbox" class="toggle-switch">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="input-group audio-upload-group">
+                            <label for="feedNowAudioInput">เสียงเรียกสัตว์</label>
+                            <input type="file" accept="audio/*" id="feedNowAudioInput" class="meal-audio-input" style="display:none;">
+                            <button type="button" class="secondary-button" onclick="document.getElementById('feedNowAudioInput').click();"><i class="fa-solid fa-music"></i> เลือกไฟล์</button>
+                            <span id="feedNowAudioStatus" class="audio-status">ไม่มีไฟล์</span>
+                        </div>
+                        <audio id="feedNowAudioPreview" controls class="meal-audio-preview"></audio>
+
                         <button id="feedNowBtn" class="primary-button full-width-button"><i class="fa-solid fa-bowl-food"></i> ให้อาหาร</button>
                     </div>
                     <div class="card action-card">

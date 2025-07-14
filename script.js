@@ -326,10 +326,15 @@ function updateDeviceStatusUI(isOnline) {
     DOMElements.deviceStatusText.className = `status-text ${isOnline ? 'online' : 'offline'}`;
     DOMElements.deviceStatusText.textContent = isOnline ? 'ออนไลน์' : 'ออฟไลน์';
     
-    // Enable/disable real-time command buttons
-    [DOMElements.feedNowBtn, DOMElements.checkFoodLevelBtn, DOMElements.checkAnimalMovementBtn].forEach(btn => {
+    // Enable/disable real-time command buttons (excluding makenoiseBtn for now)
+    [DOMElements.checkFoodLevelBtn, DOMElements.checkAnimalMovementBtn].forEach(btn => {
         if (btn) btn.disabled = !isOnline;
     });
+    // Special handling for feedNowBtn: disabled if no amount or offline
+    if (DOMElements.feedNowBtn) {
+        const amount = parseFloat(DOMElements.feedNowAmountInput.value);
+        DOMElements.feedNowBtn.disabled = !isOnline || isNaN(amount) || amount <= 0;
+    }
     // Special handling for makenoiseBtn: disabled if no file or offline
     if (DOMElements.makenoiseBtn) {
         DOMElements.makenoiseBtn.disabled = !isOnline || !DOMElements.makenoiseAudioInput.files.length;
@@ -1079,25 +1084,36 @@ async function feedNow() {
             return;
         }
 
-        // ✅ ใช้ค่าจาก input feedNowAmountInput แทนการอิงจากมื้ออาหารแรก
+        // --- Read values from new input fields ---
         const amountToFeed = parseInt(DOMElements.feedNowAmountInput.value);
+        const fanStrength = clamp(parseInt(DOMElements.feedNowFanStrengthInput.value), 0, 100);
+        const fanDirection = clamp(parseInt(DOMElements.feedNowFanDirectionInput.value), 60, 120);
+        const swingMode = DOMElements.feedNowSwingModeCheckbox.checked;
+        const audioFile = DOMElements.feedNowAudioInput.files[0];
+
+        // Validate amount: must be at least 1
         if (isNaN(amountToFeed) || amountToFeed <= 0) {
             await showCustomAlert("ข้อผิดพลาด", "กรุณาระบุปริมาณอาหารที่ถูกต้อง (อย่างน้อย 1 กรัม)", "error");
             setButtonState(DOMElements.feedNowBtn, false);
             return;
         }
 
-        // ใช้ค่า fanStrength, fanDirection, swingMode จากมื้ออาหารแรกที่เปิดใช้งาน หากมี
-        let mealToDispense = {};
-        const mealsQuery = query(ref(db, `device/${currentDeviceId}/meals`), orderByChild('enabled'), limitToFirst(1));
-        const mealsSnapshot = await new Promise(resolve => {
-            onValue(mealsQuery, (snapshot) => {
-                resolve(snapshot);
-            }, { onlyOnce: true });
-        });
-        const meals = mealsSnapshot.val();
-        if (meals) {
-            mealToDispense = Object.values(meals)[0];
+        let audioUrl = null;
+        let originalNoiseFileName = null;
+
+        if (audioFile) {
+            const path = `quick_feed_noises/${currentDeviceId}/${Date.now()}_${sanitizeFileName(audioFile.name)}`;
+            try {
+                const { error } = await supabaseClient.storage.from("audio").upload(path, audioFile, { upsert: true });
+                if (error) throw error;
+                const { data: publicData } = supabaseClient.storage.from("audio").getPublicUrl(path);
+                audioUrl = publicData.publicUrl;
+                originalNoiseFileName = audioFile.name;
+            } catch (e) {
+                await showCustomAlert("อัปโหลดเสียงล้มเหลว", `ไม่สามารถอัปโหลดไฟล์เสียงได้: ${e.message}`, "error");
+                setButtonState(DOMElements.feedNowBtn, false);
+                return;
+            }
         }
 
         const durationSeconds = amountToFeed / currentGramsPerSecond;
@@ -1109,11 +1125,11 @@ async function feedNow() {
 
         if (await sendCommand('feedNow', {
             duration_seconds: durationSeconds.toFixed(2),
-            fanStrength: mealToDispense.fanStrength ?? 50, // ใช้ค่าจากมื้อแรกที่เปิดใช้งาน หรือ default 50%
-            fanDirection: mealToDispense.fanDirection || 90, // ใช้ค่าจากมื้อแรกที่เปิดใช้งาน หรือ default
-            swingMode: mealToDispense.swingMode || false, // ใช้ค่าจากมื้อแรกที่เปิดใช้งาน หรือ default
-            noiseFile: mealToDispense.audioUrl || null,
-            originalNoiseFileName: mealToDispense.originalNoiseFileName || null,
+            fanStrength: fanStrength,
+            fanDirection: fanDirection,
+            swingMode: swingMode,
+            noiseFile: audioUrl,
+            originalNoiseFileName: originalNoiseFileName,
         })) {
             await showCustomAlert("กำลังให้อาหาร", `ส่งคำสั่งให้อาหาร ${amountToFeed} กรัม (${durationSeconds.toFixed(1)} วินาที) แล้ว. กรุณารอ...`, "info");
         }
@@ -1524,7 +1540,10 @@ document.addEventListener('DOMContentLoaded', async () => { // Make DOMContentLo
         'animalWeightKg', 'lifeStageActivityContainer', 'recommendedAmount', 'calculationNotes',
         'applyRecommendedAmountBtn', 'nextMealCountdownDisplay', 'nextMealTimeDisplay',
         'hours-column', 'minutes-column', 'confirmModal', 'confirmModalTitle', 'confirmModalMessage',
-        'confirmYesBtn', 'confirmNoBtn'
+        'confirmYesBtn', 'confirmNoBtn',
+        // New elements for Quick Feed
+        'feedNowAmountInput', 'feedNowFanStrengthInput', 'feedNowFanDirectionInput',
+        'feedNowSwingModeCheckbox', 'feedNowAudioInput', 'feedNowAudioStatus', 'feedNowAudioPreview'
     ];
     ids.forEach(id => {
         DOMElements[id] = document.getElementById(id);
@@ -1657,6 +1676,26 @@ document.addEventListener('DOMContentLoaded', async () => { // Make DOMContentLo
     }
 
     // Dashboard Actions
+    // Event listeners for new quick feed inputs
+    if (DOMElements.feedNowAmountInput) {
+        DOMElements.feedNowAmountInput.addEventListener('input', () => updateDeviceStatusUI(DOMElements.deviceStatusCircle.classList.contains('online')));
+    }
+    if (DOMElements.feedNowSwingModeCheckbox && DOMElements.feedNowFanDirectionInput) {
+        DOMElements.feedNowSwingModeCheckbox.addEventListener('change', (e) => {
+            DOMElements.feedNowFanDirectionInput.disabled = e.target.checked;
+        });
+    }
+    if (DOMElements.feedNowAudioInput) {
+        DOMElements.feedNowAudioInput.addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (DOMElements.feedNowAudioStatus) DOMElements.feedNowAudioStatus.textContent = file ? file.name : 'ไม่มีไฟล์';
+            if (DOMElements.feedNowAudioPreview) {
+                DOMElements.feedNowAudioPreview.src = file ? URL.createObjectURL(file) : '';
+                DOMElements.feedNowAudioPreview.style.display = file ? 'block' : 'none';
+            }
+        });
+    }
+
     if (DOMElements.feedNowBtn) DOMElements.feedNowBtn.addEventListener('click', feedNow);
     if (DOMElements.checkFoodLevelBtn) DOMElements.checkFoodLevelBtn.addEventListener('click', () => sendCommand('checkFoodLevel'));
     if (DOMElements.checkAnimalMovementBtn) DOMElements.checkAnimalMovementBtn.addEventListener('click', () => sendCommand('checkMovement'));
@@ -1770,4 +1809,3 @@ document.addEventListener('DOMContentLoaded', async () => { // Make DOMContentLo
     // Initial call for animal calculator
     updateRecommendedAmount(DOMElements); 
 });
-
