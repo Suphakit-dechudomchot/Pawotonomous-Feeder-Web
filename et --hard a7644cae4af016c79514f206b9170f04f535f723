@@ -1,0 +1,197 @@
+[33mcommit 4dda038450a418887e7b33004334b990dbadd9e8[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: Suphakit_Dechudomchot <fiw.suphakit@gmail.com>
+Date:   Sun Nov 2 22:49:37 2025 +0700
+
+    icon2
+
+[33mcommit 66074184603c6082cd7078afd483b7fe7937bb08[m
+Author: Suphakit_Dechudomchot <fiw.suphakit@gmail.com>
+Date:   Sun Nov 2 22:40:06 2025 +0700
+
+    icon
+
+[33mcommit 76b4f042f1cad85bbac0c782f2563918fbc3826b[m
+Author: Suphakit_Dechudomchot <fiw.suphakit@gmail.com>
+Date:   Sun Nov 2 16:27:29 2025 +0700
+
+    online script.js
+
+[33mcommit a7644cae4af016c79514f206b9170f04f535f723[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Mon Jul 14 21:53:13 2025 +0700
+
+     VERSION 2.4
+
+[33mcommit 54a60c03c70ec28ca1ecd775bf80830d43c9d0eb[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Sun Jul 13 18:35:20 2025 +0700
+
+     VERSION 2.3
+
+[33mcommit a8bd88dc63c854e9c807e77de8bff9c78fa54e6b[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Fri Jul 11 20:02:14 2025 +0700
+
+    almost finished VERSION
+
+[33mcommit c2c5dcb5c6503cf6de053411ce50e4fde3193f67[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Thu Jul 10 23:37:10 2025 +0700
+
+    VERSION 2.2
+
+[33mcommit cad098d8a56f72bb16ecf805059b6d4724fe1837[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Thu Jul 10 19:08:26 2025 +0700
+
+    VERSION 2.1
+
+[33mcommit 404011793f3479ee0757100aa6ead417d6c73113[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Wed Jul 9 23:55:10 2025 +0700
+
+    VERSION SECONE V2
+
+[33mcommit 1232356f41d73388f0f22b3443229bebf379c8a2[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Tue Jul 8 22:31:30 2025 +0700
+
+    Edit the number of foods as much as you want.
+
+[33mcommit 19f18f5a08b60609383dd43343d4e9ffe28a15fa[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Tue Jul 8 21:57:17 2025 +0700
+
+    VERSION SECOND CLOCK DISIGE
+
+[33mcommit 4b51cc1e019b1e7baa09bb1577b26a2b40a1d4ca[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Mon Jul 7 21:27:34 2025 +0700
+
+    revert: ย้อน index.html, script.js ไป commit 7012025
+
+[33mcommit e35581bc6c9ba5dddc7401744f119d80cc952f6b[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Mon Jun 30 00:57:28 2025 +0700
+
+    revert: กลับไปใช้โค้ดจาก 885ac67
+
+[33mcommit 701202505ad81120e91f90250959444cccbf15d3[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Mon Jun 30 00:50:20 2025 +0700
+
+    revert: กลับไปใช้โค้ดจาก 135e406
+
+[33mcommit f9c33f65aa8b3ce350a88559a66b893a6eabdaf5[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Mon Jun 30 00:38:59 2025 +0700
+
+    fix: Corrected saveWifiPasswordToFirebase ReferenceError
+
+[33mcommit 10c4adecfbf21bd7e626c7f7a0b37f2ef403ee07[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Sun Jun 29 23:50:35 2025 +0700
+
+    Debug
+
+[33mcommit ca6549e505f0c6a313c603fd805019214b5a5c4b[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Sun Jun 29 23:36:10 2025 +0700
+
+    fix: System settings load undefined error by adding null checks and removing redundant getElementById
+
+[33mcommit 93392af024f515e1e39a6ab61fba6bf834a6a5eb[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Sun Jun 29 23:30:39 2025 +0700
+
+    fix: Enable meal saving only with real deviceId and improve UI toggle logic
+
+[33mcommit 135e4064d85aef4d0bd564468a25deccad41e622[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Sun Jun 29 23:15:12 2025 +0700
+
+    feat: บันทึก WiFi SSID และ Password ลง Firebase
+
+[33mcommit 885ac676acba77c2a831822d61fd4af2f6818259[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Sun Jun 29 00:13:40 2025 +0700
+
+     Added swing function without bugs
+
+[33mcommit c035e5a3872da508d944722fce5f0f485b14a15d[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Thu Jun 26 00:15:03 2025 +0700
+
+    revert: Reverted web (index.html, script.js) and arduino code to stable version (313d697) before swing feature introduction
+
+[33mcommit 3789050a18dc46a8814a89d1f6ba7f9210e2f197[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Thu Jun 26 00:02:38 2025 +0700
+
+    fix: Revert to pre-swing UI, fix innerHTML parsing, and enable web app standalone dev with default device ID
+
+[33mcommit 4c615fbf58f075bd9ed028ae0c68c9c514ff7892[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Wed Jun 25 23:24:55 2025 +0700
+
+    fix: Revert to pre-swing version and enable web app standalone dev with default device ID
+
+[33mcommit 2cac6cfbac8070c2aad1528c1b0e7bbd8c126a74[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Wed Jun 25 22:40:48 2025 +0700
+
+    revert: Revert html, js, and arduino code to pre-swing function version to fix rendering issues
+
+[33mcommit b3ed4228d07ab567b191f622418bfec3ed2fb478[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Wed Jun 25 22:30:30 2025 +0700
+
+    fix: Resolve HTML rendering issues in script.js innerHTML and add null checks
+
+[33mcommit dcd04f5f2d1bc8f8ad1148ced2b612a375898a3b[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Wed Jun 25 22:22:12 2025 +0700
+
+    swing fuction
+
+[33mcommit da05a481a6f80b5257ab496ef80f918247732342[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Wed Jun 25 22:06:09 2025 +0700
+
+    swing fuction
+
+[33mcommit 313d697520ed4a9cfc91cfe49507eb241dcfa683[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Tue Jun 24 22:23:17 2025 +0700
+
+    feat: Implement UI visibility based on system settings, refine bottle size options
+
+[33mcommit 38b2109d5b0853f00ade7f1497901fbbfb310da4[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Tue Jun 24 22:12:59 2025 +0700
+
+    feat: Implement UI visibility based on system settings, refine bottle size options
+
+[33mcommit 2d1868d297d910d122bfc7971def86936f48fd89[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Tue Jun 24 21:54:55 2025 +0700
+
+    เพิ่มtimezone เเละเลือกขนาดขวด
+
+[33mcommit 48e771d10d229466082e3cca311b2294eca2ff62[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Sun Jun 22 00:58:09 2025 +0700
+
+    feat: Your new changes description
+
+[33mcommit a59ac499f21aa53a753e77bd931a220c38a1c73b[m
+Author: Suphakit <fiw.suphakit@gmail.com>
+Date:   Sun Jun 22 00:51:19 2025 +0700
+
+    feat: Adjust fan/direction logic and add default meal slot
+
+[33mcommit a9bcaad9b5f495316e081e3a22d57eb6567478c2[m
+Author: unknown <fiw.suphakit@gmail.com>
+Date:   Sat Jun 21 23:48:05 2025 +0700
+
+    Initial commit: First version of my website
