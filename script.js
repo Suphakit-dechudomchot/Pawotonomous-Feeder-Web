@@ -341,19 +341,63 @@ function updateDeviceStatusUI(isOnline) {
     }
 }
 
+// --- Heartbeat watchdog / smarter online detection ---
+const HEARTBEAT_THRESHOLD_MS = 20000; // ถ้า lastSeen ห่างกว่า 20s => offline (ปรับได้)
+
+function computeOnlineFromStatus(status) {
+  // status: object read from /device/{id}/status
+  // Arduino ส่ง: { online: true, lastSeen: <serverTimestamp>, ... }
+  if (!status) return false;
+
+  // prefer lastSeen timestamp if present
+  const lastSeen = status.lastSeen || status.lastSeenTimestamp || status.last_seen || null;
+  if (lastSeen && typeof lastSeen === 'number') {
+    const age = Math.abs(Date.now() - lastSeen);
+    return age <= HEARTBEAT_THRESHOLD_MS;
+  }
+
+  // fallback: if no timestamp, fall back to boolean flag (less reliable)
+  if (typeof status.online === 'boolean') return status.online;
+
+  return false;
+}
+
+
+// Replace or augment your existing listenToDeviceStatus with this version.
+// This will still update UI and foodLevel/lastMovement as before but derives `isOnline` from lastSeen.
 function listenToDeviceStatus() {
-    if (!currentDeviceId) return;
-    // ✅ Use ref() and onValue() for modular SDK
-    onValue(ref(db, `device/${currentDeviceId}/status`), (snapshot) => {
-        const status = snapshot.val() || {};
-        updateDeviceStatusUI(status.online);
-        updateFoodLevelDisplay(status.foodLevel);
-        if (DOMElements.lastMovementDisplay) { // Safety check
-            DOMElements.lastMovementDisplay.textContent = status.lastMovementDetected 
-                ? new Date(status.lastMovementDetected).toLocaleString('th-TH', { timeStyle: 'short' }) 
-                : 'ไม่มีข้อมูล';
-        }
-    });
+  if (!currentDeviceId) return;
+
+  const statusRef = ref(db, `device/${currentDeviceId}/status`);
+  onValue(statusRef, (snapshot) => {
+    const status = snapshot.val() || {};
+
+    // Compute online using lastSeen (preferred) with threshold
+    const isOnline = computeOnlineFromStatus(status);
+
+    // Update UI (your updateDeviceStatusUI already exists)
+    updateDeviceStatusUI(isOnline);
+
+    // Update food level display if present (keeps existing behavior)
+    if ('foodLevel' in status) {
+      updateFoodLevelDisplay(status.foodLevel);
+    } else {
+      updateFoodLevelDisplay(null);
+    }
+
+    // Update last movement display using lastMovementDetected if available
+    if (DOMElements.lastMovementDisplay) {
+      const lm = status.lastMovementDetected || status.lastMovement || null;
+      DOMElements.lastMovementDisplay.textContent = lm
+        ? new Date(lm).toLocaleString('th-TH', { timeStyle: 'short', dateStyle: 'short' })
+        : 'ไม่มีข้อมูล';
+    }
+
+    // Debug logs (ช่วยดีบักตอนพัฒนา)
+    // console.log('[HB-watch] status', status, 'computedOnline=', isOnline, 'age(ms)=', status.lastSeen ? (Date.now() - status.lastSeen) : 'n/a');
+  }, (err) => {
+    console.error('listenToDeviceStatus onValue error', err);
+  });
 }
 
 async function updateFoodLevelDisplay(foodLevelCm) {
