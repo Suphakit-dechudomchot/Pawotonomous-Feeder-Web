@@ -387,95 +387,136 @@ async function updateFoodLevelDisplay(foodLevelCm) {
     }
 }
 
-// ===============================================
-// ✅ Notifications Management
-// ===============================================
-let notificationListenerRef = null;
-function setupNotificationListener() {
-    if (notificationListenerRef) {
-        // For modular SDK, you need to store the unsubscribe function returned by onValue
-        // and call it to detach the listener. This part needs a different approach
-        // if `notificationListenerRef` was previously storing a non-modular ref.
-        // For simplicity, we'll assume it's okay to re-attach for now.
-    }
-    if (!currentDeviceId) return;
+// ==========================================================
+// NOTIFICATION SYSTEM (FIXED MULTIPLE ENTRIES)
+// ==========================================================
+let cleanupScheduled = false;
 
-    // ✅ Use ref(), query, orderByChild, limitToLast for modular SDK
-    const notificationsQuery = query(ref(db, `device/${currentDeviceId}/notifications`), orderByChild('timestamp'), limitToLast(NOTIFICATION_HISTORY_LIMIT));
-    notificationListenerRef = onValue(notificationsQuery, (snapshot) => {
-        // Only show toast for new notifications, not historical ones loaded initially
-        snapshot.forEach(child => {
-            if (child.key !== lastNotificationId) {
-                lastNotificationId = child.key;
-                showNewNotificationToast(child.val().message);
-            }
-        });
-        // Trigger cleanup after a new notification is added
-        cleanupOldNotifications();
+function setupNotificationListener() {
+  if (!currentDeviceId) return;
+
+  const notificationsRef = ref(db, `device/${currentDeviceId}/notifications`);
+  onValue(notificationsRef, (snapshot) => {
+    if (!snapshot.exists()) {
+      displayNotificationsList([]);
+      return;
+    }
+
+    const notifications = [];
+    snapshot.forEach((child) => {
+      const data = child.val();
+      notifications.push({
+        id: child.key,
+        message: data.message,
+        timestamp: data.timestamp,
+        read: data.read,
+        type: data.type || "info",
+      });
     });
+
+    notifications.sort((a, b) => b.timestamp - a.timestamp);
+    displayNotificationsList(notifications);
+
+    const latest = notifications[0];
+    if (latest && latest.id !== lastNotificationId) {
+      lastNotificationId = latest.id;
+      showNewNotificationToast(latest.message);
+    }
+
+    // 🔧 cleanup หลัง 10 วินาที
+    if (!cleanupScheduled) {
+      cleanupScheduled = true;
+      setTimeout(() => {
+        cleanupOldNotifications();
+        cleanupScheduled = false;
+      }, 10000);
+    }
+  });
+} // ✅ ปิด function ให้ครบ
+
+function fetchAndDisplayNotifications() {
+  if (!currentDeviceId) return;
+
+  const notificationsRef = ref(db, `device/${currentDeviceId}/notifications`);
+  get(notificationsRef).then((snapshot) => {
+    if (!snapshot.exists()) {
+      displayNotificationsList([]);
+      return;
+    }
+
+    const notifications = [];
+    snapshot.forEach((child) => {
+      const data = child.val();
+      notifications.push({
+        id: child.key,
+        message: data.message,
+        timestamp: data.timestamp,
+        read: data.read,
+        type: data.type || "info",
+      });
+    });
+
+    notifications.sort((a, b) => b.timestamp - a.timestamp);
+    displayNotificationsList(notifications);
+  });
 }
 
-async function fetchAndDisplayNotifications() {
-    if (!DOMElements.notificationHistoryList || !currentDeviceId) return; // Safety check
-    DOMElements.notificationHistoryList.innerHTML = '<li>กำลังโหลด...</li>';
-    try {
-        // ✅ Use ref(), query, orderByChild, limitToLast for modular SDK
-        const notificationsQuery = query(ref(db, `device/${currentDeviceId}/notifications`), orderByChild('timestamp'), limitToLast(NOTIFICATION_HISTORY_LIMIT));
-        const snapshot = await new Promise(resolve => {
-            onValue(notificationsQuery, (snapshot) => {
-                resolve(snapshot);
-            }, { onlyOnce: true });
-        });
-        DOMElements.notificationHistoryList.innerHTML = '';
-        const notifications = [];
-        snapshot.forEach(child => notifications.push({ key: child.key, ...child.val() }));
-        
-        if(notifications.length === 0) {
-            DOMElements.notificationHistoryList.innerHTML = '<p class="empty-state">ไม่มีการแจ้งเตือน</p>'; // Changed to p tag for consistency
-            return;
-        }
+function displayNotificationsList(notifications) {
+  const list = DOMElements?.notificationHistoryList || document.getElementById('notificationHistoryList');
+  if (!list) {
+    console.warn("⚠️ notificationHistoryList element not found");
+    return;
+  }
 
-        notifications.sort((a, b) => b.timestamp - a.timestamp).forEach(n => {
-            const li = document.createElement('li');
-            li.innerHTML = `<span>${n.message}</span><span class="notification-timestamp">${new Date(n.timestamp).toLocaleString('th-TH')}</span>`;
-            DOMElements.notificationHistoryList.appendChild(li);
-        });
-        
-        // ✅ 2. ลบรายการที่นอกเหนือจาก 50 รายการล่าสุด
-        cleanupOldNotifications(); // Trigger cleanup after fetching
-    } catch (error) {
-        console.error("Error fetching notifications:", error);
-        DOMElements.notificationHistoryList.innerHTML = '<li>เกิดข้อผิดพลาดในการโหลด</li>';
-    }
+  list.innerHTML = '';
+
+  if (notifications.length === 0) {
+    list.innerHTML = '<li>ไม่มีการแจ้งเตือน</li>';
+    return;
+  }
+
+  notifications.forEach((n) => {
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <span>${n.message}</span>
+      <span class="notification-timestamp">
+        ${new Date(n.timestamp).toLocaleString('th-TH')}
+      </span>`;
+    list.appendChild(li);
+  });
 }
 
 async function cleanupOldNotifications() {
-    if (!currentDeviceId) return;
-    const notificationsRef = ref(db, `device/${currentDeviceId}/notifications`); // ✅ Use ref()
-    try {
-        // ✅ Use query, orderByChild for modular SDK
-        const snapshot = await new Promise(resolve => {
-            onValue(query(notificationsRef, orderByChild('timestamp')), (snapshot) => {
-                resolve(snapshot);
-            }, { onlyOnce: true });
-        });
-        const notifications = [];
-        snapshot.forEach(child => notifications.push({ key: child.key, ...child.val() }));
+  if (!currentDeviceId) return;
+  const notificationsRef = ref(db, `device/${currentDeviceId}/notifications`);
+  try {
+    const snapshot = await new Promise((resolve) => {
+      onValue(query(notificationsRef, orderByChild('timestamp')), (snapshot) => {
+        resolve(snapshot);
+      }, { onlyOnce: true });
+    });
 
-        if (notifications.length > NOTIFICATION_HISTORY_LIMIT) {
-            const updates = {};
-            // Sort by timestamp to correctly identify oldest
-            notifications.sort((a, b) => a.timestamp - b.timestamp);
-            const notificationsToDelete = notifications.slice(0, notifications.length - NOTIFICATION_HISTORY_LIMIT);
-            notificationsToDelete.forEach(n => {
-                updates[n.key] = null; // Set to null to delete
-            });
-            await update(notificationsRef, updates); // ✅ Use update()
-            console.log(`Cleaned up ${notificationsToDelete.length} old notifications.`);
-        }
-    } catch (error) {
-        console.error("Error cleaning up notifications:", error);
+    const notifications = [];
+    snapshot.forEach((child) =>
+      notifications.push({ key: child.key, ...child.val() })
+    );
+
+    if (notifications.length > NOTIFICATION_HISTORY_LIMIT) {
+      const updates = {};
+      notifications.sort((a, b) => a.timestamp - b.timestamp);
+      const notificationsToDelete = notifications.slice(
+        0,
+        notifications.length - NOTIFICATION_HISTORY_LIMIT
+      );
+      notificationsToDelete.forEach((n) => {
+        updates[n.key] = null;
+      });
+      await update(notificationsRef, updates);
+      console.log(`Cleaned up ${notificationsToDelete.length} old notifications.`);
     }
+  } catch (error) {
+    console.error("Error cleaning up notifications:", error);
+  }
 }
 
 // ===============================================
@@ -1809,3 +1850,4 @@ document.addEventListener('DOMContentLoaded', async () => { // Make DOMContentLo
     // Initial call for animal calculator
     updateRecommendedAmount(DOMElements); 
 });
+
