@@ -14,10 +14,6 @@
     <div class="header-area">
         <h1 class="app-name">Pawtonomous</h1>
         <div class="header-right">
-            <div class="owner-info">
-                <span id="ownerNameDisplay" class="owner-name">บัญชี: -</span>
-                <button id="editOwnerNameBtn" class="secondary-button small">แก้ไขชื่อ</button>
-            </div>
             <div class="device-status-display">
                 <span id="deviceStatusCircle" class="status-circle offline" title="สถานะอุปกรณ์: ออฟไลน์"></span>
                 <span id="deviceStatusText" class="status-text offline">ออฟไลน์</span>
@@ -331,6 +327,10 @@
 
                 <div class="card settings-card">
                     <h3>บัญชีผู้ใช้</h3>
+                    <div class="owner-info-settings" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">
+                        <span id="ownerNameDisplay" class="owner-name">บัญชี: -</span>
+                        <button id="editOwnerNameBtn" class="secondary-button small">แก้ไขชื่อ</button>
+                    </div>
                      <button id="logoutBtn" class="danger-button full-width-button"><i class="fa-solid fa-sign-out-alt"></i> ออกจากระบบ / เปลี่ยนอุปกรณ์</button>
                 </div>
             </section>
