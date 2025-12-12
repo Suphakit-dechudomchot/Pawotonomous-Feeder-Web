@@ -75,9 +75,9 @@ async function loadSettingsFromFirebase() {
         const snapshot = await new Promise(resolve => { onValue(ref(db, `device/${state.currentDeviceId}/settings`), s => resolve(s), { onlyOnce: true }); });
         const settings = snapshot.val() || {};
         state.gramsPerSecond = settings.calibration?.grams_per_second || null;
+        // owner name
+        if (DOMElements.ownerNameDisplay) DOMElements.ownerNameDisplay.textContent = settings.ownerName ? `บัญชี: ${settings.ownerName}` : 'บัญชี: -';
         if (DOMElements.timeZoneOffsetSelect) DOMElements.timeZoneOffsetSelect.value = settings.timeZoneOffset ?? '';
-        if (DOMElements.bottleSizeSelect) DOMElements.bottleSizeSelect.value = settings.bottleSize ?? '';
-        if (DOMElements.customBottleHeightInput) { DOMElements.customBottleHeightInput.style.display = settings.bottleSize === 'custom' ? 'block' : 'none'; DOMElements.customBottleHeightInput.value = settings.customBottleHeight ?? ''; }
         if (DOMElements.wifiSsidInput) DOMElements.wifiSsidInput.value = settings.wifiCredentials?.ssid ?? '';
         if (DOMElements.wifiPasswordInput) DOMElements.wifiPasswordInput.value = settings.wifiCredentials?.password ?? '';
         if (DOMElements.currentGramsPerSecondDisplay) DOMElements.currentGramsPerSecondDisplay.textContent = state.gramsPerSecond ? `${state.gramsPerSecond.toFixed(2)} กรัม/วินาที` : '- กรัม/วินาที';
@@ -90,7 +90,7 @@ const saveSettingsToFirebase = debounce(async (settingType) => {
     try {
         const updates = {};
         if (settingType === 'timezone') updates.timeZoneOffset = parseFloat(DOMElements.timeZoneOffsetSelect.value);
-        else if (settingType === 'bottlesize') { updates.bottleSize = DOMElements.bottleSizeSelect.value; updates.customBottleHeight = updates.bottleSize === 'custom' ? parseFloat(DOMElements.customBottleHeightInput.value) : null; }
+        // bottle size setting removed — nothing to do here anymore
         else if (settingType === 'wifi') updates.wifiCredentials = { ssid: DOMElements.wifiSsidInput.value, password: DOMElements.wifiPasswordInput.value };
         await update(ref(db, `device/${state.currentDeviceId}/settings`), updates);
         await checkInitialSetupComplete();
@@ -105,7 +105,7 @@ async function checkInitialSetupComplete() {
         const settings = settingsSnapshot.val() || {};
         let isSetupComplete = true;
         if (settings.timeZoneOffset == null || isNaN(parseFloat(settings.timeZoneOffset))) isSetupComplete = false;
-        if (!settings.bottleSize) isSetupComplete = false; else if (settings.bottleSize === 'custom' && (settings.customBottleHeight == null || isNaN(parseFloat(settings.customBottleHeight)) || parseFloat(settings.customBottleHeight) <= 0)) isSetupComplete = false;
+        // bottle size removed from required checks
         if (settings.calibration?.grams_per_second == null || settings.calibration.grams_per_second <= 0) isSetupComplete = false;
         if (!settings.wifiCredentials || !settings.wifiCredentials.ssid || settings.wifiCredentials.ssid.trim() === '') isSetupComplete = false;
         if (!settings.wifiCredentials || !settings.wifiCredentials.password || settings.wifiCredentials.password.trim() === '') isSetupComplete = false;
@@ -116,6 +116,20 @@ async function checkInitialSetupComplete() {
 }
 
 async function setAndLoadDeviceId(id, navigateToMealSchedule = false) {
+    // Validate device existence before committing
+    try {
+        const deviceSnapshot = await new Promise(resolve => { onValue(ref(db, `device/${id}`), s => resolve(s), { onlyOnce: true }); });
+        const deviceVal = deviceSnapshot.val();
+        if (!deviceVal) {
+            await showCustomAlert('ไม่พบบัญชี', 'ไม่พบ Device ID นี้ในระบบ', 'error');
+            return;
+        }
+    } catch (err) {
+        console.error('setAndLoadDeviceId existence check error', err);
+        await showCustomAlert('ข้อผิดพลาด', 'ไม่สามารถตรวจสอบ Device ID ได้ โปรดลองอีกครั้ง', 'error');
+        return;
+    }
+
     state.currentDeviceId = id;
     localStorage.setItem('pawtonomous_device_id', id);
     if (DOMElements.deviceSelectionSection) DOMElements.deviceSelectionSection.style.display = 'none';
@@ -125,7 +139,19 @@ async function setAndLoadDeviceId(id, navigateToMealSchedule = false) {
             listenToDeviceStatus();
             await loadSettingsFromFirebase();
             setupNotificationListener(db);
-            if (navigateToMealSchedule) showSection('meal-schedule-section');
+
+            // Decide which section to show: if initial setup is incomplete, show settings; otherwise
+            // respect navigateToMealSchedule when true (used for returning users).
+            const isSetupComplete = await checkInitialSetupComplete();
+            if (!isSetupComplete) {
+                showSection('device-settings-section');
+            } else if (navigateToMealSchedule) {
+                showSection('meal-schedule-section');
+            } else {
+                // Default to settings for newly-entered IDs (user requested landing on settings)
+                showSection('device-settings-section');
+            }
+
             loadMeals(db, DOMElements, MEAL_BLOCK_DURATION_SECONDS);
             // Start the countdown updater (it will react once meals arrive)
             startCountdown();
@@ -147,7 +173,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         'mealFanDirectionInput','mealSwingModeCheckbox','mealAudioInput','mealAudioStatus','mealAudioPreview','saveMealDetailBtn','deleteMealDetailBtn','cancelMealDetailBtn',
         'forceSetupOverlay','goToSettingsBtn','feedNowBtn','checkFoodLevelBtn','checkAnimalMovementBtn','currentFoodLevelDisplay','lastMovementDisplay',
         'makenoiseAudioInput','makenoiseAudioStatus','makenoiseBtn','mealListContainer','addMealCardBtn','wifiSsidInput','wifiPasswordInput','timeZoneOffsetSelect',
-        'bottleSizeSelect','customBottleHeightInput','openCalibrationModalBtn','currentGramsPerSecondDisplay','logoutBtn','settingsNavDot','notifications-section','notificationHistoryList',
+        'ownerNameDisplay','editOwnerNameBtn','ownerNameModal','ownerNameInput','ownerNameSaveBtn','ownerNameCancelBtn',
+        'openCalibrationModalBtn','currentGramsPerSecondDisplay','logoutBtn','settingsNavDot','notifications-section','notificationHistoryList',
         'animal-calculator-section','animalCount','weightInputContainer','animalWeightKg','lifeStageActivityContainer','recommendedAmount','calculationNotes','applyRecommendedAmountBtn',
         'nextMealCountdownDisplay','nextMealTimeDisplay','hours-column','minutes-column','confirmModal','confirmModalTitle','confirmModalMessage','confirmYesBtn','confirmNoBtn',
         'feedNowAmountInput','feedNowFanStrengthInput','feedNowFanDirectionInput','feedNowSwingModeCheckbox','feedNowAudioInput','feedNowAudioStatus','feedNowAudioPreview'
@@ -173,7 +200,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    if (DOMElements.setDeviceIdBtn) DOMElements.setDeviceIdBtn.addEventListener('click', async () => { const id = DOMElements.deviceIdInput.value.trim(); if (id) await setAndLoadDeviceId(id, true); else await showCustomAlert('ข้อผิดพลาด', 'กรุณากรอก Device ID.', 'error'); });
+    if (DOMElements.setDeviceIdBtn) DOMElements.setDeviceIdBtn.addEventListener('click', async () => { const id = DOMElements.deviceIdInput.value.trim(); if (id) await setAndLoadDeviceId(id, false); else await showCustomAlert('ข้อผิดพลาด', 'กรุณากรอก Device ID.', 'error'); });
     if (DOMElements.logoutBtn) DOMElements.logoutBtn.addEventListener('click', handleLogout);
     document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => { if (!btn.disabled) showSection(btn.dataset.target); }));
     if (DOMElements.goToSettingsBtn) DOMElements.goToSettingsBtn.addEventListener('click', () => { showSection('device-settings-section'); hideModal(DOMElements.forceSetupOverlay); });
@@ -182,10 +209,51 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (DOMElements.cancelMealDetailBtn) DOMElements.cancelMealDetailBtn.addEventListener('click', () => closeMealDetailModal());
 
     if (DOMElements.timeZoneOffsetSelect) DOMElements.timeZoneOffsetSelect.addEventListener('change', () => saveSettingsToFirebase('timezone'));
-    if (DOMElements.bottleSizeSelect) DOMElements.bottleSizeSelect.addEventListener('change', () => { if (DOMElements.customBottleHeightInput) DOMElements.customBottleHeightInput.style.display = DOMElements.bottleSizeSelect.value === 'custom' ? 'block' : 'none'; saveSettingsToFirebase('bottlesize'); });
-    if (DOMElements.customBottleHeightInput) DOMElements.customBottleHeightInput.addEventListener('input', () => saveSettingsToFirebase('bottlesize'));
     if (DOMElements.wifiSsidInput) DOMElements.wifiSsidInput.addEventListener('input', () => saveSettingsToFirebase('wifi'));
     if (DOMElements.wifiPasswordInput) DOMElements.wifiPasswordInput.addEventListener('input', () => saveSettingsToFirebase('wifi'));
+
+    // Owner name edit
+    // Owner name: open modal to edit (uses custom modal in DOM)
+    if (DOMElements.editOwnerNameBtn) DOMElements.editOwnerNameBtn.addEventListener('click', () => {
+        if (!state.currentDeviceId || !state.isAuthReady) { showCustomAlert('ข้อผิดพลาด', 'ยังไม่ได้ตั้งค่า Device ID หรือการยืนยันตัวตนไม่พร้อม', 'error'); return; }
+        if (DOMElements.ownerNameInput) {
+            const currentText = DOMElements.ownerNameDisplay?.textContent || '';
+            const current = currentText === 'บัญชี: -' ? '' : currentText.replace(/^บัญชี:\s*/, '');
+            DOMElements.ownerNameInput.value = current;
+            // set save button state based on current value
+            if (DOMElements.ownerNameSaveBtn) DOMElements.ownerNameSaveBtn.disabled = current.trim().length === 0 || current.trim().length > 20;
+        }
+        const modal = DOMElements.ownerNameModal;
+        if (modal) showModal(modal);
+    });
+
+    // Modal buttons
+    if (DOMElements.ownerNameCancelBtn) DOMElements.ownerNameCancelBtn.addEventListener('click', () => { if (DOMElements.ownerNameModal) hideModal(DOMElements.ownerNameModal); });
+    if (DOMElements.ownerNameSaveBtn) DOMElements.ownerNameSaveBtn.addEventListener('click', async () => {
+        if (!state.currentDeviceId || !state.isAuthReady) { await showCustomAlert('ข้อผิดพลาด', 'ยังไม่ได้ตั้งค่า Device ID หรือการยืนยันตัวตนไม่พร้อม', 'error'); return; }
+        const newName = DOMElements.ownerNameInput?.value?.trim() || '';
+        if (newName.length > 20) {
+            await showCustomAlert('ข้อผิดพลาด', 'ชื่อบัญชีต้องไม่เกิน 20 ตัวอักษร', 'error');
+            return;
+        }
+        try {
+            await update(ref(db, `device/${state.currentDeviceId}/settings`), { ownerName: newName || null });
+            if (DOMElements.ownerNameModal) hideModal(DOMElements.ownerNameModal);
+            await showCustomAlert('สำเร็จ', 'บันทึกชื่อบัญชีเรียบร้อย', 'success');
+            await loadSettingsFromFirebase();
+        } catch (e) {
+            console.error('Error saving ownerName', e);
+            await showCustomAlert('ข้อผิดพลาด', 'ไม่สามารถบันทึกชื่อบัญชีได้', 'error');
+        }
+    });
+
+    // validate owner name input live and disable/enable save button
+    if (DOMElements.ownerNameInput) {
+        DOMElements.ownerNameInput.addEventListener('input', () => {
+            const v = (DOMElements.ownerNameInput.value || '').trim();
+            if (DOMElements.ownerNameSaveBtn) DOMElements.ownerNameSaveBtn.disabled = v.length === 0 || v.length > 20;
+        });
+    }
 
     if (DOMElements.openCalibrationModalBtn) DOMElements.openCalibrationModalBtn.addEventListener('click', openCalibrationModal);
     if (DOMElements.startCalibrationTestBtn) DOMElements.startCalibrationTestBtn.addEventListener('click', startCalibrationTest);

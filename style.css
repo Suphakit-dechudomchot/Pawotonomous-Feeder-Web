@@ -84,6 +84,36 @@ p.notes {
     z-index: 200;
 }
 
+/* Owner info in header */
+.owner-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-medium);
+}
+.owner-name {
+    font-size: 1em;
+    font-weight: 700;
+    color: var(--text-light);
+}
+.secondary-button.small {
+    padding: 6px 10px;
+    font-size: 0.8em;
+}
+
+/* Header right container */
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Owner name modal small tweaks */
+#ownerNameModal .modal-content {
+    max-width: 420px;
+    width: 90%;
+}
+
 .device-status-display {
     display: flex;
     align-items: center;
@@ -684,11 +714,14 @@ input:checked + .toggle-slider:before {
     -ms-overflow-style: none; /* IE and Edge */
     scrollbar-width: none; /* Firefox */
     scroll-snap-type: y mandatory;
+    scroll-behavior: smooth;
+    cursor: grab;
 }
 .time-picker-column::-webkit-scrollbar {
     display: none; /* Chrome, Safari, Opera */
 }
-.time-picker-column div {
+.time-picker-column div,
+.time-picker-item {
     height: 50px;
     display: flex;
     justify-content: center;
@@ -696,8 +729,13 @@ input:checked + .toggle-slider:before {
     font-size: 2em;
     color: var(--text-medium);
     scroll-snap-align: center;
-    transition: color 0.3s, transform 0.3s;
+    transition: color 0.18s ease, transform 0.18s ease;
 }
+
+.time-picker-column:active { cursor: grabbing; }
+.time-picker-column:focus { outline: none; }
+
+.time-picker-item { width: 100%; }
 /* Style for the selected time item */
 .time-picker-column div.selected-time-item {
     color: var(--primary-color); /* Highlight color */
@@ -721,7 +759,20 @@ input:checked + .toggle-slider:before {
     border-top: 2px solid var(--primary-color);
     border-bottom: 2px solid var(--primary-color);
     pointer-events: none;
-    z-index: -1;
+    z-index: 2;
+}
+
+/* visually emphasize center area slightly */
+.time-picker-highlight::before {
+    content: '';
+    position: absolute;
+    left: 10%;
+    right: 10%;
+    top: 0;
+    bottom: 0;
+    background: linear-gradient(180deg, rgba(187,134,252,0.04), rgba(3,218,198,0.02));
+    border-radius: 6px;
+    pointer-events: none;
 }
 
 /* =================== MODALS & NOTIFICATIONS =================== */

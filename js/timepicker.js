@@ -9,14 +9,89 @@ export function setupCustomTimePicker() {
     const hoursCol = DOMElements['hours-column']; const minutesCol = DOMElements['minutes-column'];
     hoursCol.innerHTML = '';
     minutesCol.innerHTML = '';
-    for (let i = 24 - TIME_PICKER_BUFFER; i < 24; i++) { const hourDiv = document.createElement('div'); hourDiv.textContent = String(i).padStart(2,'0'); hourDiv.classList.add('time-picker-duplicate'); hoursCol.appendChild(hourDiv); }
-    for (let i = 0; i < 24; i++) { const hourDiv = document.createElement('div'); hourDiv.textContent = String(i).padStart(2,'0'); hoursCol.appendChild(hourDiv); }
-    for (let i = 0; i < TIME_PICKER_BUFFER; i++) { const hourDiv = document.createElement('div'); hourDiv.textContent = String(i).padStart(2,'0'); hourDiv.classList.add('time-picker-duplicate'); hoursCol.appendChild(hourDiv); }
-    for (let i = 60 - TIME_PICKER_BUFFER; i < 60; i++) { const minuteDiv = document.createElement('div'); minuteDiv.textContent = String(i).padStart(2,'0'); minuteDiv.classList.add('time-picker-duplicate'); minutesCol.appendChild(minuteDiv); }
-    for (let i = 0; i < 60; i++) { const minuteDiv = document.createElement('div'); minuteDiv.textContent = String(i).padStart(2,'0'); minutesCol.appendChild(minuteDiv); }
-    for (let i = 0; i < TIME_PICKER_BUFFER; i++) { const minuteDiv = document.createElement('div'); minuteDiv.textContent = String(i).padStart(2,'0'); minuteDiv.classList.add('time-picker-duplicate'); minutesCol.appendChild(minuteDiv); }
+    // helper to create an item div with consistent styling and behaviors
+    function makeItem(text, isDuplicate = false) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        div.classList.add('time-picker-item');
+        if (isDuplicate) div.classList.add('time-picker-duplicate');
+        // ensure consistent height so snapping works reliably
+        div.style.height = `${TIME_PICKER_ITEM_HEIGHT}px`;
+        div.style.lineHeight = `${TIME_PICKER_ITEM_HEIGHT}px`;
+        div.tabIndex = 0; // allow keyboard focus
+        return div;
+    }
+
+    for (let i = 24 - TIME_PICKER_BUFFER; i < 24; i++) hoursCol.appendChild(makeItem(String(i).padStart(2,'0'), true));
+    for (let i = 0; i < 24; i++) hoursCol.appendChild(makeItem(String(i).padStart(2,'0')));
+    for (let i = 0; i < TIME_PICKER_BUFFER; i++) hoursCol.appendChild(makeItem(String(i).padStart(2,'0'), true));
+
+    for (let i = 60 - TIME_PICKER_BUFFER; i < 60; i++) minutesCol.appendChild(makeItem(String(i).padStart(2,'0'), true));
+    for (let i = 0; i < 60; i++) minutesCol.appendChild(makeItem(String(i).padStart(2,'0')));
+    for (let i = 0; i < TIME_PICKER_BUFFER; i++) minutesCol.appendChild(makeItem(String(i).padStart(2,'0'), true));
+
+    // Improved interactions: click-to-select, wheel step, pointer drag, and keyboard
     let scrollTimeout;
-    [hoursCol, minutesCol].forEach((col, index) => { col.addEventListener('scroll', () => { clearTimeout(scrollTimeout); scrollTimeout = setTimeout(() => { const scrollTop = col.scrollTop; const itemHeight = TIME_PICKER_ITEM_HEIGHT; const realItems = (index === 0) ? 24 : 60; const selectedIndex = Math.round(scrollTop / itemHeight); if (selectedIndex < TIME_PICKER_BUFFER) { col.scrollTo({ top: (selectedIndex + realItems) * itemHeight, behavior: 'instant' }); } else if (selectedIndex >= (realItems + TIME_PICKER_BUFFER)) { col.scrollTo({ top: (selectedIndex - realItems) * itemHeight, behavior: 'instant' }); } else { col.scrollTo({ top: selectedIndex * itemHeight, behavior: 'smooth' }); } }, 150); }); });
+    const snapDelay = 90; // faster snap for snappier feel
+
+    function snapColumn(col, index) {
+        const itemHeight = TIME_PICKER_ITEM_HEIGHT;
+        const realItems = (index === 0) ? 24 : 60;
+        const selectedIndex = Math.round(col.scrollTop / itemHeight);
+        if (selectedIndex < TIME_PICKER_BUFFER) {
+            col.scrollTop = (selectedIndex + realItems) * itemHeight;
+        } else if (selectedIndex >= (realItems + TIME_PICKER_BUFFER)) {
+            col.scrollTop = (selectedIndex - realItems) * itemHeight;
+        } else {
+            col.scrollTop = selectedIndex * itemHeight;
+        }
+    }
+
+    [hoursCol, minutesCol].forEach((col, index) => {
+        // snap after scrolling stops
+        col.addEventListener('scroll', () => {
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => snapColumn(col, index), snapDelay);
+        });
+
+        // wheel: move one item per wheel tick for precision
+        col.addEventListener('wheel', (ev) => {
+            ev.preventDefault();
+            const delta = Math.sign(ev.deltaY);
+            col.scrollTop += delta * TIME_PICKER_ITEM_HEIGHT;
+        }, { passive: false });
+
+        // click to select an item
+        col.addEventListener('click', (ev) => {
+            const item = ev.target.closest('.time-picker-item');
+            if (!item) return;
+            // compute index of clicked item among all children
+            const children = Array.from(col.children);
+            const idx = children.indexOf(item);
+            if (idx >= 0) {
+                col.scrollTop = idx * TIME_PICKER_ITEM_HEIGHT;
+                // snap immediately
+                snapColumn(col, index);
+            }
+        });
+
+        // pointer drag: enhance touch/mouse dragging
+        let isPointerDown = false; let startY = 0; let startScroll = 0;
+        col.addEventListener('pointerdown', (ev) => { isPointerDown = true; startY = ev.clientY; startScroll = col.scrollTop; col.setPointerCapture(ev.pointerId); });
+        col.addEventListener('pointermove', (ev) => { if (!isPointerDown) return; const dy = startY - ev.clientY; col.scrollTop = startScroll + dy; });
+        col.addEventListener('pointerup', (ev) => { if (!isPointerDown) return; isPointerDown = false; col.releasePointerCapture(ev.pointerId); snapColumn(col, index); });
+
+        // keyboard: up/down arrows
+        col.addEventListener('keydown', (ev) => {
+            if (ev.key === 'ArrowUp' || ev.key === 'ArrowDown') {
+                ev.preventDefault();
+                const dir = ev.key === 'ArrowUp' ? -1 : 1;
+                col.scrollTop += dir * TIME_PICKER_ITEM_HEIGHT;
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => snapColumn(col, index), snapDelay);
+            }
+        });
+    });
 }
 
 export function updateTimePicker(hour, minute) {

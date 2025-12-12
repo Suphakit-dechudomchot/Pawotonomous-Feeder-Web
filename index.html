@@ -13,9 +13,15 @@
     <!-- ส่วนแสดงสถานะอุปกรณ์และการแจ้งเตือน (ด้านบน) -->
     <div class="header-area">
         <h1 class="app-name">Pawtonomous</h1>
-        <div class="device-status-display">
-            <span id="deviceStatusCircle" class="status-circle offline" title="สถานะอุปกรณ์: ออฟไลน์"></span>
-            <span id="deviceStatusText" class="status-text offline">ออฟไลน์</span>
+        <div class="header-right">
+            <div class="owner-info">
+                <span id="ownerNameDisplay" class="owner-name">บัญชี: -</span>
+                <button id="editOwnerNameBtn" class="secondary-button small">แก้ไขชื่อ</button>
+            </div>
+            <div class="device-status-display">
+                <span id="deviceStatusCircle" class="status-circle offline" title="สถานะอุปกรณ์: ออฟไลน์"></span>
+                <span id="deviceStatusText" class="status-text offline">ออฟไลน์</span>
+            </div>
         </div>
         <!-- ✅ นำปุ่มกระดิ่งด้านบนออกตามคำขอ -->
     </div>
@@ -138,6 +144,21 @@
         </div>
     </div>
 
+    <!-- Owner name Edit Modal -->
+    <div id="ownerNameModal" class="modal">
+        <div class="modal-content">
+            <h3>แก้ไขชื่อบัญชี</h3>
+            <div class="input-group">
+                <label for="ownerNameInput">ชื่อบัญชี:</label>
+                <input type="text" id="ownerNameInput" placeholder="เช่น บ้านป๋อม/ชื่อผู้ใช้" maxlength="20">
+            </div>
+            <div class="modal-buttons">
+                <button id="ownerNameSaveBtn" class="primary-button">บันทึก</button>
+                <button id="ownerNameCancelBtn" class="secondary-button">ยกเลิก</button>
+            </div>
+        </div>
+    </div>
+
 
     <main>
         <!-- ส่วนสำหรับเลือก Device ID (แสดงก่อนส่วนหลัก) -->
@@ -158,7 +179,7 @@
                 <div class="force-setup-message">
                     <i class="fa-solid fa-triangle-exclamation"></i>
                     <h3>กรุณาตั้งค่าเริ่มต้น</h3>
-                    <p>โปรดไปที่หน้า "ตั้งค่า" เพื่อกำหนดโซนเวลา, ขนาดขวด, และปรับเทียบปริมาณอาหารให้เสร็จสิ้นก่อนใช้งาน</p>
+                    <p>โปรดไปที่หน้า "ตั้งค่า" เพื่อกำหนดโซนเวลา และปรับเทียบปริมาณอาหารให้เสร็จสิ้นก่อนใช้งาน</p>
                     <button id="goToSettingsBtn" class="primary-button">ไปที่หน้าตั้งค่า</button>
                 </div>
             </div>
@@ -252,7 +273,7 @@
                 </div>
 
                 <div class="card settings-card">
-                    <h3>การตั้งค่าเวลาและปริมาณ</h3>
+                    <h3>การตั้งค่าเวลา</h3>
                     <div class="input-group">
                         <label for="timeZoneOffsetSelect">โซนเวลา (UTC+/-H):</label>
                         <select id="timeZoneOffsetSelect">
@@ -298,17 +319,7 @@
                             <option value="14">UTC+14:00 (Line Islands)</option>
                         </select>
                     </div>
-                    <div class="input-group">
-                        <label for="bottleSizeSelect">ขนาดขวด:</label>
-                        <select id="bottleSizeSelect">
-                            <option value="">-- เลือกขนาดขวด --</option>
-                            <option value="48">18.9 ลิตร (สูง ~48cm)</option>
-                            <option value="32">1.5 ลิตร (สูง ~32cm)</option>
-                            <option value="24">600ml (สูง ~24cm)</option>
-                            <option value="custom">กรอกความสูงเอง</option>
-                        </select>
-                        <input type="number" id="customBottleHeightInput" placeholder="กรอกความสูง (cm)" min="1" style="display: none; margin-top: 10px;">
-                    </div>
+                    <!-- ขนาดขวด ถูกลบออกตามคำขอของผู้ใช้ -->
                 </div>
 
                 <div class="card settings-card">
