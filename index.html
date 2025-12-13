@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#BB86FC">
+    <meta name="description" content="ระบบควบคุมเครื่องให้อาหารสัตว์เลี้ยงอัตโนมัติ">
     <title>Pawtonomous Feeder V2</title>
+    <link rel="manifest" href="/manifest.json">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700&display=swap">
     <!-- Font Awesome สำหรับ Icons -->
@@ -14,12 +17,27 @@
     <div class="header-area">
         <h1 class="app-name">Pawtonomous</h1>
         <div class="header-right">
-            <div class="device-status-display">
-                <span id="deviceStatusCircle" class="status-circle offline" title="สถานะอุปกรณ์: ออฟไลน์"></span>
-                <span id="deviceStatusText" class="status-text offline">ออฟไลน์</span>
+            <div class="connection-status-bar">
+                <div class="status-item">
+                    <i class="fa-solid fa-wifi" id="webStatusIcon"></i>
+                    <span id="webConnectionStatus" class="status-text online">เว็บ</span>
+                </div>
+                <div class="status-divider">|</div>
+                <div class="status-item">
+                    <i class="fa-solid fa-microchip" id="deviceStatusIcon"></i>
+                    <span id="deviceStatusText" class="status-text offline">เครื่อง</span>
+                </div>
             </div>
         </div>
-        <!-- ✅ นำปุ่มกระดิ่งด้านบนออกตามคำขอ -->
+    </div>
+
+    <!-- Offline Mode Banner -->
+    <div id="offlineBanner" class="offline-banner" style="display: none;">
+        <i class="fa-solid fa-wifi-slash"></i>
+        <div class="offline-banner-content">
+            <strong>โหมดออฟไลน์</strong>
+            <p>คุณสามารถดูและแก้ไขข้อมูลได้ การเปลี่ยนแปลงจะถูกบันทึกเมื่อกลับมาออนไลน์</p>
+        </div>
     </div>
 
     <!-- Custom Alert Modal Structure -->
@@ -113,9 +131,10 @@
                 </div>
                 <div class="input-group audio-upload-group">
                     <label for="mealAudioInput">เสียงเรียกสัตว์</label>
-                    <input type="file" accept="audio/*" id="mealAudioInput" class="meal-audio-input" style="display:none;">
-                    <button type="button" class="secondary-button" onclick="document.getElementById('mealAudioInput').click();"><i class="fa-solid fa-music"></i> เลือกไฟล์</button>
-                    <span id="mealAudioStatus" class="audio-status">ไม่มีไฟล์</span>
+                    <select id="mealAudioSelect">
+                        <!-- เติมโดย JS -->
+                    </select>
+                    <span id="mealAudioStatus" class="audio-status">-</span>
                 </div>
             </div>
             <audio id="mealAudioPreview" controls class="meal-audio-preview"></audio>
@@ -208,9 +227,10 @@
                         </div>
                         <div class="input-group audio-upload-group">
                             <label for="feedNowAudioInput">เสียงเรียกสัตว์</label>
-                            <input type="file" accept="audio/*" id="feedNowAudioInput" class="meal-audio-input" style="display:none;">
-                            <button type="button" class="secondary-button" onclick="document.getElementById('feedNowAudioInput').click();"><i class="fa-solid fa-music"></i> เลือกไฟล์</button>
-                            <span id="feedNowAudioStatus" class="audio-status">ไม่มีไฟล์</span>
+                                <select id="feedNowAudioSelect">
+                                    <!-- เติมโดย JS -->
+                                </select>
+                                <span id="feedNowAudioStatus" class="audio-status">-</span>
                         </div>
                         <audio id="feedNowAudioPreview" controls class="meal-audio-preview"></audio>
 
@@ -227,8 +247,9 @@
                     </div>
                     <div class="card action-card">
                         <h3>เล่นเสียงเรียกสัตว์</h3>
-                        <input type="file" accept="audio/*" id="makenoiseAudioInput" style="display:none;">
-                         <button type="button" class="secondary-button full-width-button" onclick="document.getElementById('makenoiseAudioInput').click();"><i class="fa-solid fa-music"></i> เลือกไฟล์</button>
+                        <select id="makenoiseSelect" class="full-width">
+                            <!-- เติมโดย JS -->
+                        </select>
                         <span id="makenoiseAudioStatus" class="audio-status"></span>
                         <button id="makenoiseBtn" class="primary-button full-width-button" disabled><i class="fa-solid fa-volume-high"></i> เล่นเสียงนี้</button>
                     </div>
@@ -323,6 +344,31 @@
                     <p class="notes"><small>ปรับเทียบอัตราส่วนกรัมต่อวินาทีเพื่อให้การจ่ายอาหารแม่นยำ</small></p>
                     <p>ค่าปัจจุบัน: <strong id="currentGramsPerSecondDisplay">- กรัม/วินาที</strong></p>
                     <button id="openCalibrationModalBtn" class="secondary-button full-width-button"><i class="fa-solid fa-wrench"></i> ทดสอบและตั้งค่า</button>
+                </div>
+
+                <div class="card settings-card">
+                    <h3>เสียงเรียกสัตว์</h3>
+                    <div class="input-group">
+                        <label for="soundSelectionSelect">เลือกเสียง:</label>
+                        <select id="soundSelectionSelect">
+                            <!-- ตัวเลือกจะถูกเติมโดย JS -->
+                        </select>
+                    </div>
+                    <p class="notes"><small>ไฟล์ต้องถูกวางบน microSD หรือใน Storage ของระบบ (เช่น 001.mp3, 002.mp3...) โดยอุปกรณ์จะเล่นตามดัชนีที่เลือก</small></p>
+                </div>
+
+                <div class="card settings-card">
+                    <h3><i class="fa-solid fa-palette"></i> ธีมสี</h3>
+                    <div class="input-group">
+                        <label for="themeSelect">เลือกธีม:</label>
+                        <select id="themeSelect">
+                            <option value="light">🌞 สว่าง (ค่าเริ่มต้น)</option>
+                            <option value="dark">🌙 มืด</option>
+                            <option value="blue">💙 ฟ้า</option>
+                            <option value="golden">🐕 โกลเดน</option>
+                        </select>
+                    </div>
+                    <p class="notes"><small>เปลี่ยนสีธีมของเว็บแอปตามความชอบ</small></p>
                 </div>
 
                 <div class="card settings-card">

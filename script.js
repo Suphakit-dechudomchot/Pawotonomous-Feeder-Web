@@ -21,6 +21,44 @@ const MEAL_BLOCK_DURATION_SECONDS = {
 
 const HEARTBEAT_THRESHOLD_MS = 20000;
 
+// Try to load `sounds.json` manifest; fallback to simple inline manifest.
+const INLINE_SOUND_MANIFEST = [
+    { index: 1, label: 'Meow 1', filename: '001.mp3', url: '' },
+    { index: 2, label: 'Meow 2', filename: '002.mp3', url: '' },
+    { index: 3, label: 'Bark 1', filename: '003.mp3', url: '' }
+];
+
+async function loadSoundManifest() {
+    try {
+        const resp = await fetch('./sounds.json');
+        if (!resp.ok) throw new Error('fetch failed');
+        const m = await resp.json();
+        return m;
+    } catch (e) { return INLINE_SOUND_MANIFEST; }
+}
+
+async function populateSoundSelects() {
+    const manifest = await loadSoundManifest();
+    const selects = [DOMElements.soundSelectionSelect, DOMElements.mealAudioSelect, DOMElements.feedNowAudioSelect, DOMElements.makenoiseSelect];
+    selects.forEach(sel => {
+        if (!sel) return;
+        sel.innerHTML = '';
+        const emptyOpt = document.createElement('option');
+        emptyOpt.value = '';
+        emptyOpt.textContent = '-- ไม่เลือก --';
+        sel.appendChild(emptyOpt);
+        manifest.forEach(s => {
+            const o = document.createElement('option');
+            o.value = String(s.index);
+            o.textContent = `${String(s.index).padStart(3,'0')} — ${s.label}`;
+            sel.appendChild(o);
+        });
+    });
+    // enable/show preview labels
+    if (DOMElements.mealAudioStatus) DOMElements.mealAudioStatus.textContent = '-';
+    if (DOMElements.feedNowAudioStatus) DOMElements.feedNowAudioStatus.textContent = '-';
+}
+
 function computeOnlineFromStatus(status) {
     if (!status) return false;
     const lastSeen = status.lastSeen || status.lastSeenTimestamp || status.last_seen || null;
@@ -30,13 +68,64 @@ function computeOnlineFromStatus(status) {
 }
 
 function updateDeviceStatusUI(isOnline) {
-    if (!DOMElements.deviceStatusCircle || !DOMElements.deviceStatusText) return;
-    DOMElements.deviceStatusCircle.className = `status-circle ${isOnline ? 'online' : 'offline'}`;
+    if (!DOMElements.deviceStatusText) return;
+    
+    const deviceStatusIcon = document.getElementById('deviceStatusIcon');
+    if (deviceStatusIcon) {
+        deviceStatusIcon.className = `fa-solid fa-microchip ${isOnline ? 'online' : 'offline'}`;
+    }
+    
     DOMElements.deviceStatusText.className = `status-text ${isOnline ? 'online' : 'offline'}`;
-    DOMElements.deviceStatusText.textContent = isOnline ? 'ออนไลน์' : 'ออฟไลน์';
-    [DOMElements.checkFoodLevelBtn, DOMElements.checkAnimalMovementBtn].forEach(btn => { if (btn) btn.disabled = !isOnline; });
-    if (DOMElements.feedNowBtn) { const amount = parseFloat(DOMElements.feedNowAmountInput?.value || '0'); DOMElements.feedNowBtn.disabled = !isOnline || isNaN(amount) || amount <= 0; }
-    if (DOMElements.makenoiseBtn) { DOMElements.makenoiseBtn.disabled = !isOnline || !DOMElements.makenoiseAudioInput?.files.length; }
+    DOMElements.deviceStatusText.textContent = isOnline ? 'เครื่อง: ออนไลน์' : 'เครื่อง: ออฟไลน์';
+    
+    // Update buttons based on both web and device status
+    const webOnline = navigator.onLine;
+    const canSendCommands = isOnline && webOnline;
+    
+    [DOMElements.checkFoodLevelBtn, DOMElements.checkAnimalMovementBtn].forEach(btn => { 
+        if (btn) {
+            btn.disabled = !canSendCommands;
+            btn.classList.toggle('requires-online', !canSendCommands);
+        }
+    });
+    
+    if (DOMElements.feedNowBtn) { 
+        const amount = parseFloat(DOMElements.feedNowAmountInput?.value || '0');
+        DOMElements.feedNowBtn.disabled = !canSendCommands || isNaN(amount) || amount <= 0;
+        DOMElements.feedNowBtn.classList.toggle('requires-online', !canSendCommands);
+    }
+    
+    if (DOMElements.makenoiseBtn) { 
+        DOMElements.makenoiseBtn.disabled = !canSendCommands || !DOMElements.makenoiseSelect?.value;
+        DOMElements.makenoiseBtn.classList.toggle('requires-online', !canSendCommands);
+    }
+}
+
+function updateWebConnectionStatus(isOnline) {
+    const webStatusIcon = document.getElementById('webStatusIcon');
+    const webConnectionStatus = document.getElementById('webConnectionStatus');
+    const offlineBanner = document.getElementById('offlineBanner');
+    
+    if (webStatusIcon) {
+        webStatusIcon.className = isOnline ? 'fa-solid fa-wifi online' : 'fa-solid fa-wifi-slash offline';
+    }
+    
+    if (webConnectionStatus) {
+        webConnectionStatus.className = `status-text ${isOnline ? 'online' : 'offline'}`;
+        webConnectionStatus.textContent = isOnline ? 'เว็บ: ออนไลน์' : 'เว็บ: ออฟไลน์';
+    }
+    
+    if (offlineBanner) {
+        offlineBanner.style.display = isOnline ? 'none' : 'flex';
+    }
+    
+    document.body.classList.toggle('web-offline', !isOnline);
+    
+    // Re-update device status UI to reflect web connection changes
+    if (state.currentDeviceId) {
+        const deviceOnline = DOMElements.deviceStatusText?.classList.contains('online');
+        updateDeviceStatusUI(deviceOnline);
+    }
 }
 
 function listenToDeviceStatus() {
@@ -81,6 +170,7 @@ async function loadSettingsFromFirebase() {
         if (DOMElements.wifiSsidInput) DOMElements.wifiSsidInput.value = settings.wifiCredentials?.ssid ?? '';
         if (DOMElements.wifiPasswordInput) DOMElements.wifiPasswordInput.value = settings.wifiCredentials?.password ?? '';
         if (DOMElements.currentGramsPerSecondDisplay) DOMElements.currentGramsPerSecondDisplay.textContent = state.gramsPerSecond ? `${state.gramsPerSecond.toFixed(2)} กรัม/วินาที` : '- กรัม/วินาที';
+        if (DOMElements.soundSelectionSelect) DOMElements.soundSelectionSelect.value = settings.sound_selection ?? '';
         await checkInitialSetupComplete();
     } catch (error) { console.error('loadSettingsFromFirebase error', error); await showCustomAlert('ข้อผิดพลาด', 'ไม่สามารถโหลดการตั้งค่าระบบได้', 'error'); }
 }
@@ -97,6 +187,16 @@ const saveSettingsToFirebase = debounce(async (settingType) => {
         updateCountdownDisplay();
     } catch (err) { console.error('saveSettingsToFirebase', err); await showCustomAlert('ข้อผิดพลาด', 'ไม่สามารถบันทึกการตั้งค่าได้', 'error'); }
 }, 1000);
+
+const saveSoundSelectionToFirebase = debounce(async () => {
+    if (!state.currentDeviceId || !state.isAuthReady) { await showCustomAlert('ข้อผิดพลาด', 'ไม่พบ ID อุปกรณ์ หรือการยืนยันตัวตนยังไม่พร้อม.', 'error'); return; }
+    try {
+        const val = DOMElements.soundSelectionSelect ? parseInt(DOMElements.soundSelectionSelect.value) : null;
+        const updates = { sound_selection: isNaN(val) ? null : val };
+        await update(ref(db, `device/${state.currentDeviceId}/settings`), updates);
+        await checkInitialSetupComplete();
+    } catch (err) { console.error('saveSoundSelectionToFirebase', err); await showCustomAlert('ข้อผิดพลาด', 'ไม่สามารถบันทึกการตั้งค่าเสียงได้', 'error'); }
+}, 800);
 
 async function checkInitialSetupComplete() {
     if (!state.currentDeviceId) return false;
@@ -164,15 +264,43 @@ async function setAndLoadDeviceId(id, navigateToMealSchedule = false) {
 
 function handleLogout() { localStorage.removeItem('pawtonomous_device_id'); state.currentDeviceId = null; state.hasShownInitialSetupOverlay = false; signOut(auth).catch(()=>{}); window.location.reload(); }
 
+// Register Service Worker for offline support
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+            .then(registration => console.log('SW registered:', registration.scope))
+            .catch(err => console.log('SW registration failed:', err));
+    });
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
+    // Setup online/offline listeners
+    window.addEventListener('online', () => {
+        updateWebConnectionStatus(true);
+        showCustomAlert('กลับมาออนไลน์', 'เชื่อมต่ออินเทอร์เน็ตแล้ว', 'success');
+    });
+    
+    window.addEventListener('offline', () => {
+        updateWebConnectionStatus(false);
+        showCustomAlert('ออฟไลน์', 'ไม่มีการเชื่อมต่ออินเทอร์เน็ต คุณยังสามารถดูข้อมูลได้', 'warning');
+    });
+    
+    // Set initial web connection status
+    updateWebConnectionStatus(navigator.onLine);
+    
+    // Load and apply theme
+    const savedTheme = localStorage.getItem('pawtonomous_theme') || 'light';
+    document.body.setAttribute('data-theme', savedTheme);
+    if (DOMElements.themeSelect) DOMElements.themeSelect.value = savedTheme;
+    
     const ids = [
-        'deviceSelectionSection','deviceIdInput','setDeviceIdBtn','mainContentContainer','deviceStatusCircle','deviceStatusText',
+        'deviceSelectionSection','deviceIdInput','setDeviceIdBtn','mainContentContainer','deviceStatusText','themeSelect',
         'customAlertOverlay','customAlertContent','customAlertTitle','customAlertMessage','customAlertOkButton','newNotificationToast','newNotificationToastMessage',
         'calibrationModal','startCalibrationTestBtn','calibrationStatus','calibratedWeightInput','saveCalibrationBtn','closeCalibrationModalBtn',
         'mealDetailModal','mealModalTitle','mealNameInput','specificDateBtn','specificDateInput','specificDateDisplay','mealAmountInput','mealFanStrengthInput',
         'mealFanDirectionInput','mealSwingModeCheckbox','mealAudioInput','mealAudioStatus','mealAudioPreview','saveMealDetailBtn','deleteMealDetailBtn','cancelMealDetailBtn',
         'forceSetupOverlay','goToSettingsBtn','feedNowBtn','checkFoodLevelBtn','checkAnimalMovementBtn','currentFoodLevelDisplay','lastMovementDisplay',
-        'makenoiseAudioInput','makenoiseAudioStatus','makenoiseBtn','mealListContainer','addMealCardBtn','wifiSsidInput','wifiPasswordInput','timeZoneOffsetSelect',
+        'makenoiseAudioInput','makenoiseAudioStatus','makenoiseBtn','mealListContainer','addMealCardBtn','wifiSsidInput','wifiPasswordInput','timeZoneOffsetSelect','soundSelectionSelect',
         'ownerNameDisplay','editOwnerNameBtn','ownerNameModal','ownerNameInput','ownerNameSaveBtn','ownerNameCancelBtn',
         'openCalibrationModalBtn','currentGramsPerSecondDisplay','logoutBtn','settingsNavDot','notifications-section','notificationHistoryList',
         'animal-calculator-section','animalCount','weightInputContainer','animalWeightKg','lifeStageActivityContainer','recommendedAmount','calculationNotes','applyRecommendedAmountBtn',
@@ -211,6 +339,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (DOMElements.timeZoneOffsetSelect) DOMElements.timeZoneOffsetSelect.addEventListener('change', () => saveSettingsToFirebase('timezone'));
     if (DOMElements.wifiSsidInput) DOMElements.wifiSsidInput.addEventListener('input', () => saveSettingsToFirebase('wifi'));
     if (DOMElements.wifiPasswordInput) DOMElements.wifiPasswordInput.addEventListener('input', () => saveSettingsToFirebase('wifi'));
+
+    // populate sound selector and handle changes
+    await populateSoundSelects();
+    if (DOMElements.soundSelectionSelect) DOMElements.soundSelectionSelect.addEventListener('change', () => saveSoundSelectionToFirebase());
+    if (DOMElements.mealAudioSelect) DOMElements.mealAudioSelect.addEventListener('change', () => { if (DOMElements.mealAudioStatus) DOMElements.mealAudioStatus.textContent = DOMElements.mealAudioSelect.selectedOptions[0]?.textContent || '-'; });
+    if (DOMElements.feedNowAudioSelect) DOMElements.feedNowAudioSelect.addEventListener('change', () => { if (DOMElements.feedNowAudioStatus) DOMElements.feedNowAudioStatus.textContent = DOMElements.feedNowAudioSelect.selectedOptions[0]?.textContent || '-'; });
+    if (DOMElements.makenoiseSelect) DOMElements.makenoiseSelect.addEventListener('change', () => { if (DOMElements.makenoiseAudioStatus) DOMElements.makenoiseAudioStatus.textContent = DOMElements.makenoiseSelect.selectedOptions[0]?.textContent || '-'; if (DOMElements.makenoiseSelect.value) DOMElements.makenoiseBtn.disabled = false; else DOMElements.makenoiseBtn.disabled = true; });
 
     // Owner name edit
     // Owner name: open modal to edit (uses custom modal in DOM)
@@ -291,6 +426,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (DOMElements.applyRecommendedAmountBtn) DOMElements.applyRecommendedAmountBtn.addEventListener('click', () => { const recommendedAmountText = DOMElements.recommendedAmount.textContent; const match = recommendedAmountText.match(/(\d+\.?\d*)/); if (match) { const amount = Math.max(1, Math.round(parseFloat(match[1]))); openMealDetailModal(null, { amount }, db, DOMElements, MEAL_BLOCK_DURATION_SECONDS); showSection('meal-schedule-section'); } else { showCustomAlert('ผิดพลาด', 'ไม่สามารถนำปริมาณที่แนะนำไปใช้ได้', 'error'); } });
 
     if (DOMElements.applyRecommendedAmountBtn) DOMElements.applyRecommendedAmountBtn.disabled = true;
+    
+    // Theme selector
+    if (DOMElements.themeSelect) {
+        DOMElements.themeSelect.addEventListener('change', (e) => {
+            const theme = e.target.value;
+            document.body.setAttribute('data-theme', theme);
+            localStorage.setItem('pawtonomous_theme', theme);
+            showCustomAlert('เปลี่ยนธีมสำเร็จ', `เปลี่ยนเป็นธีม ${e.target.selectedOptions[0].text} แล้ว`, 'success');
+        });
+    }
 });
 
 export { setAndLoadDeviceId, listenToDeviceStatus, updateDeviceStatusUI };
