@@ -1,28 +1,29 @@
 // animalCalculator.js
+import { t } from './translations.js';
 
 // ข้อมูลสำหรับสูตรการคำนวณปริมาณอาหารสัตว์ตามประเภทและชนิด
 export const animalData = {
     "ปลาน้ำจืด": {
-        "ปลาทอง": { "calculation_type": "weight_percentage", "daily_percentage_of_body_weight": 0.02, "typical_weight_g": 20, "meals_per_day": 2, "notes": "ควรแบ่งให้หลายมื้อต่อวัน" },
-        "ปลาคาร์ฟ": { "calculation_type": "weight_percentage", "daily_percentage_of_body_weight": 0.01, "typical_weight_g": 500, "meals_per_day": 3, "notes": "ปริมาณขึ้นอยู่กับอุณหภูมิน้ำและขนาดปลา" },
-        "ปลากัด": { "calculation_type": "fixed_grams", "daily_grams": 1.8, "meals_per_day": 2, "notes": "สำหรับปลาโตเต็มวัย ควรแบ่งให้ 1-2 มื้อต่อวัน" }
+        "ปลาทอง": { "calculation_type": "weight_percentage", "daily_percentage_of_body_weight": 0.02, "typical_weight_g": 20, "meals_per_day": 2, "notes_key": "calculatorNote_shouldDivide" },
+        "ปลาคาร์ฟ": { "calculation_type": "weight_percentage", "daily_percentage_of_body_weight": 0.01, "typical_weight_g": 500, "meals_per_day": 3, "notes_key": "calculatorNote_dependsOnTemp" },
+        "ปลากัด": { "calculation_type": "fixed_grams", "daily_grams": 1.8, "meals_per_day": 2, "notes_key": "calculatorNote_forAdult" }
     },
     "สัตว์เลี้ยงลูกด้วยนม": {
         "สุนัข": {
             "calculation_type": "RER_DER", "rer_formula": "70_BW_0.75", "kcal_per_gram_dry_food": 3.5,
             "der_factors": { "ลูกสุนัข": 2.0, "โตเต็มวัย_ทำหมันแล้ว": 1.6, "โตเต็มวัย_ไม่ทำหมัน": 1.8, "ลดน้ำหนัก": 1.0, "เพิ่มน้ำหนัก": 1.8, "ตั้งครรภ์": 2.0, "ให้นมบุตร": 3.0 },
-            "meals_per_day": 2, "notes": "ต้องระบุน้ำหนักและช่วงชีวิต/ระดับกิจกรรม"
+            "meals_per_day": 2, "notes_key": "calculatorNote_needWeightAndLife"
         },
         "แมว": {
             "calculation_type": "RER_DER", "rer_formula": "30_BW_plus_70", "kcal_per_gram_dry_food": 4.0,
             "der_factors": { "ลูกแมว": 2.5, "โตเต็มวัย_ทำหมันแล้ว": 1.2, "โตเต็มวัย_ไม่ทำหมัน": 1.4, "ลดน้ำหนัก": 0.8, "เพิ่มน้ำหนัก": 1.6, "ตั้งครรภ์": 2.0, "ให้นมบุตร": 3.0 },
-            "meals_per_day": 2, "notes": "ต้องระบุน้ำหนักและช่วงชีวิต/ระดับกิจกรรม"
+            "meals_per_day": 2, "notes_key": "calculatorNote_needWeightAndLife"
         },
-        "กระต่าย": { "calculation_type": "weight_percentage", "daily_percentage_of_body_weight": 0.01, "typical_weight_g": 2000, "meals_per_day": 2, "notes": "หญ้าแห้งเป็นอาหารหลัก ควรให้เม็ดอาหารจำกัด" }
+        "กระต่าย": { "calculation_type": "weight_percentage", "daily_percentage_of_body_weight": 0.01, "typical_weight_g": 2000, "meals_per_day": 2, "notes_key": "calculatorNote_hayMain" }
     },
     "สัตว์ปีก": {
-        "ไก่": { "calculation_type": "fixed_grams", "daily_grams": 125, "meals_per_day": 1, "notes": "ไก่จะกินตามความต้องการสารอาหาร" },
-        "เป็ด": { "calculation_type": "fixed_grams", "daily_grams": 170, "meals_per_day": 1, "notes": "เป็ดโตเต็มวัยจะกินประมาณ 170-200 กรัมต่อวัน" }
+        "ไก่": { "calculation_type": "fixed_grams", "daily_grams": 125, "meals_per_day": 1, "notes_key": "calculatorNote_eatByNeed" },
+        "เป็ด": { "calculation_type": "fixed_grams", "daily_grams": 170, "meals_per_day": 1, "notes_key": "calculatorNote_duckAdult" }
     }
 };
 
@@ -36,38 +37,30 @@ function createCustomOption(value, text, targetId) {
 }
 
 export function populateAnimalType(DOMElements) {
-    // ใช้ DOMElements ที่ส่งเข้ามา
     const optionsContainer = DOMElements.animalTypeOptions; 
-    if (!optionsContainer) {
-        console.error("animalTypeOptions element not found in DOMElements.");
-        return;
-    }
+    if (!optionsContainer) return;
     optionsContainer.innerHTML = '';
     for (const type in animalData) {
-        optionsContainer.appendChild(createCustomOption(type, type, 'animalType'));
+        optionsContainer.appendChild(createCustomOption(type, t(`animalType_${type}`) || type, 'animalType'));
     }
+    const trigger = document.querySelector('.custom-select-trigger[data-target="animalType"]');
+    if (trigger && !trigger.dataset.value) trigger.textContent = t('selectAnimalType');
 }
 
 export function updateAnimalSpecies(DOMElements) {
-    // ใช้ DOMElements ที่ส่งเข้ามา
     const typeTrigger = document.querySelector('.custom-select-trigger[data-target="animalType"]');
     const type = typeTrigger ? typeTrigger.dataset.value : '';
-
     const speciesOptionsContainer = DOMElements.animalSpeciesOptions;
     const speciesTrigger = document.querySelector('.custom-select-trigger[data-target="animalSpecies"]');
-    
-    if (!speciesOptionsContainer || !speciesTrigger) {
-        console.error("animalSpeciesOptions or animalSpecies trigger element not found in DOMElements.");
-        return;
-    }
+    if (!speciesOptionsContainer || !speciesTrigger) return;
 
     speciesOptionsContainer.innerHTML = '';
-    speciesTrigger.textContent = '-- เลือกชนิดสัตว์ --';
+    speciesTrigger.textContent = t('selectAnimalSpecies');
     speciesTrigger.dataset.value = '';
 
     if (type && animalData[type]) {
         for (const species in animalData[type]) {
-            speciesOptionsContainer.appendChild(createCustomOption(species, species, 'animalSpecies'));
+            speciesOptionsContainer.appendChild(createCustomOption(species, t(`animalSpecies_${species}`) || species, 'animalSpecies'));
         }
     }
 }
@@ -107,7 +100,7 @@ export function updateRecommendedAmount(DOMElements) {
 
     const animal = animalData[type][species];
     let totalDailyGrams = 0;
-    let notes = animal.notes || "";
+    let notes = animal.notes_key ? t(animal.notes_key) : "";
 
     // Show/hide and configure optional fields
     DOMElements.weightInputContainer.style.display = "block";
@@ -118,10 +111,10 @@ export function updateRecommendedAmount(DOMElements) {
         
         if (lifeStageOptionsContainer && lifeStageTriggerForPopulation) {
             lifeStageOptionsContainer.innerHTML = '';
-            lifeStageTriggerForPopulation.textContent = '-- เลือก --';
+            lifeStageTriggerForPopulation.textContent = t('selectLifeStage');
             lifeStageTriggerForPopulation.dataset.value = '';
             for (const factor in animal.der_factors) {
-                lifeStageOptionsContainer.appendChild(createCustomOption(factor, factor.replace(/_/g, ' '), 'lifeStageActivity'));
+                lifeStageOptionsContainer.appendChild(createCustomOption(factor, t(`lifeStage_${factor}`) || factor.replace(/_/g, ' '), 'lifeStageActivity'));
             }
         }
     }
@@ -137,7 +130,7 @@ export function updateRecommendedAmount(DOMElements) {
             break;
         case "RER_DER":
             if (weightKg <= 0 || !lifeStageActivity) {
-                notes = "กรุณาระบุน้ำหนักและช่วงชีวิต";
+                notes = t('calculatorNote_enterWeightAndLifeStage') || "กรุณาระบุน้ำหนักและช่วงชีวิต";
                 totalDailyGrams = 0;
                 break;
             }
@@ -147,7 +140,7 @@ export function updateRecommendedAmount(DOMElements) {
             
             const derKcal = rerKcal * animal.der_factors[lifeStageActivity];
             totalDailyGrams = derKcal / animal.kcal_per_gram_dry_food;
-            notes += ` (พลังงานที่ต้องการ: ${derKcal.toFixed(0)} kcal/วัน)`;
+            notes += ` (${t('calculatorNote_energyNeeded')}: ${derKcal.toFixed(0)} kcal/${t('calculatorNote_perDay')})`;
             break;
     }
 
@@ -155,11 +148,13 @@ export function updateRecommendedAmount(DOMElements) {
     if (totalDailyGrams > 0) {
         const mealsPerDay = animal.meals_per_day || 1;
         const totalPerMeal = (totalDailyGrams * count) / mealsPerDay;
-        DOMElements.recommendedAmount.textContent = `${totalPerMeal.toFixed(1)} กรัม / มื้อ`;
-        DOMElements.applyRecommendedAmountBtn.disabled = false; // เปิดใช้งานปุ่มเมื่อมีปริมาณที่คำนวณได้
+        const lang = localStorage.getItem('pawtonomous_language') || 'th';
+        const gramsText = lang === 'en' ? 'grams' : lang === 'zh' ? '克' : lang === 'ja' ? 'グラム' : 'กรัม';
+        DOMElements.recommendedAmount.textContent = `${totalPerMeal.toFixed(1)} ${gramsText} / ${t('calculatorNote_perMeal')}`;
+        DOMElements.applyRecommendedAmountBtn.disabled = false;
     } else {
         DOMElements.recommendedAmount.textContent = "-";
-        DOMElements.applyRecommendedAmountBtn.disabled = true; // ปิดใช้งานปุ่มเมื่อไม่มีปริมาณที่คำนวณได้
+        DOMElements.applyRecommendedAmountBtn.disabled = true;
     }
     DOMElements.calculationNotes.textContent = notes;
 }

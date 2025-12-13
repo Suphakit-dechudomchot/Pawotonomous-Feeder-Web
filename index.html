@@ -35,8 +35,8 @@
     <div id="offlineBanner" class="offline-banner" style="display: none;">
         <i class="fa-solid fa-wifi-slash"></i>
         <div class="offline-banner-content">
-            <strong>โหมดออฟไลน์</strong>
-            <p>คุณสามารถดูและแก้ไขข้อมูลได้ การเปลี่ยนแปลงจะถูกบันทึกเมื่อกลับมาออนไลน์</p>
+            <strong data-i18n="offlineMode">โหมดออฟไลน์</strong>
+            <p data-i18n="offlineMessage">คุณสามารถดูและแก้ไขข้อมูลได้ การเปลี่ยนแปลงจะถูกบันทึกเมื่อกลับมาออนไลน์</p>
         </div>
     </div>
 
@@ -45,7 +45,7 @@
         <div id="customAlertContent" class="custom-alert-content">
             <h3 id="customAlertTitle"></h3>
             <p id="customAlertMessage"></p>
-            <button id="customAlertOkButton" class="button primary">ตกลง</button>
+            <button id="customAlertOkButton" class="button primary" data-i18n="ok">ตกลง</button>
         </div>
     </div>
 
@@ -58,23 +58,23 @@
     <!-- Calibration Modal -->
     <div id="calibrationModal" class="modal">
         <div class="modal-content">
-            <h2><i class="fa-solid fa-ruler-combined"></i> ทดสอบและตั้งค่าปริมาณอาหาร</h2>
-            <p>โปรดวางภาชนะรองรับอาหารที่ช่องจ่ายอาหาร</p>
-            <button id="startCalibrationTestBtn" class="primary-button"><i class="fa-solid fa-play"></i> ปล่อยอาหารทดสอบ (5 วินาที)</button>
+            <h2><i class="fa-solid fa-ruler-combined"></i> <span data-i18n="calibrationTitle">ทดสอบและตั้งค่าปริมาณอาหาร</span></h2>
+            <p data-i18n="placeContainer">โปรดวางภาชนะรองรับอาหารที่ช่องจ่ายอาหาร</p>
+            <button id="startCalibrationTestBtn" class="primary-button"><i class="fa-solid fa-play"></i> <span data-i18n="releaseTest">ปล่อยอาหารทดสอบ (5 วินาที)</span></button>
             <p id="calibrationStatus" class="status-message"></p>
             <div class="input-group">
-                <label for="calibratedWeightInput">น้ำหนักที่ชั่งได้ (กรัม):</label>
-                <input type="number" id="calibratedWeightInput" placeholder="กรอกน้ำหนัก (กรัม)" min="0" step="0.1">
+                <label for="calibratedWeightInput" data-i18n="weightMeasured">น้ำหนักที่ชั่งได้ (กรัม):</label>
+                <input type="number" id="calibratedWeightInput" data-i18n-placeholder="enterWeight" placeholder="กรอกน้ำหนัก (กรัม)" min="0" step="0.1">
             </div>
-            <button id="saveCalibrationBtn" class="success-button" disabled><i class="fa-solid fa-save"></i> บันทึกค่า Calibrate</button>
-            <button id="closeCalibrationModalBtn" class="modal-close-button">ยกเลิก</button>
+            <button id="saveCalibrationBtn" class="success-button" disabled><i class="fa-solid fa-save"></i> <span data-i18n="saveCalibration">บันทึกค่า Calibrate</span></button>
+            <button id="closeCalibrationModalBtn" class="modal-close-button" data-i18n="cancel">ยกเลิก</button>
         </div>
     </div>
 
     <!-- Meal Detail Modal (สำหรับเพิ่ม/แก้ไขมื้ออาหาร) -->
     <div id="mealDetailModal" class="modal">
         <div class="modal-content meal-detail-content">
-            <h2 id="mealModalTitle">เพิ่มมื้ออาหารใหม่</h2>
+            <h2 id="mealModalTitle" data-i18n="addMealTitle">เพิ่มมื้ออาหารใหม่</h2>
             
             <!-- Custom Time Picker -->
             <div class="custom-time-picker-container">
@@ -85,20 +85,20 @@
             </div>
             
             <div class="input-group">
-                <label for="mealNameInput">ชื่อมื้ออาหาร:</label>
-                <input type="text" id="mealNameInput" placeholder="เช่น มื้อเช้า, มื้อเย็น">
+                <label for="mealNameInput" data-i18n="mealNameLabel">ชื่อมื้ออาหาร:</label>
+                <input type="text" id="mealNameInput" data-i18n-placeholder="mealNamePlaceholder" placeholder="เช่น มื้อเช้า, มื้อเย็น">
             </div>
 
             <div class="input-group days-of-week">
-                <label>วัน:</label>
+                <label data-i18n="daysLabel">วัน:</label>
                 <div class="day-buttons">
-                    <button class="day-btn" data-day="Mon">จ</button>
-                    <button class="day-btn" data-day="Tue">อ</button>
-                    <button class="day-btn" data-day="Wed">พ</button>
-                    <button class="day-btn" data-day="Thu">พฤ</button>
-                    <button class="day-btn" data-day="Fri">ศ</button>
-                    <button class="day-btn" data-day="Sat">ส</button>
-                    <button class="day-btn" data-day="Sun">อา</button>
+                    <button class="day-btn" data-day="Mon" data-i18n="dayMon">จ</button>
+                    <button class="day-btn" data-day="Tue" data-i18n="dayTue">อ</button>
+                    <button class="day-btn" data-day="Wed" data-i18n="dayWed">พ</button>
+                    <button class="day-btn" data-day="Thu" data-i18n="dayThu">พฤ</button>
+                    <button class="day-btn" data-day="Fri" data-i18n="dayFri">ศ</button>
+                    <button class="day-btn" data-day="Sat" data-i18n="daySat">ส</button>
+                    <button class="day-btn" data-day="Sun" data-i18n="daySun">อา</button>
                     <button id="specificDateBtn" class="day-btn date-btn"><i class="fa-solid fa-calendar-day"></i></button>
                 </div>
                 <input type="date" id="specificDateInput" style="display: none;">
@@ -106,31 +106,31 @@
             </div>
 
             <div class="input-group">
-                <label for="mealAmountInput">ปริมาณ (กรัม):</label>
+                <label for="mealAmountInput" data-i18n="amountLabel">ปริมาณ (กรัม):</label>
                 <input type="number" id="mealAmountInput" value="1" min="1">
             </div>
 
             <div class="input-group">
-                <label for="mealFanStrengthInput">ความแรงลม (0-100%):</label>
+                <label for="mealFanStrengthInput" data-i18n="fanStrengthLabel">ความแรงลม (0-100%):</label>
                 <input type="number" id="mealFanStrengthInput" value="50" min="0" max="100">
             </div>
 
             <div class="input-group">
-                <label for="mealFanDirectionInput">ทิศทางลม (60°-120°):</label>
+                <label for="mealFanDirectionInput" data-i18n="fanDirectionLabel">ทิศทางลม (60°-120°):</label>
                 <input type="number" id="mealFanDirectionInput" value="90" min="60" max="120">
             </div>
 
             <!-- จัดกลุ่ม Swing Mode และ Audio Upload -->
             <div class="meal-options-grid">
                 <div class="input-group swing-mode-group">
-                    <label for="mealSwingModeCheckbox">โหมดสวิง</label>
+                    <label for="mealSwingModeCheckbox" data-i18n="swingModeLabel">โหมดสวิง</label>
                     <label class="toggle-label">
                         <input type="checkbox" id="mealSwingModeCheckbox" class="toggle-switch">
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
                 <div class="input-group audio-upload-group">
-                    <label for="mealAudioInput">เสียงเรียกสัตว์</label>
+                    <label for="mealAudioInput" data-i18n="animalSoundLabel">เสียงเรียกสัตว์</label>
                     <select id="mealAudioSelect">
                         <!-- เติมโดย JS -->
                     </select>
@@ -140,9 +140,9 @@
             <audio id="mealAudioPreview" controls class="meal-audio-preview"></audio>
 
             <div class="modal-buttons">
-                <button id="saveMealDetailBtn" class="primary-button"><i class="fa-solid fa-save"></i> บันทึก</button>
-                <button id="deleteMealDetailBtn" class="danger-button" style="display:none;"><i class="fa-solid fa-trash"></i> ลบ</button>
-                <button id="cancelMealDetailBtn" class="secondary-button"><i class="fa-solid fa-times"></i> ยกเลิก</button>
+                <button id="saveMealDetailBtn" class="primary-button"><i class="fa-solid fa-save"></i> <span data-i18n="save">บันทึก</span></button>
+                <button id="deleteMealDetailBtn" class="danger-button" style="display:none;"><i class="fa-solid fa-trash"></i> <span data-i18n="delete">ลบ</span></button>
+                <button id="cancelMealDetailBtn" class="secondary-button"><i class="fa-solid fa-times"></i> <span data-i18n="cancel">ยกเลิก</span></button>
             </div>
         </div>
     </div>
@@ -153,8 +153,8 @@
             <h3 id="confirmModalTitle"></h3>
             <p id="confirmModalMessage"></p>
             <div class="modal-buttons">
-                <button id="confirmYesBtn" class="danger-button">ใช่</button>
-                <button id="confirmNoBtn" class="secondary-button">ไม่</button>
+                <button id="confirmYesBtn" class="danger-button" data-i18n="yes">ใช่</button>
+                <button id="confirmNoBtn" class="secondary-button" data-i18n="no">ไม่</button>
             </div>
         </div>
     </div>
@@ -162,14 +162,14 @@
     <!-- Owner name Edit Modal -->
     <div id="ownerNameModal" class="modal">
         <div class="modal-content">
-            <h3>แก้ไขชื่อบัญชี</h3>
+            <h3 data-i18n="editAccountName">แก้ไขชื่อบัญชี</h3>
             <div class="input-group">
-                <label for="ownerNameInput">ชื่อบัญชี:</label>
-                <input type="text" id="ownerNameInput" placeholder="เช่น บ้านป๋อม/ชื่อผู้ใช้" maxlength="20">
+                <label for="ownerNameInput" data-i18n="accountNameLabel">ชื่อบัญชี:</label>
+                <input type="text" id="ownerNameInput" data-i18n-placeholder="accountNamePlaceholder" placeholder="เช่น บ้านป๋อม/ชื่อผู้ใช้" maxlength="20">
             </div>
             <div class="modal-buttons">
-                <button id="ownerNameSaveBtn" class="primary-button">บันทึก</button>
-                <button id="ownerNameCancelBtn" class="secondary-button">ยกเลิก</button>
+                <button id="ownerNameSaveBtn" class="primary-button" data-i18n="save">บันทึก</button>
+                <button id="ownerNameCancelBtn" class="secondary-button" data-i18n="cancel">ยกเลิก</button>
             </div>
         </div>
     </div>
@@ -178,11 +178,11 @@
     <main>
         <!-- ส่วนสำหรับเลือก Device ID (แสดงก่อนส่วนหลัก) -->
         <section id="deviceSelectionSection" class="device-selection-section">
-            <h2><i class="fa-solid fa-microchip"></i> เชื่อมต่ออุปกรณ์</h2>
-            <p class="subtitle">กรุณากรอก Device ID ของเครื่องให้อาหาร<br>หรือสแกน QR Code ข้างตัวเครื่อง</p>
+            <h2><i class="fa-solid fa-microchip"></i> <span data-i18n="connectDevice">เชื่อมต่ออุปกรณ์</span></h2>
+            <p class="subtitle"><span data-i18n="enterDeviceId">กรุณากรอก Device ID ของเครื่องให้อาหาร</span><br><span data-i18n="scanQR">หรือสแกน QR Code ข้างตัวเครื่อง</span></p>
             <div class="input-group">
-                <input type="text" id="deviceIdInput" placeholder="กรอก Device ID" value="">
-                <button id="setDeviceIdBtn" class="primary-button"><i class="fa-solid fa-check"></i> ยืนยัน</button>
+                <input type="text" id="deviceIdInput" data-i18n-placeholder="deviceIdPlaceholder" placeholder="กรอก Device ID" value="">
+                <button id="setDeviceIdBtn" class="primary-button"><i class="fa-solid fa-check"></i> <span data-i18n="confirm">ยืนยัน</span></button>
             </div>
         </section>
 
@@ -193,40 +193,40 @@
             <div id="forceSetupOverlay" class="force-setup-overlay" style="display: none;">
                 <div class="force-setup-message">
                     <i class="fa-solid fa-triangle-exclamation"></i>
-                    <h3>กรุณาตั้งค่าเริ่มต้น</h3>
-                    <p>โปรดไปที่หน้า "ตั้งค่า" เพื่อกำหนดโซนเวลา และปรับเทียบปริมาณอาหารให้เสร็จสิ้นก่อนใช้งาน</p>
-                    <button id="goToSettingsBtn" class="primary-button">ไปที่หน้าตั้งค่า</button>
+                    <h3 data-i18n="setupRequired">กรุณาตั้งค่าเริ่มต้น</h3>
+                    <p data-i18n="setupMessage">โปรดไปที่หน้า "ตั้งค่า" เพื่อกำหนดโซนเวลา และปรับเทียบปริมาณอาหารให้เสร็จสิ้นก่อนใช้งาน</p>
+                    <button id="goToSettingsBtn" class="primary-button" data-i18n="goToSettings">ไปที่หน้าตั้งค่า</button>
                 </div>
             </div>
 
             <!-- 1. Dashboard Section (ปุ่มและฟังก์ชันต่างๆ) -->
             <section id="dashboard-section" class="content-section">
-                <h2><i class="fa-solid fa-bolt"></i> ควบคุมด่วน</h2>
+                <h2><i class="fa-solid fa-bolt"></i> <span data-i18n="dashboardTitle">ควบคุมด่วน</span></h2>
                 <div class="dashboard-grid">
                     <div class="card action-card">
-                        <h3>ให้อาหารทันที</h3>
+                        <h3 data-i18n="feedNowTitle">ให้อาหารทันที</h3>
                         <!-- เพิ่ม Input สำหรับการให้อาหารทันที -->
                         <div class="input-group">
-                            <label for="feedNowAmountInput">ปริมาณ (กรัม):</label>
+                            <label for="feedNowAmountInput" data-i18n="amountLabel">ปริมาณ (กรัม):</label>
                             <input type="number" id="feedNowAmountInput" value="10" min="1">
                         </div>
                         <div class="input-group">
-                            <label for="feedNowFanStrengthInput">ความแรงลม (0-100%):</label>
+                            <label for="feedNowFanStrengthInput" data-i18n="fanStrengthLabel">ความแรงลม (0-100%):</label>
                             <input type="number" id="feedNowFanStrengthInput" value="50" min="0" max="100">
                         </div>
                         <div class="input-group">
-                            <label for="feedNowFanDirectionInput">ทิศทางลม (60°-120°):</label>
+                            <label for="feedNowFanDirectionInput" data-i18n="fanDirectionLabel">ทิศทางลม (60°-120°):</label>
                             <input type="number" id="feedNowFanDirectionInput" value="90" min="60" max="120">
                         </div>
                         <div class="input-group swing-mode-group">
-                            <label for="feedNowSwingModeCheckbox">โหมดสวิง</label>
+                            <label for="feedNowSwingModeCheckbox" data-i18n="swingModeLabel">โหมดสวิง</label>
                             <label class="toggle-label">
                                 <input type="checkbox" id="feedNowSwingModeCheckbox" class="toggle-switch">
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
                         <div class="input-group audio-upload-group">
-                            <label for="feedNowAudioInput">เสียงเรียกสัตว์</label>
+                            <label for="feedNowAudioInput" data-i18n="animalSoundLabel">เสียงเรียกสัตว์</label>
                                 <select id="feedNowAudioSelect">
                                     <!-- เติมโดย JS -->
                                 </select>
@@ -234,24 +234,24 @@
                         </div>
                         <audio id="feedNowAudioPreview" controls class="meal-audio-preview"></audio>
 
-                        <button id="feedNowBtn" class="primary-button full-width-button"><i class="fa-solid fa-bowl-food"></i> ให้อาหาร</button>
+                        <button id="feedNowBtn" class="primary-button full-width-button"><i class="fa-solid fa-bowl-food"></i> <span data-i18n="feed">ให้อาหาร</span></button>
                     </div>
                     <div class="card action-card">
-                        <h3>สถานะและการตรวจสอบ</h3>
-                        <p>ปริมาณอาหาร: <strong id="currentFoodLevelDisplay">- %</strong></p>
-                        <p>เคลื่อนไหวล่าสุด: <strong id="lastMovementDisplay">-</strong></p>
+                        <h3 data-i18n="statusCheckTitle">สถานะและการตรวจสอบ</h3>
+                        <p><span data-i18n="foodLevelText">ปริมาณอาหาร:</span> <strong id="currentFoodLevelDisplay">- %</strong></p>
+                        <p><span data-i18n="lastMovementText">เคลื่อนไหวล่าสุด:</span> <strong id="lastMovementDisplay">-</strong></p>
                         <div class="button-group">
-                           <button id="checkFoodLevelBtn" class="secondary-button"><i class="fa-solid fa-scale-balanced"></i> เช็คอาหาร</button>
-                           <button id="checkAnimalMovementBtn" class="secondary-button"><i class="fa-solid fa-paw"></i> เช็คเคลื่อนไหว</button>
+                           <button id="checkFoodLevelBtn" class="secondary-button"><i class="fa-solid fa-scale-balanced"></i> <span data-i18n="checkFoodBtn">เช็คอาหาร</span></button>
+                           <button id="checkAnimalMovementBtn" class="secondary-button"><i class="fa-solid fa-paw"></i> <span data-i18n="checkMovementBtn">เช็คเคลื่อนไหว</span></button>
                         </div>
                     </div>
                     <div class="card action-card">
-                        <h3>เล่นเสียงเรียกสัตว์</h3>
+                        <h3 data-i18n="playSoundTitle">เล่นเสียงเรียกสัตว์</h3>
                         <select id="makenoiseSelect" class="full-width">
                             <!-- เติมโดย JS -->
                         </select>
                         <span id="makenoiseAudioStatus" class="audio-status"></span>
-                        <button id="makenoiseBtn" class="primary-button full-width-button" disabled><i class="fa-solid fa-volume-high"></i> เล่นเสียงนี้</button>
+                        <button id="makenoiseBtn" class="primary-button full-width-button" disabled><i class="fa-solid fa-volume-high"></i> <span data-i18n="playThisSoundBtn">เล่นเสียงนี้</span></button>
                     </div>
                 </div>
             </section>
@@ -259,15 +259,15 @@
             <!-- 2. Meal Schedule Section (ตั้งมื้ออาหาร) -->
             <section id="meal-schedule-section" class="content-section">
                 <div class="section-header">
-                    <h2><i class="fa-solid fa-utensils"></i> ตั้งค่ามื้ออาหาร</h2>
+                    <h2><i class="fa-solid fa-utensils"></i> <span data-i18n="mealsTitle">ตั้งค่ามื้ออาหาร</span></h2>
                     <button id="addMealCardBtn" class="add-meal-card-button"><i class="fa-solid fa-plus"></i></button>
                 </div>
                 <!-- Countdown Timer Display -->
                 <div id="nextMealCountdownContainer" class="countdown-container">
-                    <p id="nextMealCountdownDisplay" class="countdown-text">กำลังโหลดมื้ออาหาร...</p>
+                    <p id="nextMealCountdownDisplay" class="countdown-text" data-i18n="loadingMeals">กำลังโหลดมื้ออาหาร...</p>
                     <p id="nextMealTimeDisplay" class="countdown-detail"></p>
                 </div>
-                <p class="subtitle">ตั้งค่าเวลา, ปริมาณ, และเสียงสำหรับแต่ละมื้อ</p>
+                <p class="subtitle" data-i18n="mealScheduleSubtitle">ตั้งค่าเวลา, ปริมาณ, และเสียงสำหรับแต่ละมื้อ</p>
                 <div id="mealListContainer" class="meal-list-cards">
                     <!-- Meal cards will be dynamically inserted here -->
                 </div>
@@ -275,26 +275,26 @@
 
             <!-- 3. Device Settings Section (การตั้งค่า) -->
             <section id="device-settings-section" class="content-section">
-                <h2><i class="fa-solid fa-gear"></i> การตั้งค่าอุปกรณ์</h2>
+                <h2><i class="fa-solid fa-gear"></i> <span data-i18n="settingsTitle">การตั้งค่าอุปกรณ์</span></h2>
                 <div class="card settings-card">
-                    <h3>การเชื่อมต่อ Wi-Fi</h3>
+                    <h3 data-i18n="wifiSettingsTitle">การเชื่อมต่อ Wi-Fi</h3>
                     <div class="input-group">
-                        <label for="wifiSsidInput">WIFI SSID:</label>
-                        <input type="text" id="wifiSsidInput" placeholder="ชื่อ Wi-Fi">
+                        <label for="wifiSsidInput" data-i18n="wifiSsidLabel">WIFI SSID:</label>
+                        <input type="text" id="wifiSsidInput" data-i18n-placeholder="wifiSsidPlaceholder" placeholder="ชื่อ Wi-Fi">
                     </div>
                     <div class="input-group">
-                        <label for="wifiPasswordInput">WIFI PASSWORD:</label>
-                        <input type="password" id="wifiPasswordInput" placeholder="รหัสผ่าน Wi-Fi">
+                        <label for="wifiPasswordInput" data-i18n="wifiPasswordLabel">WIFI PASSWORD:</label>
+                        <input type="password" id="wifiPasswordInput" data-i18n-placeholder="wifiPasswordPlaceholder" placeholder="รหัสผ่าน Wi-Fi">
                     </div>
-                    <p class="notes"><small>ข้อมูล Wi-Fi จะถูกส่งไปยังอุปกรณ์เพื่อเชื่อมต่ออัตโนมัติ</small></p>
+                    <p class="notes"><small data-i18n="wifiNoteText">ข้อมูล Wi-Fi จะถูกส่งไปยังอุปกรณ์เพื่อเชื่อมต่ออัตโนมัติ</small></p>
                 </div>
 
                 <div class="card settings-card">
-                    <h3>การตั้งค่าเวลา</h3>
+                    <h3 data-i18n="timeSettingsTitle">การตั้งค่าเวลา</h3>
                     <div class="input-group">
-                        <label for="timeZoneOffsetSelect">โซนเวลา (UTC+/-H):</label>
+                        <label for="timeZoneOffsetSelect" data-i18n="timezoneLabel">โซนเวลา (UTC+/-H):</label>
                         <select id="timeZoneOffsetSelect">
-                            <option value="">-- เลือกโซนเวลา --</option>
+                            <option value="" data-i18n="selectTimezoneOption">-- เลือกโซนเวลา --</option>
                             <option value="-12">UTC-12:00 (Baker Island)</option>
                             <option value="-11">UTC-11:00 (Samoa Time)</option>
                             <option value="-10">UTC-10:00 (Hawaii-Aleutian Standard Time)</option>
@@ -340,51 +340,65 @@
                 </div>
 
                 <div class="card settings-card">
-                    <h3>การปรับเทียบปริมาณอาหาร</h3>
-                    <p class="notes"><small>ปรับเทียบอัตราส่วนกรัมต่อวินาทีเพื่อให้การจ่ายอาหารแม่นยำ</small></p>
-                    <p>ค่าปัจจุบัน: <strong id="currentGramsPerSecondDisplay">- กรัม/วินาที</strong></p>
-                    <button id="openCalibrationModalBtn" class="secondary-button full-width-button"><i class="fa-solid fa-wrench"></i> ทดสอบและตั้งค่า</button>
+                    <h3 data-i18n="calibrationTitle2">การปรับเทียบปริมาณอาหาร</h3>
+                    <p class="notes"><small data-i18n="calibrationNoteText">ปรับเทียบอัตราส่วนกรัมต่อวินาทีเพื่อให้การจ่ายอาหารแม่นยำ</small></p>
+                    <p><span data-i18n="currentValueText">ค่าปัจจุบัน:</span> <strong id="currentGramsPerSecondDisplay">- กรัม/วินาที</strong></p>
+                    <button id="openCalibrationModalBtn" class="secondary-button full-width-button"><i class="fa-solid fa-wrench"></i> <span data-i18n="testAndSetBtn">ทดสอบและตั้งค่า</span></button>
                 </div>
 
                 <div class="card settings-card">
-                    <h3>เสียงเรียกสัตว์</h3>
+                    <h3 data-i18n="soundSettingsTitle">เสียงเรียกสัตว์</h3>
                     <div class="input-group">
-                        <label for="soundSelectionSelect">เลือกเสียง:</label>
+                        <label for="soundSelectionSelect" data-i18n="soundSelectLabel">เลือกเสียง:</label>
                         <select id="soundSelectionSelect">
                             <!-- ตัวเลือกจะถูกเติมโดย JS -->
                         </select>
                     </div>
-                    <p class="notes"><small>ไฟล์ต้องถูกวางบน microSD หรือใน Storage ของระบบ (เช่น 001.mp3, 002.mp3...) โดยอุปกรณ์จะเล่นตามดัชนีที่เลือก</small></p>
+                    <p class="notes"><small data-i18n="soundNoteText">ไฟล์ต้องถูกวางบน microSD หรือใน Storage ของระบบ (เช่น 001.mp3, 002.mp3...) โดยอุปกรณ์จะเล่นตามดัชนีที่เลือก</small></p>
                 </div>
 
                 <div class="card settings-card">
-                    <h3><i class="fa-solid fa-palette"></i> ธีมสี</h3>
+                    <h3><i class="fa-solid fa-palette"></i> <span data-i18n="themeSettings">ธีมสี</span></h3>
                     <div class="input-group">
-                        <label for="themeSelect">เลือกธีม:</label>
+                        <label for="themeSelect" data-i18n="selectTheme">เลือกธีม:</label>
                         <select id="themeSelect">
-                            <option value="light">🌞 สว่าง (ค่าเริ่มต้น)</option>
-                            <option value="dark">🌙 มืด</option>
-                            <option value="blue">💙 ฟ้า</option>
-                            <option value="golden">🐕 โกลเดน</option>
+                            <option value="light" data-i18n="themeLight">🌞 สว่าง (ค่าเริ่มต้น)</option>
+                            <option value="dark" data-i18n="themeDark">🌙 มืด</option>
+                            <option value="blue" data-i18n="themeBlue">💙 ฟ้า</option>
+                            <option value="golden" data-i18n="themeGolden">🐕 โกลเดน</option>
                         </select>
                     </div>
-                    <p class="notes"><small>เปลี่ยนสีธีมของเว็บแอปตามความชอบ</small></p>
+                    <p class="notes"><small data-i18n="themeNoteText">เปลี่ยนสีธีมของเว็บแอปตามความชอบ</small></p>
                 </div>
 
                 <div class="card settings-card">
-                    <h3>บัญชีผู้ใช้</h3>
+                    <h3><i class="fa-solid fa-language"></i> <span data-i18n="languageSettings">ภาษา</span></h3>
+                    <div class="input-group">
+                        <label for="languageSelect" data-i18n="selectLanguage">เลือกภาษา:</label>
+                        <select id="languageSelect">
+                            <option value="th">🇹🇭 ไทย (Thai)</option>
+                            <option value="en">🇬🇧 อังกฤษ (English)</option>
+                            <option value="zh">🇨🇳 จีน (中文)</option>
+                            <option value="ja">🇯🇵 ญี่ปุ่น (日本語)</option>
+                        </select>
+                    </div>
+                    <p class="notes"><small data-i18n="languageNoteText">เปลี่ยนภาษาของเว็บแอป</small></p>
+                </div>
+
+                <div class="card settings-card">
+                    <h3 data-i18n="accountSettingsTitle">บัญชีผู้ใช้</h3>
                     <div class="owner-info-settings" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">
                         <span id="ownerNameDisplay" class="owner-name">บัญชี: -</span>
-                        <button id="editOwnerNameBtn" class="secondary-button small">แก้ไขชื่อ</button>
+                        <button id="editOwnerNameBtn" class="secondary-button small" data-i18n="editName">แก้ไขชื่อ</button>
                     </div>
-                     <button id="logoutBtn" class="danger-button full-width-button"><i class="fa-solid fa-sign-out-alt"></i> ออกจากระบบ / เปลี่ยนอุปกรณ์</button>
+                     <button id="logoutBtn" class="danger-button full-width-button"><i class="fa-solid fa-sign-out-alt"></i> <span data-i18n="logoutFullText">ออกจากระบบ / เปลี่ยนอุปกรณ์</span></button>
                 </div>
             </section>
 
             <!-- 4. Notification History Section (ประวัติการแจ้งเตือน) -->
             <section id="notifications-section" class="content-section">
-                <h2><i class="fa-solid fa-history"></i> ประวัติการแจ้งเตือน</h2>
-                <p class="subtitle">แสดงการแจ้งเตือน 50 รายการล่าสุด</p>
+                <h2><i class="fa-solid fa-history"></i> <span data-i18n="notificationsTitle">ประวัติการแจ้งเตือน</span></h2>
+                <p class="subtitle" data-i18n="notificationSubtitle">แสดงการแจ้งเตือน 50 รายการล่าสุด</p>
                 <div class="card notification-history-card">
                     <ul id="notificationHistoryList" class="notification-list">
                         <!-- Notifications will be dynamically inserted here -->
@@ -394,13 +408,13 @@
 
             <!-- 5. Animal Food Calculator Section (คำนวณอาหารสัตว์) -->
             <section id="animal-calculator-section" class="content-section">
-                <h2><i class="fa-solid fa-calculator"></i> โปรแกรมคำนวณอาหาร</h2>
-                <p class="subtitle">คำนวณปริมาณอาหารที่เหมาะสมสำหรับสัตว์เลี้ยงของคุณ</p>
+                <h2><i class="fa-solid fa-calculator"></i> <span data-i18n="calculatorTitle">โปรแกรมคำนวณอาหาร</span></h2>
+                <p class="subtitle" data-i18n="calculatorSubtitle">คำนวณปริมาณอาหารที่เหมาะสมสำหรับสัตว์เลี้ยงของคุณ</p>
 
                 <div class="card calculator-card">
                     <!-- Custom Select for Animal Type -->
                     <div class="input-group">
-                        <label>ประเภทสัตว์:</label>
+                        <label data-i18n="animalTypeLabel">ประเภทสัตว์:</label>
                         <div class="custom-select-wrapper">
                             <div class="custom-select-trigger" data-target="animalType">-- เลือกประเภทสัตว์ --</div>
                             <div class="custom-options" id="animalType-options"></div>
@@ -409,25 +423,25 @@
 
                     <!-- Custom Select for Animal Species -->
                     <div class="input-group">
-                        <label>ชนิดสัตว์:</label>
+                        <label data-i18n="animalSpeciesLabel">ชนิดสัตว์:</label>
                         <div class="custom-select-wrapper">
-                            <div class="custom-select-trigger" data-target="animalSpecies">-- เลือกชนิดสัตว์ --</div>
+                            <div class="custom-select-trigger" data-target="animalSpecies"></div>
                             <div class="custom-options" id="animalSpecies-options"></div>
                         </div>
                     </div>
 
                     <div class="input-group">
-                        <label for="animalCount">จำนวนสัตว์:</label>
+                        <label for="animalCount" data-i18n="animalCountLabel">จำนวนสัตว์:</label>
                         <input type="number" id="animalCount" value="1" min="1">
                     </div>
 
                     <div class="input-group" id="weightInputContainer" style="display: none;">
-                        <label for="animalWeightKg">น้ำหนัก (Kg):</label>
+                        <label for="animalWeightKg" data-i18n="weightLabel">น้ำหนัก (Kg):</label>
                         <input type="number" id="animalWeightKg" value="0" min="0" step="0.1">
                     </div>
 
                     <div class="input-group" id="lifeStageActivityContainer" style="display: none;">
-                        <label>ช่วงชีวิต/กิจกรรม:</label>
+                        <label data-i18n="lifeStageLabel">ช่วงชีวิต/กิจกรรม:</label>
                          <div class="custom-select-wrapper">
                             <div class="custom-select-trigger" data-target="lifeStageActivity">-- เลือก --</div>
                             <div class="custom-options" id="lifeStageActivity-options"></div>
@@ -435,11 +449,11 @@
                     </div>
 
                     <div class="result-display">
-                        <strong>ปริมาณอาหารที่แนะนำ:</strong>
+                        <strong data-i18n="recommendedAmount">ปริมาณอาหารที่แนะนำ:</strong>
                         <span id="recommendedAmount" class="highlight-amount">-</span>
                         <p class="calculation-notes" id="calculationNotes"></p>
                     </div>
-                    <button id="applyRecommendedAmountBtn" class="primary-button full-width-button" disabled><i class="fa-solid fa-check-circle"></i> นำไปสร้างมื้ออาหาร</button>
+                    <button id="applyRecommendedAmountBtn" class="primary-button full-width-button" disabled><i class="fa-solid fa-check-circle"></i> <span data-i18n="createMealBtn">นำไปสร้างมื้ออาหาร</span></button>
                 </div>
             </section>
         </div> <!-- ปิด mainContentContainer -->
@@ -449,24 +463,24 @@
     <nav class="bottom-nav">
         <button class="nav-item active" data-target="dashboard-section">
             <i class="fa-solid fa-bolt"></i>
-            <span>ควบคุม</span>
+            <span data-i18n="navControl">ควบคุม</span>
         </button>
         <button class="nav-item" data-target="meal-schedule-section">
             <i class="fa-solid fa-utensils"></i>
-            <span>มื้ออาหาร</span>
+            <span data-i18n="navMeals">มื้ออาหาร</span>
         </button>
         <button class="nav-item" data-target="device-settings-section">
             <i class="fa-solid fa-gear"></i>
-            <span>ตั้งค่า</span>
+            <span data-i18n="navSettings">ตั้งค่า</span>
             <span class="nav-dot" id="settingsNavDot" style="display: none;"></span>
         </button>
         <button class="nav-item" data-target="notifications-section">
             <i class="fa-solid fa-bell"></i>
-            <span>แจ้งเตือน</span>
+            <span data-i18n="navNotifications">แจ้งเตือน</span>
         </button>
         <button class="nav-item" data-target="animal-calculator-section">
             <i class="fa-solid fa-calculator"></i>
-            <span>คำนวณ</span>
+            <span data-i18n="navCalculator">คำนวณ</span>
         </button>
     </nav>
     

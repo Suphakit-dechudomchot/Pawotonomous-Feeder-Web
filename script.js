@@ -10,6 +10,7 @@ import { setupNotificationListener, fetchAndDisplayNotifications, cleanupOldNoti
 import { setupCustomTimePicker, updateTimePicker, getTimeFromPicker } from './js/timepicker.js';
 import { startCountdown, stopCountdown, updateCountdownDisplay } from './js/countdown.js';
 import { populateAnimalType, updateAnimalSpecies, updateRecommendedAmount } from './js/animalCalculator.js';
+import { t, setLanguage, getLanguage } from './js/translations.js';
 
 // Constants
 const CALIBRATION_TEST_SECONDS = 5;
@@ -76,7 +77,7 @@ function updateDeviceStatusUI(isOnline) {
     }
     
     DOMElements.deviceStatusText.className = `status-text ${isOnline ? 'online' : 'offline'}`;
-    DOMElements.deviceStatusText.textContent = isOnline ? 'เครื่อง: ออนไลน์' : 'เครื่อง: ออฟไลน์';
+    DOMElements.deviceStatusText.textContent = isOnline ? t('deviceOnline') : t('deviceOffline');
     
     // Update buttons based on both web and device status
     const webOnline = navigator.onLine;
@@ -112,7 +113,7 @@ function updateWebConnectionStatus(isOnline) {
     
     if (webConnectionStatus) {
         webConnectionStatus.className = `status-text ${isOnline ? 'online' : 'offline'}`;
-        webConnectionStatus.textContent = isOnline ? 'เว็บ: ออนไลน์' : 'เว็บ: ออฟไลน์';
+        webConnectionStatus.textContent = isOnline ? t('webOnline') : t('webOffline');
     }
     
     if (offlineBanner) {
@@ -288,13 +289,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Set initial web connection status
     updateWebConnectionStatus(navigator.onLine);
     
-    // Load and apply theme
+    // Update all translatable elements
+    function updateTranslations() {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            el.textContent = t(key);
+        });
+        
+        // Update placeholders
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+            const key = el.getAttribute('data-i18n-placeholder');
+            el.placeholder = t(key);
+        });
+        
+        // Update select options with data-i18n
+        document.querySelectorAll('option[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            el.textContent = t(key);
+        });
+    }
+    
+    // Load saved theme and language first
     const savedTheme = localStorage.getItem('pawtonomous_theme') || 'light';
     document.body.setAttribute('data-theme', savedTheme);
-    if (DOMElements.themeSelect) DOMElements.themeSelect.value = savedTheme;
+    const savedLang = getLanguage();
     
     const ids = [
-        'deviceSelectionSection','deviceIdInput','setDeviceIdBtn','mainContentContainer','deviceStatusText','themeSelect',
+        'deviceSelectionSection','deviceIdInput','setDeviceIdBtn','mainContentContainer','deviceStatusText','themeSelect','languageSelect',
         'customAlertOverlay','customAlertContent','customAlertTitle','customAlertMessage','customAlertOkButton','newNotificationToast','newNotificationToastMessage',
         'calibrationModal','startCalibrationTestBtn','calibrationStatus','calibratedWeightInput','saveCalibrationBtn','closeCalibrationModalBtn',
         'mealDetailModal','mealModalTitle','mealNameInput','specificDateBtn','specificDateInput','specificDateDisplay','mealAmountInput','mealFanStrengthInput',
@@ -311,6 +332,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     DOMElements.animalTypeOptions = document.getElementById('animalType-options');
     DOMElements.animalSpeciesOptions = document.getElementById('animalSpecies-options');
     DOMElements.lifeStageActivityOptions = document.getElementById('lifeStageActivity-options');
+    
+    // Set theme and language select values after DOM elements are populated
+    if (DOMElements.themeSelect) DOMElements.themeSelect.value = savedTheme;
+    if (DOMElements.languageSelect) DOMElements.languageSelect.value = savedLang;
+    updateTranslations();
 
     setupCustomTimePicker();
     setupCustomSelects();
@@ -414,7 +440,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else { document.querySelectorAll('.day-btn:not(.date-btn)').forEach(b => b.classList.remove('disabled')); if (DOMElements.specificDateBtn) DOMElements.specificDateBtn.disabled = false; }
     }));
     if (DOMElements.specificDateBtn) DOMElements.specificDateBtn.addEventListener('click', () => { document.querySelectorAll('.day-btn:not(.date-btn)').forEach(b => { b.classList.remove('selected'); b.classList.add('disabled'); }); if (DOMElements.specificDateInput) { DOMElements.specificDateInput.style.display = 'block'; DOMElements.specificDateInput.focus(); DOMElements.specificDateBtn.classList.add('selected'); DOMElements.specificDateInput.showPicker?.(); } });
-    if (DOMElements.specificDateInput) DOMElements.specificDateInput.addEventListener('change', e => { if (e.target.value) { if (DOMElements.specificDateDisplay) DOMElements.specificDateDisplay.textContent = `วันที่ระบุ: ${new Date(e.target.value).toLocaleDateString('th-TH')}`; document.querySelectorAll('.day-btn:not(.date-btn)').forEach(b => { b.classList.remove('selected'); b.classList.add('disabled'); }); if (DOMElements.specificDateBtn) DOMElements.specificDateBtn.classList.add('selected'); DOMElements.specificDateInput.style.display = 'none'; } else { document.querySelectorAll('.day-btn:not(.date-btn)').forEach(b => b.classList.remove('disabled')); if (DOMElements.specificDateBtn) DOMElements.specificDateBtn.classList.remove('selected'); if (DOMElements.specificDateDisplay) DOMElements.specificDateDisplay.textContent = ''; DOMElements.specificDateInput.style.display = 'none'; } });
+    if (DOMElements.specificDateInput) DOMElements.specificDateInput.addEventListener('change', e => { if (e.target.value) { if (DOMElements.specificDateDisplay) { const lang = getLanguage(); const locale = lang === 'th' ? 'th-TH' : lang === 'zh' ? 'zh-CN' : lang === 'ja' ? 'ja-JP' : 'en-US'; DOMElements.specificDateDisplay.textContent = `${t('specificDateLabel')} ${new Date(e.target.value).toLocaleDateString(locale)}`; } document.querySelectorAll('.day-btn:not(.date-btn)').forEach(b => { b.classList.remove('selected'); b.classList.add('disabled'); }); if (DOMElements.specificDateBtn) DOMElements.specificDateBtn.classList.add('selected'); DOMElements.specificDateInput.style.display = 'none'; } else { document.querySelectorAll('.day-btn:not(.date-btn)').forEach(b => b.classList.remove('disabled')); if (DOMElements.specificDateBtn) DOMElements.specificDateBtn.classList.remove('selected'); if (DOMElements.specificDateDisplay) DOMElements.specificDateDisplay.textContent = ''; DOMElements.specificDateInput.style.display = 'none'; } });
 
     if (DOMElements.mealSwingModeCheckbox && DOMElements.mealFanDirectionInput) DOMElements.mealSwingModeCheckbox.addEventListener('change', e => { DOMElements.mealFanDirectionInput.disabled = e.target.checked; });
 
@@ -433,7 +459,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             const theme = e.target.value;
             document.body.setAttribute('data-theme', theme);
             localStorage.setItem('pawtonomous_theme', theme);
-            showCustomAlert('เปลี่ยนธีมสำเร็จ', `เปลี่ยนเป็นธีม ${e.target.selectedOptions[0].text} แล้ว`, 'success');
+            showCustomAlert(t('save'), `${t('selectTheme')}: ${e.target.selectedOptions[0].text}`, 'success');
+        });
+    }
+    
+    // Language selector
+    if (DOMElements.languageSelect) {
+        DOMElements.languageSelect.addEventListener('change', (e) => {
+            const lang = e.target.value;
+            setLanguage(lang);
+            // Reload page to apply all translations
+            window.location.reload();
         });
     }
 });

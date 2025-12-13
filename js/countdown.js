@@ -1,10 +1,21 @@
 // countdown.js - next meal calculations and countdown
 import { state } from './state.js';
 import { DOMElements } from './ui.js';
+import { t } from './translations.js';
 
 const dayMap = { 'Sun':0,'Mon':1,'Tue':2,'Wed':3,'Thu':4,'Fri':5,'Sat':6 };
-const dayNamesThai = ['อา','จ','อ','พ','พฤ','ศ','ส'];
-const monthNamesThai = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const dayNames = {
+    th: ['อา','จ','อ','พ','พฤ','ศ','ส'],
+    en: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
+    zh: ['日','一','二','三','四','五','六'],
+    ja: ['日','月','火','水','木','金','土']
+};
+const monthNames = {
+    th: ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'],
+    en: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    zh: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
+    ja: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月']
+};
 
 export function findNextMeal(allMeals, timeZoneOffset) {
     if (!allMeals || Object.keys(allMeals).length === 0 || timeZoneOffset === null) return { nextMeal: null, nextTimestamp: null };
@@ -40,15 +51,22 @@ export function findNextMeal(allMeals, timeZoneOffset) {
 export function updateCountdownDisplay() {
     if (!DOMElements.nextMealCountdownDisplay || !DOMElements.nextMealTimeDisplay || !DOMElements.timeZoneOffsetSelect) return;
     const timeZoneOffset = parseFloat(DOMElements.timeZoneOffsetSelect.value);
-    if (isNaN(timeZoneOffset)) { DOMElements.nextMealCountdownDisplay.textContent = "กรุณาตั้งค่าโซนเวลาในหน้า 'ตั้งค่า'"; DOMElements.nextMealTimeDisplay.textContent = ''; return; }
+    if (isNaN(timeZoneOffset)) { DOMElements.nextMealCountdownDisplay.textContent = t('countdown_setTimezone'); DOMElements.nextMealTimeDisplay.textContent = ''; return; }
     const { nextMeal, nextTimestamp } = findNextMeal(state.allMealsData, timeZoneOffset);
     if (nextMeal && nextTimestamp !== Infinity) {
-        const now = Date.now(); let timeLeft = nextTimestamp - now; if (timeLeft <= 0) { DOMElements.nextMealCountdownDisplay.textContent = 'กำลังคำนวณมื้อถัดไป...'; DOMElements.nextMealTimeDisplay.textContent = ''; setTimeout(updateCountdownDisplay, 1000); return; }
+        const now = Date.now(); let timeLeft = nextTimestamp - now; if (timeLeft <= 0) { DOMElements.nextMealCountdownDisplay.textContent = t('countdown_calculating'); DOMElements.nextMealTimeDisplay.textContent = ''; setTimeout(updateCountdownDisplay, 1000); return; }
         const days = Math.floor(timeLeft/(1000*60*60*24)); timeLeft %= (1000*60*60*24); const hours = Math.floor(timeLeft/(1000*60*60)); timeLeft %= (1000*60*60); const minutes = Math.floor(timeLeft/(1000*60)); timeLeft %= (1000*60); const seconds = Math.floor(timeLeft/1000);
-        let countdownString = 'จะให้อาหารในอีก '; if (days>0) countdownString += `${days} วัน `; countdownString += `${String(hours).padStart(2,'0')} ชั่วโมง ${String(minutes).padStart(2,'0')} นาที ${String(seconds).padStart(2,'0')} วินาที`;
+        let countdownString = t('countdown_feedIn') + ' '; if (days>0) countdownString += `${days} ${t('countdown_days')} `; countdownString += `${String(hours).padStart(2,'0')} ${t('countdown_hours')} ${String(minutes).padStart(2,'0')} ${t('countdown_minutes')} ${String(seconds).padStart(2,'0')} ${t('countdown_seconds')}`;
         DOMElements.nextMealCountdownDisplay.textContent = countdownString;
-        const localNextMealDate = new Date(nextTimestamp + (timeZoneOffset*3600*1000)); const dayOfWeek = dayNamesThai[localNextMealDate.getUTCDay()]; const dayOfMonth = localNextMealDate.getUTCDate(); const month = monthNamesThai[localNextMealDate.getUTCMonth()]; const hour = String(localNextMealDate.getUTCHours()).padStart(2,'0'); const minute = String(localNextMealDate.getUTCMinutes()).padStart(2,'0'); DOMElements.nextMealTimeDisplay.textContent = `${dayOfWeek}. ${dayOfMonth} ${month} ${hour}:${minute} น.`;
-    } else { DOMElements.nextMealCountdownDisplay.textContent = 'ไม่มีมื้ออาหารที่กำลังจะมาถึง'; DOMElements.nextMealTimeDisplay.textContent = ''; }
+        const lang = localStorage.getItem('pawtonomous_language') || 'th';
+        const localNextMealDate = new Date(nextTimestamp + (timeZoneOffset*3600*1000)); 
+        const dayOfWeek = dayNames[lang][localNextMealDate.getUTCDay()]; 
+        const dayOfMonth = localNextMealDate.getUTCDate(); 
+        const month = monthNames[lang][localNextMealDate.getUTCMonth()]; 
+        const hour = String(localNextMealDate.getUTCHours()).padStart(2,'0'); 
+        const minute = String(localNextMealDate.getUTCMinutes()).padStart(2,'0'); 
+        DOMElements.nextMealTimeDisplay.textContent = lang === 'th' ? `${dayOfWeek}. ${dayOfMonth} ${month} ${hour}:${minute} น.` : `${dayOfWeek} ${dayOfMonth} ${month} ${hour}:${minute}`;
+    } else { DOMElements.nextMealCountdownDisplay.textContent = t('countdown_noUpcoming'); DOMElements.nextMealTimeDisplay.textContent = ''; }
 }
 
 export function startCountdown() { if (state.countdownInterval) clearInterval(state.countdownInterval); updateCountdownDisplay(); state.countdownInterval = setInterval(updateCountdownDisplay, 1000); }
