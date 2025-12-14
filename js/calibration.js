@@ -12,7 +12,8 @@ export function openCalibrationModal() {
     DOMElements.calibratedWeightInput.value = '';
     DOMElements.saveCalibrationBtn.disabled = true;
     setButtonState(DOMElements.startCalibrationTestBtn, false);
-    if (DOMElements.deviceStatusCircle) DOMElements.startCalibrationTestBtn.disabled = !DOMElements.deviceStatusCircle.classList.contains('online');
+    const deviceStatusIcon = document.getElementById('deviceStatusIcon');
+    if (deviceStatusIcon) DOMElements.startCalibrationTestBtn.disabled = !deviceStatusIcon.classList.contains('online');
 }
 
 export async function startCalibrationTest() {

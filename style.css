@@ -1309,3 +1309,83 @@ body[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator {
 body[data-theme="light"] select {
     background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236366F1%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13%205.4l-118%20118.3L37%2074.8a17.6%2017.6%200%200%200-25%2024.7l130.5%20131.7a17.6%2017.6%200%200%200%2025%200l130.5-131.7c6.7-6.4%206.7-17.6%200-24.7z%22%2F%3E%3C%2Fsvg%3E');
 }
+
+
+/* =================== FEEDING HISTORY =================== */
+.feeding-history-card {
+    margin-bottom: 30px;
+}
+
+.filter-buttons {
+    display: flex;
+    gap: 10px;
+    margin: 15px 0 20px 0;
+    justify-content: center;
+}
+
+.filter-btn {
+    padding: 8px 16px;
+    background-color: var(--card-background);
+    color: var(--text-medium);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.filter-btn:hover {
+    background-color: #2A2A2A;
+    border-color: var(--primary-color);
+}
+
+.filter-btn.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.feeding-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 12px;
+    background-color: rgba(187, 134, 252, 0.1);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.stat-item span {
+    display: block;
+    font-size: 0.85em;
+    color: var(--text-medium);
+    margin-bottom: 5px;
+}
+
+.stat-item strong {
+    display: block;
+    font-size: 1.3em;
+    color: var(--primary-color);
+    font-weight: 700;
+}
+
+@media (max-width: 480px) {
+    .feeding-stats {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .filter-buttons {
+        flex-wrap: wrap;
+    }
+    
+    .filter-btn {
+        flex: 1;
+        min-width: 80px;
+    }
+}

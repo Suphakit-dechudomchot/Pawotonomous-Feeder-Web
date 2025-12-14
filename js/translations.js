@@ -272,6 +272,16 @@ export const translations = {
         showLast50: 'แสดงการแจ้งเตือน 50 รายการล่าสุด',
         noData: 'ไม่มีข้อมูล',
         
+        // Feeding History
+        feedingHistoryTitle: 'ประวัติการจ่ายอาหาร',
+        filterDay: 'วันนี้',
+        filterWeek: '7 วัน',
+        filterMonth: '30 วัน',
+        totalFeedings: 'จำนวนครั้ง:',
+        totalAmount: 'ปริมาณรวม:',
+        avgPerFeeding: 'เฉลี่ยต่อครั้ง:',
+        noFeedingHistory: 'ไม่มีประวัติการจ่ายอาหาร',
+        
         // Calculator
         calculatorTitle: 'โปรแกรมคำนวณอาหาร',
         calculateFood: 'คำนวณปริมาณอาหารที่เหมาะสมสำหรับสัตว์เลี้ยงของคุณ',
@@ -573,6 +583,16 @@ export const translations = {
         notificationsTitle: 'Notification History',
         showLast50: 'Show last 50 notifications',
         noData: 'No data',
+        
+        // Feeding History
+        feedingHistoryTitle: 'Feeding History',
+        filterDay: 'Today',
+        filterWeek: '7 Days',
+        filterMonth: '30 Days',
+        totalFeedings: 'Total Feedings:',
+        totalAmount: 'Total Amount:',
+        avgPerFeeding: 'Avg per Feeding:',
+        noFeedingHistory: 'No feeding history',
         
         // Calculator
         calculatorTitle: 'Food Calculator',
@@ -876,6 +896,16 @@ export const translations = {
         showLast50: '显示最后50条通知',
         noData: '无数据',
         
+        // Feeding History
+        feedingHistoryTitle: '喂食历史',
+        filterDay: '今天',
+        filterWeek: '7天',
+        filterMonth: '30天',
+        totalFeedings: '总次数:',
+        totalAmount: '总量:',
+        avgPerFeeding: '平均每次:',
+        noFeedingHistory: '无喂食历史',
+        
         // Calculator
         calculatorTitle: '食物计算器',
         calculateFood: '计算适合您宠物的食物量',
@@ -1176,6 +1206,16 @@ export const translations = {
         notificationsTitle: '通知履歴',
         showLast50: '最後の50件の通知を表示',
         noData: 'データなし',
+        
+        // Feeding History
+        feedingHistoryTitle: '給餌履歴',
+        filterDay: '今日',
+        filterWeek: '7日間',
+        filterMonth: '30日間',
+        totalFeedings: '総回数:',
+        totalAmount: '総量:',
+        avgPerFeeding: '平均/回:',
+        noFeedingHistory: '給餌履歴なし',
         
         // Calculator
         calculatorTitle: '食物計算機',

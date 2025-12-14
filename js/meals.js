@@ -105,7 +105,6 @@ export function addMealCard(mealData, DOMElements, db, MEAL_BLOCK_DURATION_SECON
             await set(ref(db, `device/${state.currentDeviceId}/meals/${id}/enabled`), isEnabled);
             await showCustomAlert(t('success'), `${t('mealName')} ${name} ${isEnabled ? t('enabled') : t('disabled')}`, 'info');
         } catch (error) {
-            console.error('Error toggling meal status:', error);
             await showCustomAlert(t('error'), `${t('cannotChangeMealStatus')}: ${error.message}`, 'error');
         }
     });
@@ -218,7 +217,6 @@ export async function saveMealDetail(db, DOMElements, MEAL_BLOCK_DURATION_SECOND
         await showCustomAlert(t('success'), t('mealSaved'), 'success');
         closeMealDetailModal();
     } catch (error) {
-        console.error('Error saving meal:', error);
         await showCustomAlert(t('error'), `${t('cannotSaveAccountName')}: ${error.message}`, 'error');
     }
 }

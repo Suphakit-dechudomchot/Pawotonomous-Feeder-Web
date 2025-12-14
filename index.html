@@ -398,6 +398,31 @@
             <!-- 4. Notification History Section (ประวัติการแจ้งเตือน) -->
             <section id="notifications-section" class="content-section">
                 <h2><i class="fa-solid fa-history"></i> <span data-i18n="notificationsTitle">ประวัติการแจ้งเตือน</span></h2>
+                
+                <!-- Feeding History Card -->
+                <div class="card feeding-history-card">
+                    <h3><i class="fa-solid fa-chart-line"></i> <span data-i18n="feedingHistoryTitle">ประวัติการจ่ายอาหาร</span></h3>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" data-period="day" data-i18n="filterDay">วันนี้</button>
+                        <button class="filter-btn" data-period="week" data-i18n="filterWeek">7 วัน</button>
+                    </div>
+                    <canvas id="feedingChart" style="max-height: 300px;"></canvas>
+                    <div id="feedingStats" class="feeding-stats">
+                        <div class="stat-item">
+                            <span data-i18n="totalFeedings">จำนวนครั้ง:</span>
+                            <strong id="totalFeedingsCount">0</strong>
+                        </div>
+                        <div class="stat-item">
+                            <span data-i18n="totalAmount">ปริมาณรวม:</span>
+                            <strong id="totalFeedingsAmount">0 g</strong>
+                        </div>
+                        <div class="stat-item">
+                            <span data-i18n="avgPerFeeding">เฉลี่ยต่อครั้ง:</span>
+                            <strong id="avgFeedingAmount">0 g</strong>
+                        </div>
+                    </div>
+                </div>
+                
                 <p class="subtitle" data-i18n="notificationSubtitle">แสดงการแจ้งเตือน 50 รายการล่าสุด</p>
                 <div class="card notification-history-card">
                     <ul id="notificationHistoryList" class="notification-list">
@@ -483,6 +508,9 @@
             <span data-i18n="navCalculator">คำนวณ</span>
         </button>
     </nav>
+    
+    <!-- Chart.js for feeding history graph -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

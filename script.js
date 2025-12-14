@@ -141,7 +141,7 @@ function listenToDeviceStatus() {
             const lm = status.lastMovementDetected || status.lastMovement || null;
             DOMElements.lastMovementDisplay.textContent = lm ? new Date(lm).toLocaleString('th-TH', { timeStyle: 'short', dateStyle: 'short' }) : t('noData');
         }
-    }, (err) => console.error('listenToDeviceStatus error', err));
+    });
 }
 
 async function updateFoodLevelDisplay(foodLevelCm) {
@@ -156,7 +156,7 @@ async function updateFoodLevelDisplay(foodLevelCm) {
         const remainingHeight = bottleHeight - foodLevelCm;
         const percentage = clamp((remainingHeight / bottleHeight) * 100, 0, 100);
         DOMElements.currentFoodLevelDisplay.textContent = `${Math.round(percentage)} %`;
-    } catch (err) { console.error('updateFoodLevelDisplay error', err); DOMElements.currentFoodLevelDisplay.textContent = 'Error'; }
+    } catch (err) { DOMElements.currentFoodLevelDisplay.textContent = 'Error'; }
 }
 
 async function loadSettingsFromFirebase() {
@@ -173,7 +173,7 @@ async function loadSettingsFromFirebase() {
         if (DOMElements.currentGramsPerSecondDisplay) DOMElements.currentGramsPerSecondDisplay.textContent = state.gramsPerSecond ? `${state.gramsPerSecond.toFixed(2)} ${t('gramsPerSecond')}` : `${t('noDataText')} ${t('gramsPerSecond')}`;
         if (DOMElements.soundSelectionSelect) DOMElements.soundSelectionSelect.value = settings.sound_selection ?? '';
         await checkInitialSetupComplete();
-    } catch (error) { console.error('loadSettingsFromFirebase error', error); await showCustomAlert(t('error'), t('cannotLoadData'), 'error'); }
+    } catch (error) { await showCustomAlert(t('error'), t('cannotLoadData'), 'error'); }
 }
 
 const saveSettingsToFirebase = debounce(async (settingType) => {
@@ -186,7 +186,7 @@ const saveSettingsToFirebase = debounce(async (settingType) => {
         await update(ref(db, `device/${state.currentDeviceId}/settings`), updates);
         await checkInitialSetupComplete();
         updateCountdownDisplay();
-    } catch (err) { console.error('saveSettingsToFirebase', err); await showCustomAlert(t('error'), t('cannotSaveAccountName'), 'error'); }
+    } catch (err) { await showCustomAlert(t('error'), t('cannotSaveAccountName'), 'error'); }
 }, 1000);
 
 const saveSoundSelectionToFirebase = debounce(async () => {
@@ -196,7 +196,7 @@ const saveSoundSelectionToFirebase = debounce(async () => {
         const updates = { sound_selection: isNaN(val) ? null : val };
         await update(ref(db, `device/${state.currentDeviceId}/settings`), updates);
         await checkInitialSetupComplete();
-    } catch (err) { console.error('saveSoundSelectionToFirebase', err); await showCustomAlert(t('error'), t('cannotSaveAccountName'), 'error'); }
+    } catch (err) { await showCustomAlert(t('error'), t('cannotSaveAccountName'), 'error'); }
 }, 800);
 
 async function checkInitialSetupComplete() {
@@ -213,7 +213,7 @@ async function checkInitialSetupComplete() {
         if (DOMElements.settingsNavDot) DOMElements.settingsNavDot.style.display = isSetupComplete ? 'none' : 'block';
         document.querySelectorAll('.nav-item').forEach(item => { if (!isSetupComplete) { item.disabled = true; item.classList.add('disabled-overlay'); } else { item.disabled = false; item.classList.remove('disabled-overlay'); } });
         return isSetupComplete;
-    } catch (e) { console.error('checkInitialSetupComplete', e); return false; }
+    } catch (e) { return false; }
 }
 
 async function setAndLoadDeviceId(id, navigateToMealSchedule = false) {
@@ -226,7 +226,6 @@ async function setAndLoadDeviceId(id, navigateToMealSchedule = false) {
             return;
         }
     } catch (err) {
-        console.error('setAndLoadDeviceId existence check error', err);
         await showCustomAlert(t('error'), t('cannotVerifyDevice'), 'error');
         return;
     }
@@ -257,7 +256,6 @@ async function setAndLoadDeviceId(id, navigateToMealSchedule = false) {
             // Start the countdown updater (it will react once meals arrive)
             startCountdown();
         } catch (err) {
-            console.error('setAndLoadDeviceId error', err);
             await showCustomAlert(t('error'), t('cannotLoadData'), 'error');
         }
     }
@@ -268,9 +266,7 @@ function handleLogout() { localStorage.removeItem('pawtonomous_device_id'); stat
 // Register Service Worker for offline support
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-            .then(registration => console.log('SW registered:', registration.scope))
-            .catch(err => console.log('SW registration failed:', err));
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
     });
 }
 
@@ -342,6 +338,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupCustomSelects();
     window.getTimeFromPicker = getTimeFromPicker;
     window.updateTimePicker = updateTimePicker;
+    
+    // Setup feeding history immediately
+    let feedingHistoryModule = null;
+    import('./js/feedingHistory.js').then(module => {
+        feedingHistoryModule = module;
+        if (module.setupFeedingHistory) module.setupFeedingHistory();
+    }).catch(() => {});
 
     onAuthStateChanged(auth, async (user) => {
         if (user) {
@@ -351,13 +354,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             else { if (DOMElements.deviceSelectionSection) DOMElements.deviceSelectionSection.style.display = 'block'; if (DOMElements.mainContentContainer) DOMElements.mainContentContainer.style.display = 'none'; updateDeviceStatusUI(false); }
         } else {
             state.isAuthReady = false;
-            try { await signInAnonymously(auth); } catch (e) { console.error('signInAnonymously failed', e); await showCustomAlert(t('authError'), t('cannotLogin'), 'error'); }
+            try { await signInAnonymously(auth); } catch (e) { await showCustomAlert(t('authError'), t('cannotLogin'), 'error'); }
         }
     });
 
     if (DOMElements.setDeviceIdBtn) DOMElements.setDeviceIdBtn.addEventListener('click', async () => { const id = DOMElements.deviceIdInput.value.trim(); if (id) await setAndLoadDeviceId(id, false); else await showCustomAlert(t('error'), t('enterDeviceIdMsg'), 'error'); });
     if (DOMElements.logoutBtn) DOMElements.logoutBtn.addEventListener('click', handleLogout);
-    document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => { if (!btn.disabled) showSection(btn.dataset.target); }));
+    document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => { 
+        if (!btn.disabled) {
+            showSection(btn.dataset.target);
+            if (btn.dataset.target === 'notifications-section' && feedingHistoryModule) {
+                setTimeout(() => {
+                    if (feedingHistoryModule.setupFeedingHistory) feedingHistoryModule.setupFeedingHistory();
+                }, 100);
+            }
+        }
+    }));
     if (DOMElements.goToSettingsBtn) DOMElements.goToSettingsBtn.addEventListener('click', () => { showSection('device-settings-section'); hideModal(DOMElements.forceSetupOverlay); });
 
     if (DOMElements.closeCalibrationModalBtn) DOMElements.closeCalibrationModalBtn.addEventListener('click', () => hideModal(DOMElements.calibrationModal));
@@ -405,7 +417,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             await showCustomAlert(t('success'), t('accountNameSaved'), 'success');
             await loadSettingsFromFirebase();
         } catch (e) {
-            console.error('Error saving ownerName', e);
             await showCustomAlert(t('error'), t('cannotSaveAccountName'), 'error');
         }
     });
