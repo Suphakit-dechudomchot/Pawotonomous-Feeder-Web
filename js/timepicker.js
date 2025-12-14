@@ -35,21 +35,30 @@ export function setupCustomTimePicker() {
     const snapDelay = 90; // faster snap for snappier feel
 
     function snapColumn(col, index) {
-        console.log('snapColumn called, isUpdating:', isUpdating);
+        console.log('snapColumn called, isUpdating:', isUpdating, 'scrollTop before:', col.scrollTop);
         const itemHeight = TIME_PICKER_ITEM_HEIGHT;
         const realItems = (index === 0) ? 24 : 60;
         const currentIndex = Math.round(col.scrollTop / itemHeight);
         if (currentIndex < TIME_PICKER_BUFFER) {
             col.scrollTop = (currentIndex + realItems) * itemHeight;
+            console.log('Wrapped forward, scrollTop after:', col.scrollTop);
         } else if (currentIndex >= (realItems + TIME_PICKER_BUFFER)) {
             col.scrollTop = (currentIndex - realItems) * itemHeight;
+            console.log('Wrapped backward, scrollTop after:', col.scrollTop);
         }
     }
 
     [hoursCol, minutesCol].forEach((col, index) => {
         // snap after scrolling stops
         col.addEventListener('scroll', () => {
-            if (isUpdating) return;
+            if (isUpdating) {
+                console.log('Scroll event blocked by isUpdating');
+                return;
+            }
+            userHasScrolled = true;
+            targetHour = null;
+            targetMinute = null;
+            console.log('Scroll event triggered, scrollTop:', col.scrollTop);
             clearTimeout(scrollTimeout);
             scrollTimeout = setTimeout(() => snapColumn(col, index), snapDelay);
         });
@@ -77,7 +86,12 @@ export function setupCustomTimePicker() {
 
         // pointer drag: enhance touch/mouse dragging
         let isPointerDown = false; let startY = 0; let startScroll = 0;
-        col.addEventListener('pointerdown', (ev) => { isPointerDown = true; startY = ev.clientY; startScroll = col.scrollTop; col.setPointerCapture(ev.pointerId); });
+        col.addEventListener('pointerdown', (ev) => { 
+            userHasScrolled = true;
+            targetHour = null;
+            targetMinute = null;
+            isPointerDown = true; startY = ev.clientY; startScroll = col.scrollTop; col.setPointerCapture(ev.pointerId); 
+        });
         col.addEventListener('pointermove', (ev) => { if (!isPointerDown) return; const dy = startY - ev.clientY; col.scrollTop = startScroll + dy; });
         col.addEventListener('pointerup', (ev) => { if (!isPointerDown) return; isPointerDown = false; col.releasePointerCapture(ev.pointerId); snapColumn(col, index); });
 
@@ -95,34 +109,94 @@ export function setupCustomTimePicker() {
 }
 
 let isUpdating = false;
+let targetHour = null;
+let targetMinute = null;
+let userHasScrolled = false;
 
 export function updateTimePicker(hour, minute) {
     if (!DOMElements['hours-column'] || !DOMElements['minutes-column']) return;
     console.log('=== updateTimePicker ===');
     console.log('Input:', hour, minute);
     
-    const targetScrollHour = (hour + TIME_PICKER_BUFFER) * TIME_PICKER_ITEM_HEIGHT;
-    const targetScrollMinute = (minute + TIME_PICKER_BUFFER) * TIME_PICKER_ITEM_HEIGHT;
-    console.log('Target scroll:', targetScrollHour, targetScrollMinute);
-    
+    targetHour = hour;
+    targetMinute = minute;
+    userHasScrolled = false;
     isUpdating = true;
-    DOMElements['hours-column'].scrollTop = targetScrollHour;
-    DOMElements['minutes-column'].scrollTop = targetScrollMinute;
-    console.log('Actual scroll after set:', DOMElements['hours-column'].scrollTop, DOMElements['minutes-column'].scrollTop);
-    setTimeout(() => { 
+    
+    const hourCol = DOMElements['hours-column'];
+    const minCol = DOMElements['minutes-column'];
+    
+    const hourIndex = hour + TIME_PICKER_BUFFER;
+    const minuteIndex = minute + TIME_PICKER_BUFFER;
+    
+    const hourItem = hourCol.children[hourIndex];
+    const minuteItem = minCol.children[minuteIndex];
+    
+    if (hourItem && minuteItem) {
+        hourCol.style.scrollBehavior = 'auto';
+        minCol.style.scrollBehavior = 'auto';
+        
+        const targetScrollHour = hourIndex * TIME_PICKER_ITEM_HEIGHT - (hourCol.clientHeight / 2) + (TIME_PICKER_ITEM_HEIGHT / 2);
+        const targetScrollMinute = minuteIndex * TIME_PICKER_ITEM_HEIGHT - (minCol.clientHeight / 2) + (TIME_PICKER_ITEM_HEIGHT / 2);
+        
+        hourCol.scrollTop = targetScrollHour;
+        minCol.scrollTop = targetScrollMinute;
+        console.log('Final scroll:', hourCol.scrollTop, minCol.scrollTop);
+    }
+    
+    setTimeout(() => {
         isUpdating = false;
         console.log('isUpdating = false');
-    }, 500);
+    }, 200);
 }
 
 export function getTimeFromPicker() {
     if (!DOMElements['hours-column'] || !DOMElements['minutes-column']) return [0,0];
+    
+    if (!userHasScrolled && targetHour !== null && targetMinute !== null) {
+        console.log('=== getTimeFromPicker (using target) ===');
+        console.log('Result:', targetHour, targetMinute);
+        return [targetHour, targetMinute];
+    }
+    
     const hoursCol = DOMElements['hours-column']; const minutesCol = DOMElements['minutes-column'];
     console.log('=== getTimeFromPicker ===');
     console.log('ScrollTop:', hoursCol.scrollTop, minutesCol.scrollTop);
     
-    const hourIndex = Math.round(hoursCol.scrollTop / TIME_PICKER_ITEM_HEIGHT) - TIME_PICKER_BUFFER;
-    const minuteIndex = Math.round(minutesCol.scrollTop / TIME_PICKER_ITEM_HEIGHT) - TIME_PICKER_BUFFER;
+    const centerY = hoursCol.clientHeight / 2;
+    
+    let closestHourIndex = 0;
+    let closestHourDist = Infinity;
+    for (let i = 0; i < hoursCol.children.length; i++) {
+        const item = hoursCol.children[i];
+        const itemTop = item.offsetTop - hoursCol.scrollTop;
+        const itemCenter = itemTop + (TIME_PICKER_ITEM_HEIGHT / 2);
+        const dist = Math.abs(itemCenter - centerY);
+        if (dist < closestHourDist) {
+            closestHourDist = dist;
+            closestHourIndex = i;
+        }
+    }
+    
+    let closestMinuteIndex = 0;
+    let closestMinuteDist = Infinity;
+    for (let i = 0; i < minutesCol.children.length; i++) {
+        const item = minutesCol.children[i];
+        const itemTop = item.offsetTop - minutesCol.scrollTop;
+        const itemCenter = itemTop + (TIME_PICKER_ITEM_HEIGHT / 2);
+        const dist = Math.abs(itemCenter - centerY);
+        if (dist < closestMinuteDist) {
+            closestMinuteDist = dist;
+            closestMinuteIndex = i;
+        }
+    }
+    
+    let hourIndex = closestHourIndex - TIME_PICKER_BUFFER;
+    let minuteIndex = closestMinuteIndex - TIME_PICKER_BUFFER;
+    
+    hourIndex = Math.max(0, Math.min(23, hourIndex));
+    minuteIndex = Math.max(0, Math.min(59, minuteIndex));
+    
     console.log('Result:', hourIndex, minuteIndex);
     return [hourIndex, minuteIndex];
 }
