@@ -35,6 +35,10 @@ export function setupCustomTimePicker() {
     const snapDelay = 90; // faster snap for snappier feel
 
     function snapColumn(col, index) {
+        if (!allowSnap) {
+            console.log('snapColumn blocked by allowSnap');
+            return;
+        }
         console.log('snapColumn called, isUpdating:', isUpdating, 'scrollTop before:', col.scrollTop);
         const itemHeight = TIME_PICKER_ITEM_HEIGHT;
         const realItems = (index === 0) ? 24 : 60;
@@ -90,7 +94,19 @@ export function setupCustomTimePicker() {
             userHasScrolled = true;
             targetHour = null;
             targetMinute = null;
+            allowSnap = true;
+            col.style.scrollBehavior = 'auto';
             isPointerDown = true; startY = ev.clientY; startScroll = col.scrollTop; col.setPointerCapture(ev.pointerId); 
+        });
+        col.addEventListener('pointerup', (ev) => { 
+            if (!isPointerDown) return; 
+            isPointerDown = false; 
+            col.releasePointerCapture(ev.pointerId); 
+            const finalScroll = col.scrollTop;
+            setTimeout(() => {
+                col.scrollTop = finalScroll;
+                snapColumn(col, index);
+            }, 100);
         });
         col.addEventListener('pointermove', (ev) => { if (!isPointerDown) return; const dy = startY - ev.clientY; col.scrollTop = startScroll + dy; });
         col.addEventListener('pointerup', (ev) => { if (!isPointerDown) return; isPointerDown = false; col.releasePointerCapture(ev.pointerId); snapColumn(col, index); });
@@ -112,6 +128,7 @@ let isUpdating = false;
 let targetHour = null;
 let targetMinute = null;
 let userHasScrolled = false;
+let allowSnap = true;
 
 export function updateTimePicker(hour, minute) {
     if (!DOMElements['hours-column'] || !DOMElements['minutes-column']) return;
@@ -121,6 +138,7 @@ export function updateTimePicker(hour, minute) {
     targetHour = hour;
     targetMinute = minute;
     userHasScrolled = false;
+    allowSnap = false;
     isUpdating = true;
     
     const hourCol = DOMElements['hours-column'];
@@ -191,8 +209,20 @@ export function getTimeFromPicker() {
         }
     }
     
+    console.log('Closest indices:', closestHourIndex, closestMinuteIndex);
+    console.log('Closest items text:', hoursCol.children[closestHourIndex]?.textContent, minutesCol.children[closestMinuteIndex]?.textContent);
+    
     let hourIndex = closestHourIndex - TIME_PICKER_BUFFER;
     let minuteIndex = closestMinuteIndex - TIME_PICKER_BUFFER;
+    
+    console.log('After subtracting BUFFER:', hourIndex, minuteIndex);
+    
+    if (hourIndex < 0) hourIndex += 24;
+    if (hourIndex >= 24) hourIndex -= 24;
+    if (minuteIndex < 0) minuteIndex += 60;
+    if (minuteIndex >= 60) minuteIndex -= 60;
+    
+    console.log('After wrapping:', hourIndex, minuteIndex);
     
     hourIndex = Math.max(0, Math.min(23, hourIndex));
     minuteIndex = Math.max(0, Math.min(59, minuteIndex));
