@@ -1,7 +1,7 @@
 // firebaseConfig.js
 // Centralize Firebase & Supabase initialization and exports
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
-import { getDatabase, ref, onValue, set, update, remove, push, query, orderByChild, limitToLast, limitToFirst, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-database.js";
+import { getDatabase, ref, onValue, set, update, remove, push, query, orderByChild, limitToLast, limitToFirst, startAt, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-database.js";
 import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -25,4 +25,4 @@ const supabaseClient = supabase.createClient(
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdua2dhbWl6cWxvc3Zoa3VwaDAiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc1MDQzNjcxNSwiZXhwIjoyMDY2MDEyNzE1fQ.Dq5oPJ2zV8UUyoNakh4JKzDary8MIGZLDN5BppF_pgc'
 );
 
-export { db, auth, ref, onValue, set, update, remove, push, query, orderByChild, limitToLast, limitToFirst, serverTimestamp, supabaseClient, signInAnonymously, onAuthStateChanged, signOut };
+export { db, auth, ref, onValue, set, update, remove, push, query, orderByChild, limitToLast, limitToFirst, startAt, serverTimestamp, supabaseClient, signInAnonymously, onAuthStateChanged, signOut };

@@ -44,7 +44,16 @@ export function displayNotificationsList(notifications) {
     if (notifications.length === 0) { list.innerHTML = '<li>ไม่มีการแจ้งเตือน</li>'; return; }
     notifications.forEach(n => {
         const li = document.createElement('li');
-        li.innerHTML = `<span>${n.message}</span><span class="notification-timestamp">${new Date(n.timestamp).toLocaleString('th-TH')}</span>`;
+        const date = new Date(n.timestamp);
+        const formattedDate = date.toLocaleString('en-GB', { 
+            day: '2-digit', 
+            month: '2-digit', 
+            year: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: false 
+        });
+        li.innerHTML = `<span>${n.message}</span><span class="notification-timestamp">${formattedDate}</span>`;
         list.appendChild(li);
     });
 }

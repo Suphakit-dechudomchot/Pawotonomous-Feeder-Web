@@ -363,10 +363,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => { 
         if (!btn.disabled) {
             showSection(btn.dataset.target);
-            if (btn.dataset.target === 'notifications-section' && feedingHistoryModule) {
-                setTimeout(() => {
-                    if (feedingHistoryModule.setupFeedingHistory) feedingHistoryModule.setupFeedingHistory();
-                }, 100);
+            if (btn.dataset.target === 'notifications-section') {
+                console.log('[Main] Notifications section clicked');
+                if (feedingHistoryModule && feedingHistoryModule.setupFeedingHistory) {
+                    console.log('[Main] Calling setupFeedingHistory');
+                    setTimeout(() => feedingHistoryModule.setupFeedingHistory(), 100);
+                } else {
+                    console.log('[Main] feedingHistoryModule not loaded yet, loading now...');
+                    import('./js/feedingHistory.js').then(module => {
+                        feedingHistoryModule = module;
+                        if (module.setupFeedingHistory) {
+                            console.log('[Main] Module loaded, calling setupFeedingHistory');
+                            module.setupFeedingHistory();
+                        }
+                    }).catch(err => console.error('[Main] Failed to load feedingHistory module:', err));
+                }
             }
         }
     }));

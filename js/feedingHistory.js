@@ -7,30 +7,31 @@ let feedingChart = null;
 let currentPeriod = 'day';
 
 export function setupFeedingHistory() {
-    console.log('setupFeedingHistory called');
+    console.log('[FeedingHistory] setupFeedingHistory called, deviceId:', state.currentDeviceId);
     const filterButtons = document.querySelectorAll('.filter-btn');
-    console.log('Filter buttons found:', filterButtons.length);
-    if (filterButtons.length === 0) return;
+    console.log('[FeedingHistory] Filter buttons found:', filterButtons.length);
     
-    filterButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            filterButtons.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            currentPeriod = btn.dataset.period;
-            loadFeedingHistory(currentPeriod);
+    if (filterButtons.length > 0) {
+        filterButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                filterButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentPeriod = btn.dataset.period;
+                console.log('[FeedingHistory] Button clicked, loading period:', currentPeriod);
+                loadFeedingHistory(currentPeriod);
+            });
         });
-    });
+    }
     
-    setTimeout(() => {
-        console.log('Loading feeding history for period: day');
-        loadFeedingHistory('day');
-    }, 100);
+    // โหลดข้อมูลทันที
+    console.log('[FeedingHistory] Loading initial data for period:', currentPeriod);
+    loadFeedingHistory(currentPeriod);
 }
 
 async function loadFeedingHistory(period) {
-    console.log('loadFeedingHistory called, deviceId:', state.currentDeviceId, 'period:', period);
+    console.log('[FeedingHistory] loadFeedingHistory called, deviceId:', state.currentDeviceId, 'period:', period);
     if (!state.currentDeviceId) {
-        console.log('No device ID, returning');
+        console.error('[FeedingHistory] No device ID!');
         return;
     }
     
@@ -53,22 +54,23 @@ async function loadFeedingHistory(period) {
     
     const historyRef = ref(db, `device/${state.currentDeviceId}/feedingHistory`);
     const historyQuery = query(historyRef, orderByChild('timestamp'), startAt(startTime));
+    console.log('[FeedingHistory] Query path:', `device/${state.currentDeviceId}/feedingHistory`, 'startTime:', new Date(startTime));
     
     onValue(historyQuery, (snapshot) => {
+        console.log('[FeedingHistory] Snapshot received, exists:', snapshot.exists());
         const feedingData = [];
         snapshot.forEach(child => {
             const data = child.val();
-            console.log('Feeding history data:', data);
+            console.log('[FeedingHistory] Data item:', data);
             if (data.timestamp && data.amount) {
                 feedingData.push({
                     timestamp: data.timestamp,
-                    amount: data.amount,
-                    mealName: data.mealName || t('feedNow')
+                    amount: data.amount
                 });
             }
         });
         
-        console.log('Feeding data found:', feedingData.length, feedingData);
+        console.log('[FeedingHistory] Total feeding data found:', feedingData.length, feedingData);
         feedingData.sort((a, b) => a.timestamp - b.timestamp);
         updateChart(feedingData, period);
         updateStats(feedingData);
@@ -76,12 +78,11 @@ async function loadFeedingHistory(period) {
 }
 
 function updateChart(data, period) {
+    console.log('[FeedingHistory] updateChart called, data length:', data.length);
     const canvas = document.getElementById('feedingChart');
-    console.log('updateChart called, canvas:', canvas, 'data length:', data.length, 'Chart available:', typeof Chart !== 'undefined');
-    if (!canvas) return;
-    
-    if (typeof Chart === 'undefined') {
-        console.log('Chart.js not loaded!');
+    console.log('[FeedingHistory] Canvas found:', !!canvas, 'Chart.js loaded:', typeof Chart !== 'undefined');
+    if (!canvas || typeof Chart === 'undefined') {
+        console.error('[FeedingHistory] Canvas or Chart.js not available!');
         return;
     }
     

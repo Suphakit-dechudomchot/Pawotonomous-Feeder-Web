@@ -29,6 +29,15 @@ export async function feedNow() {
         const durationSeconds = amountToFeed / currentGramsPerSecond;
         if (durationSeconds <= 0) { await showCustomAlert('ข้อผิดพลาด','ปริมาณอาหารหรือค่าการสอบเทียบไม่ถูกต้อง','error'); setButtonState(DOMElements.feedNowBtn, false); return; }
         if (await sendCommand('feedNow', { duration_seconds: durationSeconds.toFixed(2), fanStrength, fanDirection, swingMode, audioIndex: isNaN(audioIndex) ? null : audioIndex })) {
+            // บันทึกประวัติการให้อาหารลง feedingHistory
+            try {
+                const historyRef = ref(db, `device/${state.currentDeviceId}/feedingHistory`);
+                await set(push(historyRef), {
+                    timestamp: Date.now(),
+                    amount: amountToFeed
+                });
+            } catch (e) {}
+            
             await showCustomAlert('กำลังให้อาหาร', `ส่งคำสั่งให้อาหาร ${amountToFeed} กรัม (${durationSeconds.toFixed(1)} วินาที) แล้ว. กรุณารอ...`, 'info');
         }
     } catch (error) { await showCustomAlert('ข้อผิดพลาด', `ไม่สามารถส่งคำสั่งให้อาหารได้: ${error.message}`, 'error'); }
