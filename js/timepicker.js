@@ -35,21 +35,21 @@ export function setupCustomTimePicker() {
     const snapDelay = 90; // faster snap for snappier feel
 
     function snapColumn(col, index) {
+        console.log('snapColumn called, isUpdating:', isUpdating);
         const itemHeight = TIME_PICKER_ITEM_HEIGHT;
         const realItems = (index === 0) ? 24 : 60;
-        const selectedIndex = Math.round(col.scrollTop / itemHeight);
-        if (selectedIndex < TIME_PICKER_BUFFER) {
-            col.scrollTop = (selectedIndex + realItems) * itemHeight;
-        } else if (selectedIndex >= (realItems + TIME_PICKER_BUFFER)) {
-            col.scrollTop = (selectedIndex - realItems) * itemHeight;
-        } else {
-            col.scrollTop = selectedIndex * itemHeight;
+        const currentIndex = Math.round(col.scrollTop / itemHeight);
+        if (currentIndex < TIME_PICKER_BUFFER) {
+            col.scrollTop = (currentIndex + realItems) * itemHeight;
+        } else if (currentIndex >= (realItems + TIME_PICKER_BUFFER)) {
+            col.scrollTop = (currentIndex - realItems) * itemHeight;
         }
     }
 
     [hoursCol, minutesCol].forEach((col, index) => {
         // snap after scrolling stops
         col.addEventListener('scroll', () => {
+            if (isUpdating) return;
             clearTimeout(scrollTimeout);
             scrollTimeout = setTimeout(() => snapColumn(col, index), snapDelay);
         });
@@ -94,20 +94,35 @@ export function setupCustomTimePicker() {
     });
 }
 
+let isUpdating = false;
+
 export function updateTimePicker(hour, minute) {
     if (!DOMElements['hours-column'] || !DOMElements['minutes-column']) return;
-    DOMElements['hours-column'].scrollTop = (hour + TIME_PICKER_BUFFER) * TIME_PICKER_ITEM_HEIGHT;
-    DOMElements['minutes-column'].scrollTop = (minute + TIME_PICKER_BUFFER) * TIME_PICKER_ITEM_HEIGHT;
-    DOMElements['hours-column'].dispatchEvent(new Event('scroll'));
-    DOMElements['minutes-column'].dispatchEvent(new Event('scroll'));
+    console.log('=== updateTimePicker ===');
+    console.log('Input:', hour, minute);
+    
+    const targetScrollHour = (hour + TIME_PICKER_BUFFER) * TIME_PICKER_ITEM_HEIGHT;
+    const targetScrollMinute = (minute + TIME_PICKER_BUFFER) * TIME_PICKER_ITEM_HEIGHT;
+    console.log('Target scroll:', targetScrollHour, targetScrollMinute);
+    
+    isUpdating = true;
+    DOMElements['hours-column'].scrollTop = targetScrollHour;
+    DOMElements['minutes-column'].scrollTop = targetScrollMinute;
+    console.log('Actual scroll after set:', DOMElements['hours-column'].scrollTop, DOMElements['minutes-column'].scrollTop);
+    setTimeout(() => { 
+        isUpdating = false;
+        console.log('isUpdating = false');
+    }, 500);
 }
 
 export function getTimeFromPicker() {
     if (!DOMElements['hours-column'] || !DOMElements['minutes-column']) return [0,0];
     const hoursCol = DOMElements['hours-column']; const minutesCol = DOMElements['minutes-column'];
-    let selectedHour = 0; let minHourDiff = Infinity;
-    hoursCol.querySelectorAll('div').forEach(div => { const divCenter = div.offsetTop + (div.offsetHeight / 2); const diff = Math.abs(divCenter - (hoursCol.scrollTop + (hoursCol.offsetHeight / 2))); if (diff < minHourDiff) { minHourDiff = diff; selectedHour = parseInt(div.textContent); } });
-    let selectedMinute = 0; let minMinuteDiff = Infinity;
-    minutesCol.querySelectorAll('div').forEach(div => { const divCenter = div.offsetTop + (div.offsetHeight / 2); const diff = Math.abs(divCenter - (minutesCol.scrollTop + (minutesCol.offsetHeight / 2))); if (diff < minMinuteDiff) { minMinuteDiff = diff; selectedMinute = parseInt(div.textContent); } });
-    return [selectedHour, selectedMinute];
+    console.log('=== getTimeFromPicker ===');
+    console.log('ScrollTop:', hoursCol.scrollTop, minutesCol.scrollTop);
+    
+    const hourIndex = Math.round(hoursCol.scrollTop / TIME_PICKER_ITEM_HEIGHT) - TIME_PICKER_BUFFER;
+    const minuteIndex = Math.round(minutesCol.scrollTop / TIME_PICKER_ITEM_HEIGHT) - TIME_PICKER_BUFFER;
+    console.log('Result:', hourIndex, minuteIndex);
+    return [hourIndex, minuteIndex];
 }

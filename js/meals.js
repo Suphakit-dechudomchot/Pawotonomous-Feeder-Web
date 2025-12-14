@@ -1,7 +1,7 @@
 // meals.js - meal management (load, add, edit, delete)
 import { db, ref, onValue, push, set, update, remove, supabaseClient } from './firebaseConfig.js';
 import { state } from './state.js';
-import { DOMElements, showModal, hideModal, showCustomAlert } from './ui.js';
+import { DOMElements, showModal, hideModal, showCustomAlert, showCustomConfirm } from './ui.js';
 import { sanitizeFileName, clamp } from './utils.js';
 import { t } from './translations.js';
 
@@ -103,10 +103,10 @@ export function addMealCard(mealData, DOMElements, db, MEAL_BLOCK_DURATION_SECON
         const isEnabled = e.target.checked;
         try {
             await set(ref(db, `device/${state.currentDeviceId}/meals/${id}/enabled`), isEnabled);
-            await showCustomAlert('สำเร็จ', `มื้อ ${name} ถูก ${isEnabled ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}`, 'info');
+            await showCustomAlert(t('success'), `${t('mealName')} ${name} ${isEnabled ? t('enabled') : t('disabled')}`, 'info');
         } catch (error) {
             console.error('Error toggling meal status:', error);
-            await showCustomAlert('ข้อผิดพลาด', `ไม่สามารถเปลี่ยนสถานะมื้ออาหารได้: ${error.message}`, 'error');
+            await showCustomAlert(t('error'), `${t('cannotChangeMealStatus')}: ${error.message}`, 'error');
         }
     });
     DOMElements.mealListContainer.appendChild(card);
@@ -129,7 +129,6 @@ export async function openMealDetailModal(mealId = null, prefillData = null, db,
         mealData = snapshot.val() || {};
     }
     const [hours, minutes] = (mealData.time || '07:00').split(':');
-    // UI timepicker functions will update via external module
     if (DOMElements.mealNameInput) DOMElements.mealNameInput.value = mealData.name || '';
     if (DOMElements.mealAmountInput) DOMElements.mealAmountInput.value = mealData.amount || 10;
     if (DOMElements.mealFanStrengthInput) DOMElements.mealFanStrengthInput.value = mealData.fanStrength ?? 50;
@@ -154,6 +153,14 @@ export async function openMealDetailModal(mealId = null, prefillData = null, db,
         if (DOMElements.mealAudioStatus) DOMElements.mealAudioStatus.textContent = DOMElements.mealAudioSelect.selectedOptions[0]?.textContent || t('noDataText');
     }
     showModal(DOMElements.mealDetailModal);
+    let called = false;
+    const update = () => {
+        if (called) return;
+        called = true;
+        if (window.updateTimePicker) window.updateTimePicker(parseInt(hours), parseInt(minutes));
+    };
+    DOMElements.mealDetailModal.addEventListener('transitionend', update, { once: true });
+    setTimeout(update, 500);
 }
 
 export function closeMealDetailModal() {
@@ -162,8 +169,8 @@ export function closeMealDetailModal() {
 }
 
 export async function saveMealDetail(db, DOMElements, MEAL_BLOCK_DURATION_SECONDS) {
-    if (!state.currentDeviceId || !DOMElements.saveMealDetailBtn || !state.isAuthReady) { await showCustomAlert('ข้อผิดพลาด', 'ไม่พบ ID อุปกรณ์', 'error'); return; }
-    if (!state.gramsPerSecond || state.gramsPerSecond <= 0) { await showCustomAlert('ข้อผิดพลาด', 'กรุณาทำการ Calibrate ปริมาณอาหารในหน้า \'\'ตั้งค่า\'\' ก่อน', 'error'); return; }
+    if (!state.currentDeviceId || !DOMElements.saveMealDetailBtn || !state.isAuthReady) { await showCustomAlert(t('error'), t('enterDeviceIdMsg'), 'error'); return; }
+    if (!state.gramsPerSecond || state.gramsPerSecond <= 0) { await showCustomAlert(t('error'), t('calibrationRequired'), 'error'); return; }
     const [hour, minute] = window.getTimeFromPicker ? window.getTimeFromPicker() : [7,0];
     let selectedDays = Array.from(document.querySelectorAll('.day-btn.selected:not(.date-btn)')).map(btn => btn.dataset.day);
     let specificDate = DOMElements.specificDateInput.value || null;
@@ -173,7 +180,7 @@ export async function saveMealDetail(db, DOMElements, MEAL_BLOCK_DURATION_SECOND
         if (mealDateTimeToday.getTime() <= now.getTime()) now.setDate(now.getDate() + 1);
         specificDate = now.toISOString().split('T')[0];
         const lang = localStorage.getItem('pawtonomous_language') || 'th';
-        await showCustomAlert('แจ้งเตือน', `เนื่องจากไม่ได้ระบุวัน มื้ออาหารนี้จะถูกตั้งค่าสำหรับวันที่ ${new Date(specificDate).toLocaleDateString(lang === 'th' ? 'th-TH' : lang === 'zh' ? 'zh-CN' : lang === 'ja' ? 'ja-JP' : 'en-US')}`, 'info');
+        await showCustomAlert(t('warning'), `${t('noDaysSelectedWarning')} ${new Date(specificDate).toLocaleDateString(lang === 'th' ? 'th-TH' : lang === 'zh' ? 'zh-CN' : lang === 'ja' ? 'ja-JP' : 'en-US')}`, 'info');
     }
     const mealData = {
         time: `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`,
@@ -186,10 +193,10 @@ export async function saveMealDetail(db, DOMElements, MEAL_BLOCK_DURATION_SECOND
         specificDate: specificDate,
         enabled: true
     };
-    if (mealData.amount < 1) { mealData.amount = 1; await showCustomAlert('แจ้งเตือน', 'ปริมาณอาหารต้องไม่น้อยกว่า 1 กรัม', 'warning'); }
+    if (mealData.amount < 1) { mealData.amount = 1; await showCustomAlert(t('warning'), t('minAmountWarning'), 'warning'); }
 
     const existingMealsSnapshot = await new Promise(resolve => { onValue(ref(db, `device/${state.currentDeviceId}/meals`), s => resolve(s), { onlyOnce: true }); });
-    if (await isTimeConflict(mealData, existingMealsSnapshot.val(), state.gramsPerSecond, MEAL_BLOCK_DURATION_SECONDS, state.activeMealId)) { await showCustomAlert('เวลาทับซ้อน', 'เวลาที่ตั้งค่าทับซ้อนกับมื้ออาหารอื่น กรุณาเลือกเวลาใหม่', 'warning'); return; }
+    if (await isTimeConflict(mealData, existingMealsSnapshot.val(), state.gramsPerSecond, MEAL_BLOCK_DURATION_SECONDS, state.activeMealId)) { await showCustomAlert(t('timeConflict'), t('timeConflictMessage'), 'warning'); return; }
 
     // Audio selection (using select dropdown instead of file upload)
     const selectedAudioIndex = DOMElements.mealAudioSelect ? parseInt(DOMElements.mealAudioSelect.value) : null;
@@ -208,24 +215,23 @@ export async function saveMealDetail(db, DOMElements, MEAL_BLOCK_DURATION_SECOND
             const mealRef = push(ref(db, `device/${state.currentDeviceId}/meals`));
             await set(mealRef, mealData);
         }
-        await showCustomAlert('สำเร็จ', 'บันทึกมื้ออาหารเรียบร้อย', 'success');
+        await showCustomAlert(t('success'), t('mealSaved'), 'success');
         closeMealDetailModal();
     } catch (error) {
         console.error('Error saving meal:', error);
-        await showCustomAlert('ผิดพลาด', `ไม่สามารถบันทึกได้: ${error.message}`, 'error');
+        await showCustomAlert(t('error'), `${t('cannotSaveAccountName')}: ${error.message}`, 'error');
     }
 }
 
 export async function deleteMealDetail(db) {
-    if (!state.activeMealId || !state.isAuthReady) { await showCustomAlert('ข้อผิดพลาด', 'ไม่พบ ID อุปกรณ์', 'error'); return; }
-    // Confirm
-    const confirmed = confirm('คุณแน่ใจหรือไม่ที่จะลบมื้ออาหารนี้?');
+    if (!state.activeMealId || !state.isAuthReady) { await showCustomAlert(t('error'), t('enterDeviceIdMsg'), 'error'); return; }
+    const confirmed = await showCustomConfirm(t('confirmDelete'), t('confirmDelete'));
     if (!confirmed) return;
     try {
         await remove(ref(db, `device/${state.currentDeviceId}/meals/${state.activeMealId}`));
-        await showCustomAlert('สำเร็จ', 'ลบมื้ออาหารแล้ว', 'success');
+        await showCustomAlert(t('success'), t('mealDeleted'), 'success');
         closeMealDetailModal();
     } catch (error) {
-        await showCustomAlert('ผิดพลาด', `ไม่สามารถลบได้: ${error.message}`, 'error');
+        await showCustomAlert(t('error'), `${t('cannotSaveAccountName')}: ${error.message}`, 'error');
     }
 }

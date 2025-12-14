@@ -1044,7 +1044,7 @@ input:checked + .toggle-slider:before {
     text-align: center;
     margin-top: 30px;
     padding: 15px 20px;
-    background-color: #1A1A1A;
+    background-color: var(--card-background);
     border-radius: 8px;
     border: 1px dashed var(--secondary-color);
     color: var(--text-light);
@@ -1058,7 +1058,7 @@ input:checked + .toggle-slider:before {
 }
 .calculation-notes {
     font-size: 0.85em;
-    color: var(--text-dark);
+    color: var(--text-medium);
     margin-top: 10px;
 }
 

@@ -54,6 +54,34 @@ export async function showCustomAlert(title, message, type = "info") {
     });
 }
 
+export async function showCustomConfirm(title, message) {
+    if (!DOMElements.confirmModal || !DOMElements.confirmModalTitle || !DOMElements.confirmModalMessage || !DOMElements.confirmYesBtn || !DOMElements.confirmNoBtn) {
+        console.error("Custom confirm elements not found. Falling back to native confirm.");
+        return confirm(`${title}: ${message}`);
+    }
+
+    DOMElements.confirmModalTitle.textContent = title;
+    DOMElements.confirmModalMessage.textContent = message;
+    showModal(DOMElements.confirmModal);
+    
+    return new Promise(resolve => {
+        const yesHandler = () => {
+            hideModal(DOMElements.confirmModal);
+            DOMElements.confirmYesBtn.removeEventListener('click', yesHandler);
+            DOMElements.confirmNoBtn.removeEventListener('click', noHandler);
+            resolve(true);
+        };
+        const noHandler = () => {
+            hideModal(DOMElements.confirmModal);
+            DOMElements.confirmYesBtn.removeEventListener('click', yesHandler);
+            DOMElements.confirmNoBtn.removeEventListener('click', noHandler);
+            resolve(false);
+        };
+        DOMElements.confirmYesBtn.addEventListener('click', yesHandler);
+        DOMElements.confirmNoBtn.addEventListener('click', noHandler);
+    });
+}
+
 export function showNewNotificationToast(message) {
     if (!DOMElements.newNotificationToastMessage || !DOMElements.newNotificationToast) return;
     DOMElements.newNotificationToastMessage.textContent = message;

@@ -46,7 +46,7 @@ async function populateSoundSelects() {
         sel.innerHTML = '';
         const emptyOpt = document.createElement('option');
         emptyOpt.value = '';
-        emptyOpt.textContent = '-- ไม่เลือก --';
+        emptyOpt.textContent = t('noSelection');
         sel.appendChild(emptyOpt);
         manifest.forEach(s => {
             const o = document.createElement('option');
@@ -139,7 +139,7 @@ function listenToDeviceStatus() {
         if ('foodLevel' in status) updateFoodLevelDisplay(status.foodLevel); else updateFoodLevelDisplay(null);
         if (DOMElements.lastMovementDisplay) {
             const lm = status.lastMovementDetected || status.lastMovement || null;
-            DOMElements.lastMovementDisplay.textContent = lm ? new Date(lm).toLocaleString('th-TH', { timeStyle: 'short', dateStyle: 'short' }) : 'ไม่มีข้อมูล';
+            DOMElements.lastMovementDisplay.textContent = lm ? new Date(lm).toLocaleString('th-TH', { timeStyle: 'short', dateStyle: 'short' }) : t('noData');
         }
     }, (err) => console.error('listenToDeviceStatus error', err));
 }
@@ -166,18 +166,18 @@ async function loadSettingsFromFirebase() {
         const settings = snapshot.val() || {};
         state.gramsPerSecond = settings.calibration?.grams_per_second || null;
         // owner name
-        if (DOMElements.ownerNameDisplay) DOMElements.ownerNameDisplay.textContent = settings.ownerName ? `บัญชี: ${settings.ownerName}` : 'บัญชี: -';
+        if (DOMElements.ownerNameDisplay) DOMElements.ownerNameDisplay.textContent = settings.ownerName ? `${t('accountText')} ${settings.ownerName}` : `${t('accountText')} ${t('noDataText')}`;
         if (DOMElements.timeZoneOffsetSelect) DOMElements.timeZoneOffsetSelect.value = settings.timeZoneOffset ?? '';
         if (DOMElements.wifiSsidInput) DOMElements.wifiSsidInput.value = settings.wifiCredentials?.ssid ?? '';
         if (DOMElements.wifiPasswordInput) DOMElements.wifiPasswordInput.value = settings.wifiCredentials?.password ?? '';
-        if (DOMElements.currentGramsPerSecondDisplay) DOMElements.currentGramsPerSecondDisplay.textContent = state.gramsPerSecond ? `${state.gramsPerSecond.toFixed(2)} กรัม/วินาที` : '- กรัม/วินาที';
+        if (DOMElements.currentGramsPerSecondDisplay) DOMElements.currentGramsPerSecondDisplay.textContent = state.gramsPerSecond ? `${state.gramsPerSecond.toFixed(2)} ${t('gramsPerSecond')}` : `${t('noDataText')} ${t('gramsPerSecond')}`;
         if (DOMElements.soundSelectionSelect) DOMElements.soundSelectionSelect.value = settings.sound_selection ?? '';
         await checkInitialSetupComplete();
-    } catch (error) { console.error('loadSettingsFromFirebase error', error); await showCustomAlert('ข้อผิดพลาด', 'ไม่สามารถโหลดการตั้งค่าระบบได้', 'error'); }
+    } catch (error) { console.error('loadSettingsFromFirebase error', error); await showCustomAlert(t('error'), t('cannotLoadData'), 'error'); }
 }
 
 const saveSettingsToFirebase = debounce(async (settingType) => {
-    if (!state.currentDeviceId || !state.isAuthReady) { await showCustomAlert('ข้อผิดพลาด', 'ไม่พบ ID อุปกรณ์ หรือการยืนยันตัวตนยังไม่พร้อม.', 'error'); return; }
+    if (!state.currentDeviceId || !state.isAuthReady) { await showCustomAlert(t('error'), t('enterDeviceIdMsg'), 'error'); return; }
     try {
         const updates = {};
         if (settingType === 'timezone') updates.timeZoneOffset = parseFloat(DOMElements.timeZoneOffsetSelect.value);
@@ -186,17 +186,17 @@ const saveSettingsToFirebase = debounce(async (settingType) => {
         await update(ref(db, `device/${state.currentDeviceId}/settings`), updates);
         await checkInitialSetupComplete();
         updateCountdownDisplay();
-    } catch (err) { console.error('saveSettingsToFirebase', err); await showCustomAlert('ข้อผิดพลาด', 'ไม่สามารถบันทึกการตั้งค่าได้', 'error'); }
+    } catch (err) { console.error('saveSettingsToFirebase', err); await showCustomAlert(t('error'), t('cannotSaveAccountName'), 'error'); }
 }, 1000);
 
 const saveSoundSelectionToFirebase = debounce(async () => {
-    if (!state.currentDeviceId || !state.isAuthReady) { await showCustomAlert('ข้อผิดพลาด', 'ไม่พบ ID อุปกรณ์ หรือการยืนยันตัวตนยังไม่พร้อม.', 'error'); return; }
+    if (!state.currentDeviceId || !state.isAuthReady) { await showCustomAlert(t('error'), t('enterDeviceIdMsg'), 'error'); return; }
     try {
         const val = DOMElements.soundSelectionSelect ? parseInt(DOMElements.soundSelectionSelect.value) : null;
         const updates = { sound_selection: isNaN(val) ? null : val };
         await update(ref(db, `device/${state.currentDeviceId}/settings`), updates);
         await checkInitialSetupComplete();
-    } catch (err) { console.error('saveSoundSelectionToFirebase', err); await showCustomAlert('ข้อผิดพลาด', 'ไม่สามารถบันทึกการตั้งค่าเสียงได้', 'error'); }
+    } catch (err) { console.error('saveSoundSelectionToFirebase', err); await showCustomAlert(t('error'), t('cannotSaveAccountName'), 'error'); }
 }, 800);
 
 async function checkInitialSetupComplete() {
@@ -222,12 +222,12 @@ async function setAndLoadDeviceId(id, navigateToMealSchedule = false) {
         const deviceSnapshot = await new Promise(resolve => { onValue(ref(db, `device/${id}`), s => resolve(s), { onlyOnce: true }); });
         const deviceVal = deviceSnapshot.val();
         if (!deviceVal) {
-            await showCustomAlert('ไม่พบบัญชี', 'ไม่พบ Device ID นี้ในระบบ', 'error');
+            await showCustomAlert(t('deviceNotFound'), t('deviceIdNotFound'), 'error');
             return;
         }
     } catch (err) {
         console.error('setAndLoadDeviceId existence check error', err);
-        await showCustomAlert('ข้อผิดพลาด', 'ไม่สามารถตรวจสอบ Device ID ได้ โปรดลองอีกครั้ง', 'error');
+        await showCustomAlert(t('error'), t('cannotVerifyDevice'), 'error');
         return;
     }
 
@@ -258,7 +258,7 @@ async function setAndLoadDeviceId(id, navigateToMealSchedule = false) {
             startCountdown();
         } catch (err) {
             console.error('setAndLoadDeviceId error', err);
-            await showCustomAlert('ข้อผิดพลาด', 'ไม่สามารถโหลดข้อมูลเริ่มต้นได้', 'error');
+            await showCustomAlert(t('error'), t('cannotLoadData'), 'error');
         }
     }
 }
@@ -278,12 +278,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Setup online/offline listeners
     window.addEventListener('online', () => {
         updateWebConnectionStatus(true);
-        showCustomAlert('กลับมาออนไลน์', 'เชื่อมต่ออินเทอร์เน็ตแล้ว', 'success');
+        showCustomAlert(t('backOnline'), t('internetConnected'), 'success');
     });
     
     window.addEventListener('offline', () => {
         updateWebConnectionStatus(false);
-        showCustomAlert('ออฟไลน์', 'ไม่มีการเชื่อมต่ออินเทอร์เน็ต คุณยังสามารถดูข้อมูลได้', 'warning');
+        showCustomAlert(t('offline'), t('noInternet'), 'warning');
     });
     
     // Set initial web connection status
@@ -341,6 +341,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupCustomTimePicker();
     setupCustomSelects();
     window.getTimeFromPicker = getTimeFromPicker;
+    window.updateTimePicker = updateTimePicker;
 
     onAuthStateChanged(auth, async (user) => {
         if (user) {
@@ -350,11 +351,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             else { if (DOMElements.deviceSelectionSection) DOMElements.deviceSelectionSection.style.display = 'block'; if (DOMElements.mainContentContainer) DOMElements.mainContentContainer.style.display = 'none'; updateDeviceStatusUI(false); }
         } else {
             state.isAuthReady = false;
-            try { await signInAnonymously(auth); } catch (e) { console.error('signInAnonymously failed', e); await showCustomAlert('ข้อผิดพลาดการยืนยันตัวตน', 'ไม่สามารถเข้าสู่ระบบได้.', 'error'); }
+            try { await signInAnonymously(auth); } catch (e) { console.error('signInAnonymously failed', e); await showCustomAlert(t('authError'), t('cannotLogin'), 'error'); }
         }
     });
 
-    if (DOMElements.setDeviceIdBtn) DOMElements.setDeviceIdBtn.addEventListener('click', async () => { const id = DOMElements.deviceIdInput.value.trim(); if (id) await setAndLoadDeviceId(id, false); else await showCustomAlert('ข้อผิดพลาด', 'กรุณากรอก Device ID.', 'error'); });
+    if (DOMElements.setDeviceIdBtn) DOMElements.setDeviceIdBtn.addEventListener('click', async () => { const id = DOMElements.deviceIdInput.value.trim(); if (id) await setAndLoadDeviceId(id, false); else await showCustomAlert(t('error'), t('enterDeviceIdMsg'), 'error'); });
     if (DOMElements.logoutBtn) DOMElements.logoutBtn.addEventListener('click', handleLogout);
     document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => { if (!btn.disabled) showSection(btn.dataset.target); }));
     if (DOMElements.goToSettingsBtn) DOMElements.goToSettingsBtn.addEventListener('click', () => { showSection('device-settings-section'); hideModal(DOMElements.forceSetupOverlay); });
@@ -376,10 +377,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Owner name edit
     // Owner name: open modal to edit (uses custom modal in DOM)
     if (DOMElements.editOwnerNameBtn) DOMElements.editOwnerNameBtn.addEventListener('click', () => {
-        if (!state.currentDeviceId || !state.isAuthReady) { showCustomAlert('ข้อผิดพลาด', 'ยังไม่ได้ตั้งค่า Device ID หรือการยืนยันตัวตนไม่พร้อม', 'error'); return; }
+        if (!state.currentDeviceId || !state.isAuthReady) { showCustomAlert(t('error'), t('authError'), 'error'); return; }
         if (DOMElements.ownerNameInput) {
             const currentText = DOMElements.ownerNameDisplay?.textContent || '';
-            const current = currentText === 'บัญชี: -' ? '' : currentText.replace(/^บัญชี:\s*/, '');
+            const accountPrefix = `${t('accountText')} `;
+            const current = currentText === `${accountPrefix}${t('noDataText')}` ? '' : currentText.replace(new RegExp(`^${accountPrefix}`), '');
             DOMElements.ownerNameInput.value = current;
             // set save button state based on current value
             if (DOMElements.ownerNameSaveBtn) DOMElements.ownerNameSaveBtn.disabled = current.trim().length === 0 || current.trim().length > 20;
@@ -391,20 +393,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Modal buttons
     if (DOMElements.ownerNameCancelBtn) DOMElements.ownerNameCancelBtn.addEventListener('click', () => { if (DOMElements.ownerNameModal) hideModal(DOMElements.ownerNameModal); });
     if (DOMElements.ownerNameSaveBtn) DOMElements.ownerNameSaveBtn.addEventListener('click', async () => {
-        if (!state.currentDeviceId || !state.isAuthReady) { await showCustomAlert('ข้อผิดพลาด', 'ยังไม่ได้ตั้งค่า Device ID หรือการยืนยันตัวตนไม่พร้อม', 'error'); return; }
+        if (!state.currentDeviceId || !state.isAuthReady) { await showCustomAlert(t('error'), t('authError'), 'error'); return; }
         const newName = DOMElements.ownerNameInput?.value?.trim() || '';
         if (newName.length > 20) {
-            await showCustomAlert('ข้อผิดพลาด', 'ชื่อบัญชีต้องไม่เกิน 20 ตัวอักษร', 'error');
+            await showCustomAlert(t('error'), t('accountNameTooLong'), 'error');
             return;
         }
         try {
             await update(ref(db, `device/${state.currentDeviceId}/settings`), { ownerName: newName || null });
             if (DOMElements.ownerNameModal) hideModal(DOMElements.ownerNameModal);
-            await showCustomAlert('สำเร็จ', 'บันทึกชื่อบัญชีเรียบร้อย', 'success');
+            await showCustomAlert(t('success'), t('accountNameSaved'), 'success');
             await loadSettingsFromFirebase();
         } catch (e) {
             console.error('Error saving ownerName', e);
-            await showCustomAlert('ข้อผิดพลาด', 'ไม่สามารถบันทึกชื่อบัญชีได้', 'error');
+            await showCustomAlert(t('error'), t('cannotSaveAccountName'), 'error');
         }
     });
 
@@ -444,7 +446,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (DOMElements.mealSwingModeCheckbox && DOMElements.mealFanDirectionInput) DOMElements.mealSwingModeCheckbox.addEventListener('change', e => { DOMElements.mealFanDirectionInput.disabled = e.target.checked; });
 
-    if (DOMElements.mealAudioInput) DOMElements.mealAudioInput.addEventListener('change', e => { const file = e.target.files[0]; if (DOMElements.mealAudioStatus) DOMElements.mealAudioStatus.textContent = file ? file.name : 'ไม่มีไฟล์'; if (DOMElements.mealAudioPreview) { DOMElements.mealAudioPreview.src = file ? URL.createObjectURL(file) : ''; DOMElements.mealAudioPreview.style.display = file ? 'block' : 'none'; } });
+    if (DOMElements.mealAudioInput) DOMElements.mealAudioInput.addEventListener('change', e => { const file = e.target.files[0]; if (DOMElements.mealAudioStatus) DOMElements.mealAudioStatus.textContent = file ? file.name : t('noData'); if (DOMElements.mealAudioPreview) { DOMElements.mealAudioPreview.src = file ? URL.createObjectURL(file) : ''; DOMElements.mealAudioPreview.style.display = file ? 'block' : 'none'; } });
 
     populateAnimalType(DOMElements);
     document.querySelectorAll('.custom-select-trigger').forEach(trigger => trigger.addEventListener('change', () => { if (trigger.dataset.target === 'animalType') updateAnimalSpecies(DOMElements); updateRecommendedAmount(DOMElements); }));
@@ -474,4 +476,4 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-export { setAndLoadDeviceId, listenToDeviceStatus, updateDeviceStatusUI };
+export { setAndLoadDeviceId, listenToDeviceStatus, updateDeviceStatusUI, updateTimePicker };

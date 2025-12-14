@@ -240,6 +240,27 @@ export const translations = {
         specificDateLabel: 'วันที่ระบุ:',
         noName: 'ไม่มีชื่อ',
         
+        // Alert messages
+        error: 'ข้อผิดพลาด',
+        success: 'สำเร็จ',
+        warning: 'แจ้งเตือน',
+        info: 'ข้อมูล',
+        backOnline: 'กลับมาออนไลน์',
+        internetConnected: 'เชื่อมต่ออินเทอร์เน็ตแล้ว',
+        noInternet: 'ไม่มีการเชื่อมต่ออินเทอร์เน็ต คุณยังสามารถดูข้อมูลได้',
+        deviceNotFound: 'ไม่พบบัญชี',
+        deviceIdNotFound: 'ไม่พบ Device ID นี้ในระบบ',
+        cannotVerifyDevice: 'ไม่สามารถตรวจสอบ Device ID ได้ โปรดลองอีกครั้ง',
+        cannotLoadData: 'ไม่สามารถโหลดข้อมูลเริ่มต้นได้',
+        enterDeviceIdMsg: 'กรุณากรอก Device ID',
+        authError: 'ข้อผิดพลาดการยืนยันตัวตน',
+        cannotLogin: 'ไม่สามารถเข้าสู่ระบบได้',
+        accountNameTooLong: 'ชื่อบัญชีต้องไม่เกิน 20 ตัวอักษร',
+        accountNameSaved: 'บันทึกชื่อบัญชีเรียบร้อย',
+        cannotSaveAccountName: 'ไม่สามารถบันทึกชื่อบัญชีได้',
+        cannotApplyAmount: 'ไม่สามารถนำปริมาณที่แนะนำไปใช้ได้',
+        confirmDelete: 'คุณแน่ใจหรือไม่ที่จะลบมื้ออาหารนี้?',
+        
         // Status text
         webOnline: 'เว็บ: ออนไลน์',
         webOffline: 'เว็บ: ออฟไลน์',
@@ -265,7 +286,20 @@ export const translations = {
         // Setup
         setupRequired: 'กรุณาตั้งค่าเริ่มต้น',
         setupMessage: 'โปรดไปที่หน้า "ตั้งค่า" เพื่อกำหนดโซนเวลา และปรับเทียบปริมาณอาหารให้เสร็จสิ้นก่อนใช้งาน',
-        goToSettings: 'ไปที่หน้าตั้งค่า'
+        goToSettings: 'ไปที่หน้าตั้งค่า',
+        
+        // Meal status
+        enabled: 'เปิดใช้งาน',
+        disabled: 'ปิดใช้งาน',
+        calibrationRequired: 'กรุณาทำการ Calibrate ปริมาณอาหารในหน้า "ตั้งค่า" ก่อน',
+        noDaysSelectedWarning: 'เนื่องจากไม่ได้ระบุวัน มื้ออาหารนี้จะถูกตั้งค่าสำหรับวันที่',
+        minAmountWarning: 'ปริมาณอาหารต้องไม่น้อยกว่า 1 กรัม',
+        timeConflict: 'เวลาทับซ้อน',
+        timeConflictMessage: 'เวลาที่ตั้งค่าทับซ้อนกับมื้ออาหารอื่น กรุณาเลือกเวลาใหม่',
+        mealSaved: 'บันทึกมื้ออาหารเรียบร้อย',
+        mealDeleted: 'ลบมื้ออาหารแล้ว',
+        mealStatusChanged: 'เปลี่ยนสถานะมื้ออาหารแล้ว',
+        cannotChangeMealStatus: 'ไม่สามารถเปลี่ยนสถานะมื้ออาหารได้'
     },
     
     en: {
@@ -508,6 +542,27 @@ export const translations = {
         specificDateLabel: 'Specific date:',
         noName: 'No name',
         
+        // Alert messages
+        error: 'Error',
+        success: 'Success',
+        warning: 'Warning',
+        info: 'Info',
+        backOnline: 'Back Online',
+        internetConnected: 'Internet connected',
+        noInternet: 'No internet connection. You can still view data',
+        deviceNotFound: 'Device Not Found',
+        deviceIdNotFound: 'Device ID not found in system',
+        cannotVerifyDevice: 'Cannot verify Device ID. Please try again',
+        cannotLoadData: 'Cannot load initial data',
+        enterDeviceIdMsg: 'Please enter Device ID',
+        authError: 'Authentication Error',
+        cannotLogin: 'Cannot login to system',
+        accountNameTooLong: 'Account name must not exceed 20 characters',
+        accountNameSaved: 'Account name saved successfully',
+        cannotSaveAccountName: 'Cannot save account name',
+        cannotApplyAmount: 'Cannot apply recommended amount',
+        confirmDelete: 'Are you sure you want to delete this meal?',
+        
         // Status text
         webOnline: 'Web: Online',
         webOffline: 'Web: Offline',
@@ -533,7 +588,20 @@ export const translations = {
         // Setup
         setupRequired: 'Setup Required',
         setupMessage: 'Please go to "Settings" to set timezone and calibrate food amount before use',
-        goToSettings: 'Go to Settings'
+        goToSettings: 'Go to Settings',
+        
+        // Meal status
+        enabled: 'Enabled',
+        disabled: 'Disabled',
+        calibrationRequired: 'Please calibrate food amount in "Settings" first',
+        noDaysSelectedWarning: 'Since no days were specified, this meal will be set for',
+        minAmountWarning: 'Food amount must not be less than 1 gram',
+        timeConflict: 'Time Conflict',
+        timeConflictMessage: 'The set time conflicts with another meal. Please choose a different time',
+        mealSaved: 'Meal saved successfully',
+        mealDeleted: 'Meal deleted',
+        mealStatusChanged: 'Meal status changed',
+        cannotChangeMealStatus: 'Cannot change meal status'
     },
     
     zh: {
@@ -776,6 +844,27 @@ export const translations = {
         specificDateLabel: '指定日期:',
         noName: '无名称',
         
+        // Alert messages
+        error: '错误',
+        success: '成功',
+        warning: '警告',
+        info: '信息',
+        backOnline: '重新在线',
+        internetConnected: '互联网已连接',
+        noInternet: '无互联网连接。您仍可以查看数据',
+        deviceNotFound: '找不到设备',
+        deviceIdNotFound: '系统中找不到此设备ID',
+        cannotVerifyDevice: '无法验证设备ID。请重试',
+        cannotLoadData: '无法加载初始数据',
+        enterDeviceIdMsg: '请输入设备ID',
+        authError: '身份验证错误',
+        cannotLogin: '无法登录系统',
+        accountNameTooLong: '账户名称不得超过20个字符',
+        accountNameSaved: '账户名称保存成功',
+        cannotSaveAccountName: '无法保存账户名称',
+        cannotApplyAmount: '无法应用推荐量',
+        confirmDelete: '您确定要删除此餐食吗？',
+        
         // Status text
         webOnline: '网页: 在线',
         webOffline: '网页: 离线',
@@ -801,7 +890,19 @@ export const translations = {
         // Setup
         setupRequired: '需要设置',
         setupMessage: '请转到“设置”设置时区并校准食物量后再使用',
-        goToSettings: '转到设置'
+        goToSettings: '转到设置',
+        
+        enabled: '已启用',
+        disabled: '已禁用',
+        calibrationRequired: '请先在"设置"中校准食物量',
+        noDaysSelectedWarning: '由于未指定日期，此餐食将设置为',
+        minAmountWarning: '食物量不得少于1克',
+        timeConflict: '时间冲突',
+        timeConflictMessage: '设置的时间与另一餐冲突。请选择不同的时间',
+        mealSaved: '餐食保存成功',
+        mealDeleted: '餐食已删除',
+        mealStatusChanged: '餐食状态已更改',
+        cannotChangeMealStatus: '无法更改餐食状态'
     },
     
     ja: {
@@ -1044,6 +1145,27 @@ export const translations = {
         specificDateLabel: '特定の日付:',
         noName: '名前なし',
         
+        // Alert messages
+        error: 'エラー',
+        success: '成功',
+        warning: '警告',
+        info: '情報',
+        backOnline: 'オンラインに戻りました',
+        internetConnected: 'インターネットに接続されました',
+        noInternet: 'インターネット接続がありません。データは表示できます',
+        deviceNotFound: 'デバイスが見つかりません',
+        deviceIdNotFound: 'このデバイスIDはシステムに見つかりません',
+        cannotVerifyDevice: 'デバイスIDを確認できません。もう一度お試しください',
+        cannotLoadData: '初期データを読み込めません',
+        enterDeviceIdMsg: 'デバイスIDを入力してください',
+        authError: '認証エラー',
+        cannotLogin: 'システムにログインできません',
+        accountNameTooLong: 'アカウント名は20文字以内で入力してください',
+        accountNameSaved: 'アカウント名を保存しました',
+        cannotSaveAccountName: 'アカウント名を保存できません',
+        cannotApplyAmount: '推奨量を適用できません',
+        confirmDelete: 'この食事を削除してもよろしいですか？',
+        
         // Status text
         webOnline: 'ウェブ: オンライン',
         webOffline: 'ウェブ: オフライン',
@@ -1069,7 +1191,19 @@ export const translations = {
         // Setup
         setupRequired: '設定が必要',
         setupMessage: '使用前に「設定」でタイムゾーンを設定し、食物量を調整してください',
-        goToSettings: '設定へ移動'
+        goToSettings: '設定へ移動',
+        
+        enabled: '有効',
+        disabled: '無効',
+        calibrationRequired: '先に「設定」で食物量を調整してください',
+        noDaysSelectedWarning: '日付が指定されていないため、この食事は次の日に設定されます',
+        minAmountWarning: '食物量は1グラム以上である必要があります',
+        timeConflict: '時間の競合',
+        timeConflictMessage: '設定された時間が別の食事と競合しています。別の時間を選択してください',
+        mealSaved: '食事を保存しました',
+        mealDeleted: '食事を削除しました',
+        mealStatusChanged: '食事のステータスを変更しました',
+        cannotChangeMealStatus: '食事のステータスを変更できません'
     }
 };
 
