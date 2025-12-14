@@ -95,6 +95,7 @@ export function showSection(sectionId) {
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.toggle('active', item.dataset.target === sectionId);
     });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 export function setupCustomSelects() {

@@ -392,7 +392,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // populate sound selector and handle changes
     await populateSoundSelects();
-    if (DOMElements.soundSelectionSelect) DOMElements.soundSelectionSelect.addEventListener('change', () => saveSoundSelectionToFirebase());
     if (DOMElements.mealAudioSelect) DOMElements.mealAudioSelect.addEventListener('change', () => { if (DOMElements.mealAudioStatus) DOMElements.mealAudioStatus.textContent = DOMElements.mealAudioSelect.selectedOptions[0]?.textContent || '-'; });
     if (DOMElements.feedNowAudioSelect) DOMElements.feedNowAudioSelect.addEventListener('change', () => { if (DOMElements.feedNowAudioStatus) DOMElements.feedNowAudioStatus.textContent = DOMElements.feedNowAudioSelect.selectedOptions[0]?.textContent || '-'; });
     if (DOMElements.makenoiseSelect) DOMElements.makenoiseSelect.addEventListener('change', () => { if (DOMElements.makenoiseAudioStatus) DOMElements.makenoiseAudioStatus.textContent = DOMElements.makenoiseSelect.selectedOptions[0]?.textContent || '-'; if (DOMElements.makenoiseSelect.value) DOMElements.makenoiseBtn.disabled = false; else DOMElements.makenoiseBtn.disabled = true; });
