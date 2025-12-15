@@ -116,8 +116,14 @@
             </div>
 
             <div class="input-group">
-                <label for="mealFanDirectionInput" data-i18n="fanDirectionLabel">ทิศทางลม (60°-120°):</label>
-                <input type="number" id="mealFanDirectionInput" value="90" min="60" max="120">
+                <label for="mealFanDirectionInput" data-i18n="fanDirectionLabel">ทิศทางลม:</label>
+                <select id="mealFanDirectionInput">
+                    <option value="60">60°</option>
+                    <option value="75">75°</option>
+                    <option value="90" selected>90°</option>
+                    <option value="105">105°</option>
+                    <option value="120">120°</option>
+                </select>
             </div>
 
             <!-- จัดกลุ่ม Swing Mode และ Audio Upload -->
@@ -134,10 +140,10 @@
                     <select id="mealAudioSelect">
                         <!-- เติมโดย JS -->
                     </select>
-                    <span id="mealAudioStatus" class="audio-status">-</span>
+                    <button type="button" id="mealAudioPreviewBtn" class="secondary-button" style="margin-top:8px;padding:8px 12px;font-size:0.85em;" disabled><i class="fa-solid fa-play"></i> ทดลองเสียง</button>
                 </div>
             </div>
-            <audio id="mealAudioPreview" controls class="meal-audio-preview"></audio>
+            <audio id="mealAudioPreview" style="display:none;"></audio>
 
             <div class="modal-buttons">
                 <button id="saveMealDetailBtn" class="primary-button"><i class="fa-solid fa-save"></i> <span data-i18n="save">บันทึก</span></button>
@@ -215,8 +221,14 @@
                             <input type="number" id="feedNowFanStrengthInput" value="50" min="0" max="100">
                         </div>
                         <div class="input-group">
-                            <label for="feedNowFanDirectionInput" data-i18n="fanDirectionLabel">ทิศทางลม (60°-120°):</label>
-                            <input type="number" id="feedNowFanDirectionInput" value="90" min="60" max="120">
+                            <label for="feedNowFanDirectionInput" data-i18n="fanDirectionLabel">ทิศทางลม:</label>
+                            <select id="feedNowFanDirectionInput">
+                                <option value="60">60°</option>
+                                <option value="75">75°</option>
+                                <option value="90" selected>90°</option>
+                                <option value="105">105°</option>
+                                <option value="120">120°</option>
+                            </select>
                         </div>
                         <div class="input-group swing-mode-group">
                             <label for="feedNowSwingModeCheckbox" data-i18n="swingModeLabel">โหมดสวิง</label>
@@ -230,9 +242,9 @@
                                 <select id="feedNowAudioSelect">
                                     <!-- เติมโดย JS -->
                                 </select>
-                                <span id="feedNowAudioStatus" class="audio-status">-</span>
+                                <button type="button" id="feedNowAudioPreviewBtn" class="secondary-button" style="margin-top:8px;padding:8px 12px;font-size:0.85em;" disabled><i class="fa-solid fa-play"></i> ทดลองเสียง</button>
                         </div>
-                        <audio id="feedNowAudioPreview" controls class="meal-audio-preview"></audio>
+                        <audio id="feedNowAudioPreview" style="display:none;"></audio>
 
                         <button id="feedNowBtn" class="primary-button full-width-button"><i class="fa-solid fa-bowl-food"></i> <span data-i18n="feed">ให้อาหาร</span></button>
                     </div>
@@ -250,8 +262,9 @@
                         <select id="makenoiseSelect" class="full-width">
                             <!-- เติมโดย JS -->
                         </select>
-                        <span id="makenoiseAudioStatus" class="audio-status"></span>
-                        <button id="makenoiseBtn" class="primary-button full-width-button" disabled><i class="fa-solid fa-volume-high"></i> <span data-i18n="playThisSoundBtn">เล่นเสียงนี้</span></button>
+                        <button type="button" id="makenoisePreviewBtn" class="secondary-button full-width-button" style="margin-top:10px;" disabled><i class="fa-solid fa-play"></i> ทดลองเสียง</button>
+                        <button id="makenoiseBtn" class="primary-button full-width-button" disabled><i class="fa-solid fa-volume-high"></i> <span data-i18n="playThisSoundBtn">สั่งเล่นที่เครื่อง</span></button>
+                        <audio id="makenoiseAudioPreview" style="display:none;"></audio>
                     </div>
                 </div>
             </section>

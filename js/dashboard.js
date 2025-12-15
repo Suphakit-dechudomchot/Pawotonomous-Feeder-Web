@@ -45,14 +45,12 @@ export async function feedNow() {
 }
 
 export async function playMakeNoise() {
-    if (!DOMElements.makenoiseAudioInput || !DOMElements.makenoiseBtn || !state.isAuthReady) { await showCustomAlert('ข้อผิดพลาด','ไม่พบ ID อุปกรณ์ หรือการยืนยันตัวตนยังไม่พร้อม. โปรดลองใหม่อีกครั้ง.','error'); return; }
-    const file = DOMElements.makenoiseAudioInput.files[0]; if (!file) { await showCustomAlert('ผิดพลาด','กรุณาเลือกไฟล์เสียงก่อน','error'); return; }
+    if (!DOMElements.makenoiseSelect || !DOMElements.makenoiseBtn || !state.isAuthReady) { await showCustomAlert('ข้อผิดพลาด','ไม่พบ ID อุปกรณ์ หรือการยืนยันตัวตนยังไม่พร้อม. โปรดลองใหม่อีกครั้ง.','error'); return; }
+    const audioIndex = parseInt(DOMElements.makenoiseSelect.value);
+    if (isNaN(audioIndex) || !audioIndex) { await showCustomAlert('ผิดพลาด','กรุณาเลือกเสียงก่อน','error'); return; }
     setButtonState(DOMElements.makenoiseBtn, true);
-    const path = `make_noise/${state.currentDeviceId}/${Date.now()}_${sanitizeFileName(file.name)}`;
     try {
-        const { error } = await supabaseClient.storage.from('audio').upload(path, file, { upsert: true }); if (error) throw error;
-        const { data: publicData } = supabaseClient.storage.from('audio').getPublicUrl(path);
-        if (await sendCommand('makeNoise', { url: publicData.publicUrl })) await showCustomAlert('สำเร็จ','ส่งคำสั่งเล่นเสียงแล้ว','success');
-    } catch (e) { await showCustomAlert('ผิดพลาด', `ไม่สามารถอัปโหลดหรือเล่นเสียงได้: ${e.message}`, 'error'); }
+        if (await sendCommand('makeNoise', { audioIndex })) await showCustomAlert('สำเร็จ','ส่งคำสั่งเล่นเสียงแล้ว','success');
+    } catch (e) { await showCustomAlert('ผิดพลาด', `ไม่สามารถส่งคำสั่งเล่นเสียงได้: ${e.message}`, 'error'); }
     finally { setButtonState(DOMElements.makenoiseBtn, false); }
 }

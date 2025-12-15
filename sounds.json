@@ -1,7 +1,7 @@
 [
-  { "index": 1, "label": "Meow 1", "filename": "001.mp3", "url": "" },
-  { "index": 2, "label": "Meow 2", "filename": "002.mp3", "url": "" },
-  { "index": 3, "label": "Bark 1", "filename": "003.mp3", "url": "" },
-  { "index": 4, "label": "Bird 1", "filename": "004.mp3", "url": "" },
-  { "index": 5, "label": "Purr 1", "filename": "005.mp3", "url": "" }
+  { "index": 1, "label": "เสียงแมว", "filename": "0001.mp3", "url": "./audio/cat_001.mp3" },
+  { "index": 2, "label": "เสียงไก่", "filename": "0002.mp3", "url": "./audio/chicken_002.mp3" },
+  { "index": 3, "label": "เสียงหมาหอน", "filename": "0003.mp3", "url": "./audio/dog-howling_003.mp3" },
+  { "index": 4, "label": "เสียงเหยี่ยว", "filename": "0004.mp3", "url": "./audio/hawk_004.mp3" },
+  { "index": 5, "label": "เสียงกริ่ง", "filename": "0005.mp3", "url": "./audio/ringtone1_005.mp3" }
 ]

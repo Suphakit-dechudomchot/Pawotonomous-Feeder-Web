@@ -34,30 +34,35 @@ async function loadSoundManifest() {
         const resp = await fetch('./sounds.json');
         if (!resp.ok) throw new Error('fetch failed');
         const m = await resp.json();
+        console.log('[Sound] Loaded manifest:', m);
         return m;
-    } catch (e) { return INLINE_SOUND_MANIFEST; }
+    } catch (e) { 
+        console.error('[Sound] Failed to load sounds.json, using inline:', e);
+        return INLINE_SOUND_MANIFEST; 
+    }
 }
 
 async function populateSoundSelects() {
+    console.log('[Sound] populateSoundSelects called');
     const manifest = await loadSoundManifest();
-    const selects = [DOMElements.soundSelectionSelect, DOMElements.mealAudioSelect, DOMElements.feedNowAudioSelect, DOMElements.makenoiseSelect];
+    console.log('[Sound] Manifest loaded:', manifest);
+    const selects = [DOMElements.mealAudioSelect, DOMElements.feedNowAudioSelect, DOMElements.makenoiseSelect];
+    console.log('[Sound] Selects found:', selects.map(s => s ? s.id : 'null'));
     selects.forEach(sel => {
         if (!sel) return;
         sel.innerHTML = '';
         const emptyOpt = document.createElement('option');
         emptyOpt.value = '';
-        emptyOpt.textContent = t('noSelection');
+        emptyOpt.textContent = '-- ไม่เลือก --';
         sel.appendChild(emptyOpt);
         manifest.forEach(s => {
             const o = document.createElement('option');
             o.value = String(s.index);
-            o.textContent = `${String(s.index).padStart(3,'0')} — ${s.label}`;
+            o.textContent = `${String(s.index).padStart(4,'0')} — ${s.label}`;
             sel.appendChild(o);
         });
+        console.log(`[Sound] Populated ${sel.id} with ${manifest.length} options`);
     });
-    // enable/show preview labels
-    if (DOMElements.mealAudioStatus) DOMElements.mealAudioStatus.textContent = '-';
-    if (DOMElements.feedNowAudioStatus) DOMElements.feedNowAudioStatus.textContent = '-';
 }
 
 function computeOnlineFromStatus(status) {
@@ -315,14 +320,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         'customAlertOverlay','customAlertContent','customAlertTitle','customAlertMessage','customAlertOkButton','newNotificationToast','newNotificationToastMessage',
         'calibrationModal','startCalibrationTestBtn','calibrationStatus','calibratedWeightInput','saveCalibrationBtn','closeCalibrationModalBtn',
         'mealDetailModal','mealModalTitle','mealNameInput','specificDateBtn','specificDateInput','specificDateDisplay','mealAmountInput','mealFanStrengthInput',
-        'mealFanDirectionInput','mealSwingModeCheckbox','mealAudioInput','mealAudioStatus','mealAudioPreview','saveMealDetailBtn','deleteMealDetailBtn','cancelMealDetailBtn',
+        'mealFanDirectionInput','mealSwingModeCheckbox','mealAudioSelect','mealAudioPreview','saveMealDetailBtn','deleteMealDetailBtn','cancelMealDetailBtn',
         'forceSetupOverlay','goToSettingsBtn','feedNowBtn','checkFoodLevelBtn','checkAnimalMovementBtn','currentFoodLevelDisplay','lastMovementDisplay',
-        'makenoiseAudioInput','makenoiseAudioStatus','makenoiseBtn','mealListContainer','addMealCardBtn','wifiSsidInput','wifiPasswordInput','timeZoneOffsetSelect','soundSelectionSelect',
+        'makenoiseSelect','makenoiseBtn','mealListContainer','addMealCardBtn','wifiSsidInput','wifiPasswordInput','timeZoneOffsetSelect',
         'ownerNameDisplay','editOwnerNameBtn','ownerNameModal','ownerNameInput','ownerNameSaveBtn','ownerNameCancelBtn',
         'openCalibrationModalBtn','currentGramsPerSecondDisplay','logoutBtn','settingsNavDot','notifications-section','notificationHistoryList',
         'animal-calculator-section','animalCount','weightInputContainer','animalWeightKg','lifeStageActivityContainer','recommendedAmount','calculationNotes','applyRecommendedAmountBtn',
         'nextMealCountdownDisplay','nextMealTimeDisplay','hours-column','minutes-column','confirmModal','confirmModalTitle','confirmModalMessage','confirmYesBtn','confirmNoBtn',
-        'feedNowAmountInput','feedNowFanStrengthInput','feedNowFanDirectionInput','feedNowSwingModeCheckbox','feedNowAudioInput','feedNowAudioStatus','feedNowAudioPreview'
+        'feedNowAmountInput','feedNowFanStrengthInput','feedNowFanDirectionInput','feedNowSwingModeCheckbox','feedNowAudioSelect','feedNowAudioPreview'
     ];
     populateDOMElements(ids);
     DOMElements.animalTypeOptions = document.getElementById('animalType-options');
@@ -392,9 +397,73 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // populate sound selector and handle changes
     await populateSoundSelects();
-    if (DOMElements.mealAudioSelect) DOMElements.mealAudioSelect.addEventListener('change', () => { if (DOMElements.mealAudioStatus) DOMElements.mealAudioStatus.textContent = DOMElements.mealAudioSelect.selectedOptions[0]?.textContent || '-'; });
-    if (DOMElements.feedNowAudioSelect) DOMElements.feedNowAudioSelect.addEventListener('change', () => { if (DOMElements.feedNowAudioStatus) DOMElements.feedNowAudioStatus.textContent = DOMElements.feedNowAudioSelect.selectedOptions[0]?.textContent || '-'; });
-    if (DOMElements.makenoiseSelect) DOMElements.makenoiseSelect.addEventListener('change', () => { if (DOMElements.makenoiseAudioStatus) DOMElements.makenoiseAudioStatus.textContent = DOMElements.makenoiseSelect.selectedOptions[0]?.textContent || '-'; if (DOMElements.makenoiseSelect.value) DOMElements.makenoiseBtn.disabled = false; else DOMElements.makenoiseBtn.disabled = true; });
+    // Audio preview buttons
+    const mealAudioPreviewBtn = document.getElementById('mealAudioPreviewBtn');
+    const feedNowAudioPreviewBtn = document.getElementById('feedNowAudioPreviewBtn');
+    const makenoisePreviewBtn = document.getElementById('makenoisePreviewBtn');
+    
+    if (DOMElements.mealAudioSelect) {
+        DOMElements.mealAudioSelect.addEventListener('change', () => {
+            const val = DOMElements.mealAudioSelect.value;
+            if (mealAudioPreviewBtn) mealAudioPreviewBtn.disabled = !val;
+        });
+    }
+    
+    if (DOMElements.feedNowAudioSelect) {
+        DOMElements.feedNowAudioSelect.addEventListener('change', () => {
+            const val = DOMElements.feedNowAudioSelect.value;
+            if (feedNowAudioPreviewBtn) feedNowAudioPreviewBtn.disabled = !val;
+        });
+    }
+    
+    if (DOMElements.makenoiseSelect) {
+        DOMElements.makenoiseSelect.addEventListener('change', () => {
+            const val = DOMElements.makenoiseSelect.value;
+            if (makenoisePreviewBtn) makenoisePreviewBtn.disabled = !val;
+            if (DOMElements.makenoiseBtn) DOMElements.makenoiseBtn.disabled = !val;
+        });
+    }
+    
+    // Preview button handlers
+    if (mealAudioPreviewBtn) {
+        mealAudioPreviewBtn.addEventListener('click', async () => {
+            const index = parseInt(DOMElements.mealAudioSelect.value);
+            if (!index) return;
+            const manifest = await loadSoundManifest();
+            const sound = manifest.find(s => s.index === index);
+            if (sound && DOMElements.mealAudioPreview) {
+                DOMElements.mealAudioPreview.src = sound.url;
+                DOMElements.mealAudioPreview.play();
+            }
+        });
+    }
+    
+    if (feedNowAudioPreviewBtn) {
+        feedNowAudioPreviewBtn.addEventListener('click', async () => {
+            const index = parseInt(DOMElements.feedNowAudioSelect.value);
+            if (!index) return;
+            const manifest = await loadSoundManifest();
+            const sound = manifest.find(s => s.index === index);
+            if (sound && DOMElements.feedNowAudioPreview) {
+                DOMElements.feedNowAudioPreview.src = sound.url;
+                DOMElements.feedNowAudioPreview.play();
+            }
+        });
+    }
+    
+    if (makenoisePreviewBtn) {
+        makenoisePreviewBtn.addEventListener('click', async () => {
+            const index = parseInt(DOMElements.makenoiseSelect.value);
+            if (!index) return;
+            const manifest = await loadSoundManifest();
+            const sound = manifest.find(s => s.index === index);
+            const audio = document.getElementById('makenoiseAudioPreview');
+            if (sound && audio) {
+                audio.src = sound.url;
+                audio.play();
+            }
+        });
+    }
 
     // Owner name edit
     // Owner name: open modal to edit (uses custom modal in DOM)

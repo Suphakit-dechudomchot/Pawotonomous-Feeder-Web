@@ -199,12 +199,10 @@ export async function saveMealDetail(db, DOMElements, MEAL_BLOCK_DURATION_SECOND
 
     // Audio selection (using select dropdown instead of file upload)
     const selectedAudioIndex = DOMElements.mealAudioSelect ? parseInt(DOMElements.mealAudioSelect.value) : null;
-    if (selectedAudioIndex && !isNaN(selectedAudioIndex)) {
+    if (!isNaN(selectedAudioIndex) && selectedAudioIndex > 0) {
         mealData.audioIndex = selectedAudioIndex;
-    } else if (state.activeMealId) {
-        const oldDataSnapshot = await new Promise(resolve => { onValue(ref(db, `device/${state.currentDeviceId}/meals/${state.activeMealId}`), s => resolve(s), { onlyOnce: true }); });
-        const oldData = oldDataSnapshot.val();
-        mealData.audioIndex = oldData?.audioIndex || null;
+    } else {
+        mealData.audioIndex = null;
     }
 
     try {
