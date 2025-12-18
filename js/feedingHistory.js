@@ -35,21 +35,26 @@ async function loadFeedingHistory(period) {
         return;
     }
     
-    const now = Date.now();
+    const now = new Date();
     let startTime;
     
     switch(period) {
         case 'day':
-            startTime = now - (24 * 60 * 60 * 1000);
+            // ตัดที่เที่ยงคืนของวันนี้ (00:00:00)
+            const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+            startTime = todayMidnight.getTime();
             break;
         case 'week':
-            startTime = now - (7 * 24 * 60 * 60 * 1000);
+            // ย้อนหลัง 7 วันตั้งแต่เที่ยงคืน
+            const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6, 0, 0, 0, 0);
+            startTime = weekStart.getTime();
             break;
         case 'month':
-            startTime = now - (30 * 24 * 60 * 60 * 1000);
+            startTime = Date.now() - (30 * 24 * 60 * 60 * 1000);
             break;
         default:
-            startTime = now - (24 * 60 * 60 * 1000);
+            const defaultMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+            startTime = defaultMidnight.getTime();
     }
     
     const historyRef = ref(db, `device/${state.currentDeviceId}/feedingHistory`);
@@ -104,7 +109,23 @@ function updateChart(data, period) {
     
     const labels = [];
     const amounts = [];
+    const backgroundColors = [];
+    const borderColors = [];
     const lang = localStorage.getItem('pawtonomous_language') || 'th';
+    
+    // สีสำหรับแต่ละวัน (7 สี)
+    const weekColors = [
+        { bg: 'rgba(187, 134, 252, 0.6)', border: 'rgba(187, 134, 252, 1)' },  // ม่วง
+        { bg: 'rgba(3, 218, 198, 0.6)', border: 'rgba(3, 218, 198, 1)' },      // เขียวมิ้นท์
+        { bg: 'rgba(255, 193, 7, 0.6)', border: 'rgba(255, 193, 7, 1)' },      // เหลือง
+        { bg: 'rgba(76, 175, 80, 0.6)', border: 'rgba(76, 175, 80, 1)' },      // เขียว
+        { bg: 'rgba(33, 150, 243, 0.6)', border: 'rgba(33, 150, 243, 1)' },    // ฟ้า
+        { bg: 'rgba(255, 87, 34, 0.6)', border: 'rgba(255, 87, 34, 1)' },      // ส้ม
+        { bg: 'rgba(233, 30, 99, 0.6)', border: 'rgba(233, 30, 99, 1)' }       // ชมพู
+    ];
+    
+    let lastDate = null;
+    let dayIndex = 0;
     
     data.forEach(item => {
         const date = new Date(item.timestamp);
@@ -112,8 +133,20 @@ function updateChart(data, period) {
         
         if (period === 'day') {
             label = date.toLocaleTimeString(lang === 'th' ? 'th-TH' : lang === 'zh' ? 'zh-CN' : lang === 'ja' ? 'ja-JP' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+            backgroundColors.push('rgba(187, 134, 252, 0.6)');
+            borderColors.push('rgba(187, 134, 252, 1)');
         } else {
             label = date.toLocaleDateString(lang === 'th' ? 'th-TH' : lang === 'zh' ? 'zh-CN' : lang === 'ja' ? 'ja-JP' : 'en-US', { month: 'short', day: 'numeric' });
+            
+            // ตรวจสอบว่าเป็นวันใหม่หรือไม่
+            const currentDate = date.toDateString();
+            if (currentDate !== lastDate) {
+                lastDate = currentDate;
+                dayIndex = (dayIndex + 1) % 7;
+            }
+            
+            backgroundColors.push(weekColors[dayIndex].bg);
+            borderColors.push(weekColors[dayIndex].border);
         }
         
         labels.push(label);
@@ -127,8 +160,8 @@ function updateChart(data, period) {
             datasets: [{
                 label: t('amountLabel'),
                 data: amounts,
-                backgroundColor: 'rgba(187, 134, 252, 0.6)',
-                borderColor: 'rgba(187, 134, 252, 1)',
+                backgroundColor: backgroundColors,
+                borderColor: borderColors,
                 borderWidth: 2,
                 borderRadius: 8
             }]

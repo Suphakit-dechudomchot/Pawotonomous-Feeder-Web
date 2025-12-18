@@ -51,10 +51,25 @@ h1.app-name {
 h2 {
     color: var(--primary-color);
     text-align: center;
-    margin-top: 20px;
-    margin-bottom: 25px;
-    font-size: 1.6em;
-    font-weight: 600;
+    margin-top: 24px;
+    margin-bottom: 32px;
+    font-size: 1.75em;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    position: relative;
+    padding-bottom: 12px;
+}
+
+h2::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    border-radius: 2px;
 }
 
 p.subtitle {
@@ -75,13 +90,16 @@ p.notes {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 15px 20px;
-    background-color: var(--card-background);
-    border-bottom: 1px solid var(--border-color);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    padding: 16px 24px;
+    background: linear-gradient(135deg, rgba(187, 134, 252, 0.1) 0%, rgba(3, 218, 198, 0.05) 100%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(187, 134, 252, 0.2);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1), 0 1px 0 rgba(255, 255, 255, 0.05) inset;
     position: sticky;
     top: 0;
     z-index: 200;
+    transition: all 0.3s ease;
 }
 
 /* Owner info in header */
@@ -246,21 +264,25 @@ body.web-offline main {
 /* Offline mode button states */
 button.requires-online:disabled {
     position: relative;
+    overflow: visible;
 }
 
 button.requires-online:disabled::after {
     content: '🔌';
     position: absolute;
-    top: -6px;
-    right: -6px;
-    font-size: 1em;
+    top: -8px;
+    right: -8px;
+    font-size: 1.1em;
     background: var(--error-color);
     border-radius: 50%;
-    width: 20px;
-    height: 20px;
+    width: 28px;
+    height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: 0 2px 8px rgba(207, 102, 121, 0.5);
+    border: 2px solid var(--background-dark);
+    z-index: 10;
 }
 
 /* =================== BOTTOM NAVIGATION =================== */
@@ -272,10 +294,12 @@ button.requires-online:disabled::after {
     display: flex;
     justify-content: space-around;
     align-items: center;
-    background-color: var(--card-background);
-    border-top: 1px solid var(--border-color);
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
-    padding: 10px 0;
+    background: linear-gradient(180deg, rgba(30, 30, 30, 0.95) 0%, rgba(18, 18, 18, 0.98) 100%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(187, 134, 252, 0.2);
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.2), 0 -1px 0 rgba(255, 255, 255, 0.05) inset;
+    padding: 12px 0;
     z-index: 100;
 }
 
@@ -287,13 +311,27 @@ button.requires-online:disabled::after {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 5px 10px;
+    padding: 8px 12px;
     cursor: pointer;
     font-size: 0.75em;
-    transition: color 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     flex: 1;
     max-width: 120px;
     position: relative;
+    border-radius: 12px;
+}
+
+.nav-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    border-radius: 0 0 3px 3px;
+    transition: width 0.3s ease;
 }
 
 .nav-item i {
@@ -303,6 +341,11 @@ button.requires-online:disabled::after {
 
 .nav-item.active {
     color: var(--primary-color);
+    background: rgba(187, 134, 252, 0.1);
+}
+
+.nav-item.active::before {
+    width: 40px;
 }
 
 .nav-item:hover:not(.active) {
@@ -327,28 +370,54 @@ button.requires-online:disabled::after {
 
 /* =================== GENERAL BUTTONS & INPUTS =================== */
 button {
-    padding: 12px 20px;
+    padding: 12px 24px;
     font-size: 1em;
     border: none;
-    border-radius: 8px;
+    border-radius: 12px;
     cursor: pointer;
     font-weight: 600;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
     white-space: nowrap;
     font-family: 'Kanit', sans-serif;
+    position: relative;
+    overflow: hidden;
+}
+
+button::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+button:active::before {
+    width: 300px;
+    height: 300px;
 }
 
 .primary-button {
-    background-color: var(--primary-color);
+    background: linear-gradient(135deg, var(--primary-color) 0%, #A06EEA 100%);
     color: white;
+    box-shadow: 0 4px 12px rgba(187, 134, 252, 0.3);
 }
 .primary-button:hover {
-    background-color: #A06EEA;
-    box-shadow: 0 4px 15px rgba(187, 134, 252, 0.3);
+    background: linear-gradient(135deg, #A06EEA 0%, var(--primary-color) 100%);
+    box-shadow: 0 6px 20px rgba(187, 134, 252, 0.5);
+    transform: translateY(-2px);
+}
+.primary-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(187, 134, 252, 0.3);
 }
 
 .secondary-button {
@@ -423,13 +492,21 @@ input[type="password"],
 input[type="date"] {
     font-family: 'Kanit', sans-serif;
     font-size: 1em;
-    padding: 12px 15px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
+    padding: 14px 16px;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
     width: 100%;
     box-sizing: border-box;
     background-color: var(--card-background);
     color: var(--text-light);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+input[type="text"]:hover,
+input[type="number"]:hover,
+input[type="password"]:hover,
+input[type="date"]:hover {
+    border-color: rgba(187, 134, 252, 0.5);
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator {
@@ -460,7 +537,8 @@ input:focus,
 select:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(187, 134, 252, 0.3);
+    box-shadow: 0 0 0 4px rgba(187, 134, 252, 0.2);
+    transform: translateY(-1px);
 }
 
 .input-group {
@@ -491,24 +569,53 @@ select:focus {
     display: block;
 }
 .section-header {
+    position: relative;
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
     margin-bottom: 20px;
 }
 .section-header h2 {
     margin: 0;
-    text-align: left;
-    flex-grow: 1;
+    text-align: center;
+    flex-grow: 0;
+}
+.section-header .add-meal-card-button {
+    position: absolute;
+    right: 0;
 }
 
 .card {
     background-color: var(--card-background);
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 4px 15px var(--shadow-color);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 20px var(--shadow-color), 0 1px 0 rgba(255, 255, 255, 0.05) inset;
     border: 1px solid var(--border-color);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 32px var(--shadow-color), 0 1px 0 rgba(255, 255, 255, 0.1) inset;
+}
+
+.card:hover::before {
+    opacity: 1;
 }
 .card h3 {
     color: var(--primary-color);
@@ -586,11 +693,14 @@ select:focus {
 }
 .dashboard-grid .button-group {
     display: flex;
+    flex-direction: column;
     gap: 10px;
     margin-top: 15px;
 }
 .dashboard-grid .button-group button {
-    flex: 1;
+    width: 100%;
+    white-space: normal;
+    min-height: 44px;
 }
 .audio-status {
     display: block;
@@ -655,19 +765,41 @@ select:focus {
 
 .meal-card {
     background-color: var(--card-background);
-    border-radius: 12px;
-    padding: 15px 20px;
-    margin-bottom: 15px;
+    border-radius: 16px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
     cursor: pointer;
-    border: 1px solid var(--border-color);
-    transition: background-color 0.2s ease;
+    border: 2px solid var(--border-color);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
 }
+
+.meal-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
 .meal-card:hover {
     background-color: #2A2A2A;
+    transform: translateX(4px);
+    border-color: rgba(187, 134, 252, 0.5);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.meal-card:hover::before {
+    opacity: 1;
 }
 
 .meal-card-left {
