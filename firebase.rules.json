@@ -1,0 +1,81 @@
+{
+  "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null",
+    
+    "devices": {
+      "$deviceId": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        ".validate": "newData.hasChildren(['status', 'lastUpdate'])",
+        
+        "status": {
+          ".validate": "newData.isString()"
+        },
+        "lastUpdate": {
+          ".validate": "newData.isNumber()"
+        },
+        "foodLevel": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100"
+        },
+        "fanSpeed": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100"
+        },
+        "fanDirection": {
+          ".validate": "newData.isNumber() && newData.val() >= 60 && newData.val() <= 120"
+        }
+      }
+    },
+    
+    "meals": {
+      "$userId": {
+        ".read": "auth != null && auth.uid == $userId",
+        ".write": "auth != null && auth.uid == $userId",
+        
+        "$mealId": {
+          ".validate": "newData.hasChildren(['time', 'amount', 'enabled'])",
+          "time": {
+            ".validate": "newData.isString() && newData.val().matches(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/)"
+          },
+          "amount": {
+            ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= 1000"
+          },
+          "enabled": {
+            ".validate": "newData.isBoolean()"
+          },
+          "sound": {
+            ".validate": "newData.isString()"
+          }
+        }
+      }
+    },
+    
+    "feedingHistory": {
+      "$userId": {
+        ".read": "auth != null && auth.uid == $userId",
+        ".write": "auth != null && auth.uid == $userId",
+        ".indexOn": ["timestamp"],
+        
+        "$historyId": {
+          ".validate": "newData.hasChildren(['timestamp', 'amount'])",
+          "timestamp": {
+            ".validate": "newData.isNumber()"
+          },
+          "amount": {
+            ".validate": "newData.isNumber() && newData.val() > 0"
+          },
+          "type": {
+            ".validate": "newData.isString()"
+          }
+        }
+      }
+    },
+    
+    "settings": {
+      "$userId": {
+        ".read": "auth != null && auth.uid == $userId",
+        ".write": "auth != null && auth.uid == $userId"
+      }
+    }
+  }
+}
