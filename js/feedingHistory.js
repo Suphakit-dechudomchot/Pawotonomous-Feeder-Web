@@ -113,40 +113,30 @@ function updateChart(data, period) {
     const borderColors = [];
     const lang = localStorage.getItem('pawtonomous_language') || 'th';
     
-    // สีสำหรับแต่ละวัน (7 สี)
-    const weekColors = [
-        { bg: 'rgba(187, 134, 252, 0.6)', border: 'rgba(187, 134, 252, 1)' },  // ม่วง
-        { bg: 'rgba(3, 218, 198, 0.6)', border: 'rgba(3, 218, 198, 1)' },      // เขียวมิ้นท์
-        { bg: 'rgba(255, 193, 7, 0.6)', border: 'rgba(255, 193, 7, 1)' },      // เหลือง
-        { bg: 'rgba(76, 175, 80, 0.6)', border: 'rgba(76, 175, 80, 1)' },      // เขียว
-        { bg: 'rgba(33, 150, 243, 0.6)', border: 'rgba(33, 150, 243, 1)' },    // ฟ้า
-        { bg: 'rgba(255, 87, 34, 0.6)', border: 'rgba(255, 87, 34, 1)' },      // ส้ม
-        { bg: 'rgba(233, 30, 99, 0.6)', border: 'rgba(233, 30, 99, 1)' }       // ชมพู
+    // สีประจำวัน (อาทิตย์=0, จันทร์=1, ..., เสาร์=6)
+    const dayColors = [
+        { bg: 'rgba(233, 30, 99, 0.6)', border: 'rgba(233, 30, 99, 1)' },      // อาทิตย์ - แดง
+        { bg: 'rgba(255, 193, 7, 0.6)', border: 'rgba(255, 193, 7, 1)' },      // จันทร์ - เหลือง
+        { bg: 'rgba(255, 87, 34, 0.6)', border: 'rgba(255, 87, 34, 1)' },      // อังคาร - ชมพู/ส้ม
+        { bg: 'rgba(76, 175, 80, 0.6)', border: 'rgba(76, 175, 80, 1)' },      // พุธ - เขียว
+        { bg: 'rgba(255, 152, 0, 0.6)', border: 'rgba(255, 152, 0, 1)' },      // พฤหัส - ส้ม
+        { bg: 'rgba(33, 150, 243, 0.6)', border: 'rgba(33, 150, 243, 1)' },    // ศุกร์ - ฟ้า
+        { bg: 'rgba(187, 134, 252, 0.6)', border: 'rgba(187, 134, 252, 1)' }   // เสาร์ - ม่วง
     ];
-    
-    let lastDate = null;
-    let dayIndex = 0;
     
     data.forEach(item => {
         const date = new Date(item.timestamp);
+        const dayOfWeek = date.getDay(); // 0=อาทิตย์, 1=จันทร์, ..., 6=เสาร์
         let label;
         
         if (period === 'day') {
             label = date.toLocaleTimeString(lang === 'th' ? 'th-TH' : lang === 'zh' ? 'zh-CN' : lang === 'ja' ? 'ja-JP' : 'en-US', { hour: '2-digit', minute: '2-digit' });
-            backgroundColors.push('rgba(187, 134, 252, 0.6)');
-            borderColors.push('rgba(187, 134, 252, 1)');
+            backgroundColors.push(dayColors[dayOfWeek].bg);
+            borderColors.push(dayColors[dayOfWeek].border);
         } else {
             label = date.toLocaleDateString(lang === 'th' ? 'th-TH' : lang === 'zh' ? 'zh-CN' : lang === 'ja' ? 'ja-JP' : 'en-US', { month: 'short', day: 'numeric' });
-            
-            // ตรวจสอบว่าเป็นวันใหม่หรือไม่
-            const currentDate = date.toDateString();
-            if (currentDate !== lastDate) {
-                lastDate = currentDate;
-                dayIndex = (dayIndex + 1) % 7;
-            }
-            
-            backgroundColors.push(weekColors[dayIndex].bg);
-            borderColors.push(weekColors[dayIndex].border);
+            backgroundColors.push(dayColors[dayOfWeek].bg);
+            borderColors.push(dayColors[dayOfWeek].border);
         }
         
         labels.push(label);

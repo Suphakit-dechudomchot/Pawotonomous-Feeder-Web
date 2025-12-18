@@ -1,0 +1,128 @@
+/* Tutorial Overlay */
+.tutorial-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 9999;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.3s ease;
+}
+
+.tutorial-overlay.active {
+    display: flex;
+}
+
+.tutorial-content {
+    background: var(--card-background);
+    border-radius: 20px;
+    padding: 40px;
+    max-width: 500px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    border: 2px solid var(--primary-color);
+    animation: slideUp 0.4s ease;
+}
+
+.tutorial-icon {
+    font-size: 4em;
+    margin-bottom: 20px;
+    animation: bounce 1s infinite;
+}
+
+.tutorial-content h2 {
+    color: var(--primary-color);
+    margin: 0 0 16px 0;
+    font-size: 1.8em;
+}
+
+.tutorial-content p {
+    color: var(--text-medium);
+    line-height: 1.8;
+    margin-bottom: 24px;
+    font-size: 1.1em;
+}
+
+.tutorial-steps {
+    text-align: left;
+    margin: 24px 0;
+    padding: 20px;
+    background: rgba(187, 134, 252, 0.1);
+    border-radius: 12px;
+    border-left: 4px solid var(--primary-color);
+}
+
+.tutorial-step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 12px 0;
+    color: var(--text-light);
+}
+
+.tutorial-step-number {
+    background: var(--primary-color);
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.tutorial-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.tutorial-buttons button {
+    flex: 1;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+@media (max-width: 480px) {
+    .tutorial-content {
+        padding: 24px;
+    }
+    
+    .tutorial-icon {
+        font-size: 3em;
+    }
+    
+    .tutorial-content h2 {
+        font-size: 1.4em;
+    }
+    
+    .tutorial-content p {
+        font-size: 1em;
+    }
+}

@@ -90,7 +90,7 @@ p.notes {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 24px;
+    padding: 12px 24px;
     background: linear-gradient(135deg, rgba(187, 134, 252, 0.1) 0%, rgba(3, 218, 198, 0.05) 100%);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
@@ -100,6 +100,39 @@ p.notes {
     top: 0;
     z-index: 200;
     transition: all 0.3s ease;
+}
+
+/* Logo Container */
+.app-logo-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.app-logo {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid rgba(187, 134, 252, 0.3);
+    box-shadow: 0 4px 12px rgba(187, 134, 252, 0.3);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: float 3s ease-in-out infinite;
+}
+
+.app-logo:hover {
+    transform: scale(1.1) rotate(5deg);
+    border-color: rgba(187, 134, 252, 0.6);
+    box-shadow: 0 6px 20px rgba(187, 134, 252, 0.5);
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-5px);
+    }
 }
 
 /* Owner info in header */
@@ -321,18 +354,7 @@ button.requires-online:disabled::after {
     border-radius: 12px;
 }
 
-.nav-item::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 0;
-    height: 3px;
-    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-    border-radius: 0 0 3px 3px;
-    transition: width 0.3s ease;
-}
+
 
 .nav-item i {
     font-size: 1.4em;
@@ -344,9 +366,7 @@ button.requires-online:disabled::after {
     background: rgba(187, 134, 252, 0.1);
 }
 
-.nav-item.active::before {
-    width: 40px;
-}
+
 
 .nav-item:hover:not(.active) {
     color: var(--secondary-color);
@@ -406,12 +426,12 @@ button:active::before {
 }
 
 .primary-button {
-    background: linear-gradient(135deg, var(--primary-color) 0%, #A06EEA 100%);
+    background-color: var(--primary-color);
     color: white;
     box-shadow: 0 4px 12px rgba(187, 134, 252, 0.3);
 }
 .primary-button:hover {
-    background: linear-gradient(135deg, #A06EEA 0%, var(--primary-color) 100%);
+    background-color: #A06EEA;
     box-shadow: 0 6px 20px rgba(187, 134, 252, 0.5);
     transform: translateY(-2px);
 }
@@ -1625,4 +1645,15 @@ body[data-theme="light"] select {
 .app-footer a:hover {
     color: var(--text-medium);
     text-decoration: underline;
+}
+
+
+/* Footer mobile fix */
+@media (max-width: 480px) {
+    .app-footer {
+        font-size: 0.7em;
+    }
+    .app-footer p {
+        word-break: break-word;
+    }
 }

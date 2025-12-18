@@ -6,10 +6,12 @@
     <meta name="theme-color" content="#BB86FC">
     <meta name="description" content="ระบบควบคุมเครื่องให้อาหารสัตว์เลี้ยงอัตโนมัติ">
     <title>Pawtonomous Feeder V2</title>
+    <link rel="icon" type="image/jpeg" href="ped.jpg">
     <!-- <link rel="manifest" href="/manifest.json"> -->
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="animations.css">
     <link rel="stylesheet" href="chatbot.css">
+    <link rel="stylesheet" href="tutorial.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700&display=swap">
     <!-- Font Awesome สำหรับ Icons -->
     <script src="https://kit.fontawesome.com/8b0b6a29b2.js" crossorigin="anonymous"></script>
@@ -17,7 +19,10 @@
 <body>
     <!-- ส่วนแสดงสถานะอุปกรณ์และการแจ้งเตือน (ด้านบน) -->
     <div class="header-area">
-        <h1 class="app-name">Pawtonomous</h1>
+        <div class="app-logo-container">
+            <img src="ped.jpg" alt="Pawtonomous Duck Logo" class="app-logo">
+            <h1 class="app-name">Pawtonomous</h1>
+        </div>
         <div class="header-right">
             <div class="connection-status-bar">
                 <div class="status-item">
@@ -445,7 +450,7 @@
                     <div class="input-group">
                         <label data-i18n="animalTypeLabel">ประเภทสัตว์:</label>
                         <div class="custom-select-wrapper">
-                            <div class="custom-select-trigger" data-target="animalType">-- เลือกประเภทสัตว์ --</div>
+                            <div class="custom-select-trigger" data-target="animalType" data-i18n="selectAnimalType">-- เลือกประเภทสัตว์ --</div>
                             <div class="custom-options" id="animalType-options"></div>
                         </div>
                     </div>
@@ -454,7 +459,7 @@
                     <div class="input-group">
                         <label data-i18n="animalSpeciesLabel">ชนิดสัตว์:</label>
                         <div class="custom-select-wrapper">
-                            <div class="custom-select-trigger" data-target="animalSpecies"></div>
+                            <div class="custom-select-trigger" data-target="animalSpecies" data-i18n="selectAnimalSpecies">-- เลือกชนิดสัตว์ --</div>
                             <div class="custom-options" id="animalSpecies-options"></div>
                         </div>
                     </div>
@@ -472,7 +477,7 @@
                     <div class="input-group" id="lifeStageActivityContainer" style="display: none;">
                         <label data-i18n="lifeStageLabel">ช่วงชีวิต/กิจกรรม:</label>
                          <div class="custom-select-wrapper">
-                            <div class="custom-select-trigger" data-target="lifeStageActivity">-- เลือก --</div>
+                            <div class="custom-select-trigger" data-target="lifeStageActivity" data-i18n="selectLifeStage">-- เลือก --</div>
                             <div class="custom-options" id="lifeStageActivity-options"></div>
                         </div>
                     </div>
@@ -490,7 +495,7 @@
             <footer class="app-footer">
                 <p>Pawtonomous Feeder v2.0 | โครงงานวิทยาศาสตร์</p>
                 <p>โรงเรียนเฉลิมพระเกียรติ ๖๐ พรรษา | พัฒนาเว็บเเอปโดย: <a href="https://github.com/Suphakit-dechudomchot" target="_blank">ศุภกิตติ์ เดชอุดมโชติ</a></p>
-                <p>Powered by ESP32, Firebase & Chart.js</p>
+                <p>Powered by my soul</p>
             </footer>
         </div> <!-- ปิด mainContentContainer -->
     </main>
@@ -526,6 +531,37 @@
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
+    <!-- Tutorial Overlay -->
+    <div id="tutorialOverlay" class="tutorial-overlay">
+        <div class="tutorial-content">
+            <div class="tutorial-icon">👋</div>
+            <h2>ยินดีต้อนรับ!</h2>
+            <p>มาเริ่มต้นใช้งาน Pawtonomous Feeder กันเลยครับ</p>
+            <div class="tutorial-steps">
+                <div class="tutorial-step">
+                    <div class="tutorial-step-number">1</div>
+                    <span>ตั้งค่าระบบ (WiFi, เวลา, Calibrate)</span>
+                </div>
+                <div class="tutorial-step">
+                    <div class="tutorial-step-number">2</div>
+                    <span>คำนวณปริมาณอาหารที่เหมาะสม</span>
+                </div>
+                <div class="tutorial-step">
+                    <div class="tutorial-step-number">3</div>
+                    <span>ตั้งค่ามื้ออาหารอัตโนมัติ</span>
+                </div>
+                <div class="tutorial-step">
+                    <div class="tutorial-step-number">4</div>
+                    <span>ลองถาม AI ถ้ามีข้อสงสัย</span>
+                </div>
+            </div>
+            <div class="tutorial-buttons">
+                <button id="tutorialSkip" class="secondary-button">ข้ามไปก่อน</button>
+                <button id="tutorialStart" class="primary-button">เริ่มเลย!</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Your JavaScript files -->
     <script type="module" src="script.js"></script>
     <script src="chatbot.js"></script>

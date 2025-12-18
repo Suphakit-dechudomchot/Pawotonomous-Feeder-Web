@@ -24,9 +24,11 @@ const HEARTBEAT_THRESHOLD_MS = 20000;
 
 // Try to load `sounds.json` manifest; fallback to simple inline manifest.
 const INLINE_SOUND_MANIFEST = [
-    { index: 1, label: 'Meow 1', filename: '001.mp3', url: '' },
-    { index: 2, label: 'Meow 2', filename: '002.mp3', url: '' },
-    { index: 3, label: 'Bark 1', filename: '003.mp3', url: '' }
+    { index: 1, label: { th: 'เสียงแมว', en: 'Cat Sound', zh: '猫声', ja: '猫の音' }, filename: '0001.mp3', url: './audio/cat_001.mp3' },
+    { index: 2, label: { th: 'เสียงไก่', en: 'Chicken Sound', zh: '鸡声', ja: '鶏の音' }, filename: '0002.mp3', url: './audio/chicken_002.mp3' },
+    { index: 3, label: { th: 'เสียงหมาหอน', en: 'Dog Howling', zh: '狗嚎叫', ja: '犬の遠吠え' }, filename: '0003.mp3', url: './audio/dog-howling_003.mp3' },
+    { index: 4, label: { th: 'เสียงเหยี่ยว', en: 'Hawk Sound', zh: '鹰声', ja: '鷹の音' }, filename: '0004.mp3', url: './audio/hawk_004.mp3' },
+    { index: 5, label: { th: 'เสียงกริ่ง', en: 'Ringtone', zh: '铃声', ja: '着信音' }, filename: '0005.mp3', url: './audio/ringtone1_005.mp3' }
 ];
 
 async function loadSoundManifest() {
@@ -48,17 +50,19 @@ async function populateSoundSelects() {
     console.log('[Sound] Manifest loaded:', manifest);
     const selects = [DOMElements.mealAudioSelect, DOMElements.feedNowAudioSelect, DOMElements.makenoiseSelect];
     console.log('[Sound] Selects found:', selects.map(s => s ? s.id : 'null'));
+    const currentLang = getLanguage();
     selects.forEach(sel => {
         if (!sel) return;
         sel.innerHTML = '';
         const emptyOpt = document.createElement('option');
         emptyOpt.value = '';
-        emptyOpt.textContent = '-- ไม่เลือก --';
+        emptyOpt.textContent = t('noAudio');
         sel.appendChild(emptyOpt);
         manifest.forEach(s => {
             const o = document.createElement('option');
             o.value = String(s.index);
-            o.textContent = `${String(s.index).padStart(4,'0')} — ${s.label}`;
+            const label = typeof s.label === 'object' ? (s.label[currentLang] || s.label['th'] || s.label) : s.label;
+            o.textContent = `${String(s.index).padStart(4,'0')} — ${label}`;
             sel.appendChild(o);
         });
         console.log(`[Sound] Populated ${sel.id} with ${manifest.length} options`);
@@ -217,8 +221,32 @@ async function checkInitialSetupComplete() {
         if (!settings.wifiCredentials || !settings.wifiCredentials.password || settings.wifiCredentials.password.trim() === '') isSetupComplete = false;
         if (DOMElements.settingsNavDot) DOMElements.settingsNavDot.style.display = isSetupComplete ? 'none' : 'block';
         document.querySelectorAll('.nav-item').forEach(item => { if (!isSetupComplete) { item.disabled = true; item.classList.add('disabled-overlay'); } else { item.disabled = false; item.classList.remove('disabled-overlay'); } });
+        
+        // แสดง/ซ่อน chatbot ตามสถานะการตั้งค่า
+        if (window.chatbot) {
+            if (isSetupComplete) window.chatbot.show();
+            else window.chatbot.hide();
+        }
+        
+        // แสดง Tutorial ถ้ายังไม่ได้ตั้งค่าและไม่เคยข้าม
+        const hasSeenTutorial = localStorage.getItem('pawtonomous_tutorial_seen');
+        if (!isSetupComplete && !hasSeenTutorial) {
+            showTutorial();
+        }
+        
         return isSetupComplete;
     } catch (e) { return false; }
+}
+
+function showTutorial() {
+    const overlay = document.getElementById('tutorialOverlay');
+    if (overlay) overlay.classList.add('active');
+}
+
+function hideTutorial() {
+    const overlay = document.getElementById('tutorialOverlay');
+    if (overlay) overlay.classList.remove('active');
+    localStorage.setItem('pawtonomous_tutorial_seen', 'true');
 }
 
 async function setAndLoadDeviceId(id, navigateToMealSchedule = false) {
@@ -387,6 +415,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }));
     if (DOMElements.goToSettingsBtn) DOMElements.goToSettingsBtn.addEventListener('click', () => { showSection('device-settings-section'); hideModal(DOMElements.forceSetupOverlay); });
+    
+    // Tutorial buttons
+    const tutorialStart = document.getElementById('tutorialStart');
+    const tutorialSkip = document.getElementById('tutorialSkip');
+    if (tutorialStart) tutorialStart.addEventListener('click', () => { hideTutorial(); showSection('device-settings-section'); });
+    if (tutorialSkip) tutorialSkip.addEventListener('click', () => { hideTutorial(); });
 
     if (DOMElements.closeCalibrationModalBtn) DOMElements.closeCalibrationModalBtn.addEventListener('click', () => hideModal(DOMElements.calibrationModal));
     if (DOMElements.cancelMealDetailBtn) DOMElements.cancelMealDetailBtn.addEventListener('click', () => closeMealDetailModal());
@@ -419,8 +453,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (DOMElements.makenoiseSelect) {
         DOMElements.makenoiseSelect.addEventListener('change', () => {
             const val = DOMElements.makenoiseSelect.value;
+            const webOnline = navigator.onLine;
+            const deviceOnline = DOMElements.deviceStatusText?.classList.contains('online');
+            const canSendCommands = webOnline && deviceOnline;
             if (makenoisePreviewBtn) makenoisePreviewBtn.disabled = !val;
-            if (DOMElements.makenoiseBtn) DOMElements.makenoiseBtn.disabled = !val;
+            if (DOMElements.makenoiseBtn) {
+                DOMElements.makenoiseBtn.disabled = !val || !canSendCommands;
+                DOMElements.makenoiseBtn.classList.toggle('requires-online', !canSendCommands);
+            }
         });
     }
     

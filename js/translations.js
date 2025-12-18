@@ -309,7 +309,18 @@ export const translations = {
         mealSaved: 'บันทึกมื้ออาหารเรียบร้อย',
         mealDeleted: 'ลบมื้ออาหารแล้ว',
         mealStatusChanged: 'เปลี่ยนสถานะมื้ออาหารแล้ว',
-        cannotChangeMealStatus: 'ไม่สามารถเปลี่ยนสถานะมื้ออาหารได้'
+        cannotChangeMealStatus: 'ไม่สามารถเปลี่ยนสถานะมื้ออาหารได้',
+        
+        // Audio selection
+        noAudio: '-- ไม่เลือก --',
+        audioFile: 'ไฟล์เสียง',
+        
+        // Device notifications
+        feedingCompleted: 'ให้อาหารเสร็จสิ้น',
+        foodLow: 'อาหารใกล้หมด',
+        foodEmpty: 'อาหารหมด',
+        movementDetected: 'ตรวจพบการเคลื่อนไหว',
+        systemError: 'ข้อผิดพลาดระบบ'
     },
     
     en: {
@@ -621,7 +632,18 @@ export const translations = {
         mealSaved: 'Meal saved successfully',
         mealDeleted: 'Meal deleted',
         mealStatusChanged: 'Meal status changed',
-        cannotChangeMealStatus: 'Cannot change meal status'
+        cannotChangeMealStatus: 'Cannot change meal status',
+        
+        // Audio selection
+        noAudio: '-- No Selection --',
+        audioFile: 'Audio File',
+        
+        // Device notifications
+        feedingCompleted: 'Feeding completed',
+        foodLow: 'Food level low',
+        foodEmpty: 'Food empty',
+        movementDetected: 'Movement detected',
+        systemError: 'System error'
     },
     
     zh: {
@@ -932,7 +954,18 @@ export const translations = {
         mealSaved: '餐食保存成功',
         mealDeleted: '餐食已删除',
         mealStatusChanged: '餐食状态已更改',
-        cannotChangeMealStatus: '无法更改餐食状态'
+        cannotChangeMealStatus: '无法更改餐食状态',
+        
+        // Audio selection
+        noAudio: '-- 不选择 --',
+        audioFile: '音频文件',
+        
+        // Device notifications
+        feedingCompleted: '喂食完成',
+        foodLow: '食物量低',
+        foodEmpty: '食物已空',
+        movementDetected: '检测到移动',
+        systemError: '系统错误'
     },
     
     ja: {
@@ -1243,7 +1276,18 @@ export const translations = {
         mealSaved: '食事を保存しました',
         mealDeleted: '食事を削除しました',
         mealStatusChanged: '食事のステータスを変更しました',
-        cannotChangeMealStatus: '食事のステータスを変更できません'
+        cannotChangeMealStatus: '食事のステータスを変更できません',
+        
+        // Audio selection
+        noAudio: '-- 選択なし --',
+        audioFile: '音声ファイル',
+        
+        // Device notifications
+        feedingCompleted: '給餌完了',
+        foodLow: '食料レベル低',
+        foodEmpty: '食料空',
+        movementDetected: '動き検出',
+        systemError: 'システムエラー'
     }
 };
 

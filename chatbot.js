@@ -17,7 +17,15 @@ class AIChatbot {
     init() {
         this.createChatbotUI();
         this.attachEventListeners();
-        this.addMessage(`สวัสดีครับ! 👋 ผมคือผู้ช่วย AI ของ Pawtonomous Feeder
+        this.hide(); // ซ่อนไว้ก่อน
+        console.log("%c[Chatbot] Smart Connector Ready (Hidden)", "color: #4e73df; font-weight: bold;");
+    }
+
+    show() {
+        const bubble = document.getElementById('chatbotBubble');
+        if (bubble) bubble.style.display = 'flex';
+        if (this.chatHistory.length === 0) {
+            this.addMessage(`สวัสดีครับ! 👋 ผมคือผู้ช่วย AI ของ Pawtonomous Feeder
 
 ผมช่วยคุณได้เรื่อง:
 🍽️ ตั้งเวลาให้อาหาร
@@ -26,8 +34,13 @@ class AIChatbot {
 📱 ตั้งค่า WiFi
 
 ลองคลิกคำถามด้านล่าง หรือพิมพ์ถามได้เลยครับ!`, 'bot');
-        this.renderQuickQuestions();
-        console.log("%c[Chatbot] Smart Connector Ready", "color: #4e73df; font-weight: bold;");
+            this.renderQuickQuestions();
+        }
+    }
+
+    hide() {
+        const bubble = document.getElementById('chatbotBubble');
+        if (bubble) bubble.style.display = 'none';
     }
 
     createChatbotUI() {
@@ -198,7 +211,13 @@ class AIChatbot {
         
         div.innerHTML = `<div class="message-content">${formattedText}</div>`;
         container.appendChild(div);
-        container.scrollTop = container.scrollHeight;
+        
+        // เลื่อนไปที่ต้นข้อความใหม่แทนท้ายข้อความ
+        if (sender === 'bot') {
+            div.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+            container.scrollTop = container.scrollHeight;
+        }
     }
 
     showTyping() {
