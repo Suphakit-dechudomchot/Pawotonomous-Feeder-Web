@@ -1,7 +1,7 @@
 // AI Chatbot with Backend Proxy - SECURE VERSION
 const API_ENDPOINT = window.location.hostname === 'localhost' 
     ? 'http://localhost:3000/api/chat'
-    : '/api/chat'; // ใช้ relative path สำหรับ production 
+    : '/api/chat'; 
 
 class AIChatbot {
     constructor() {
@@ -89,7 +89,8 @@ class AIChatbot {
         if (window.classList.contains('active')) {
             this.closeChat();
         } else {
-            window.classList.add('active');
+            window.style.display = 'flex';
+            setTimeout(() => window.classList.add('active'), 10);
         }
     }
 
@@ -98,6 +99,7 @@ class AIChatbot {
         window.classList.add('closing');
         setTimeout(() => {
             window.classList.remove('active', 'closing');
+            window.style.display = 'none';
         }, 400);
     }
 
@@ -121,7 +123,6 @@ class AIChatbot {
         }
     }
 
-    // เรียก Backend Proxy แทนการเรียก API ตรง
     async callAnyAvailableModel(userMessage) {
         try {
             const response = await fetch(API_ENDPOINT, {
@@ -138,7 +139,6 @@ class AIChatbot {
 
             return data.response;
         } catch (err) {
-            console.error('[Chatbot Error]:', err);
             throw new Error(err.message || 'เกิดข้อผิดพลาดในการติดต่อ AI');
         }
     }
