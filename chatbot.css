@@ -477,7 +477,8 @@
     }
     
     .chatbot-messages {
-        padding-bottom: 20px;
+        padding: 16px;
+        padding-bottom: 100px;
         max-height: calc(100vh - 260px);
         overflow-y: auto;
     }
@@ -579,7 +580,6 @@
     }
     
     .chatbot-messages {
-        padding: 16px;
         gap: 12px;
     }
     
