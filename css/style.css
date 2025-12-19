@@ -327,11 +327,11 @@ button.requires-online:disabled::after {
     display: flex;
     justify-content: space-around;
     align-items: center;
-    background: linear-gradient(180deg, rgba(30, 30, 30, 0.95) 0%, rgba(18, 18, 18, 0.98) 100%);
+    background: var(--card-background);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    border-top: 1px solid rgba(187, 134, 252, 0.2);
-    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.2), 0 -1px 0 rgba(255, 255, 255, 0.05) inset;
+    border-top: 1px solid var(--border-color);
+    box-shadow: 0 -4px 24px var(--shadow-color);
     padding: 12px 0;
     z-index: 100;
 }
