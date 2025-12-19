@@ -1,9 +1,5 @@
-# Environment Variables
+# Environment variables
 .env
-.env.local
-
-# API Keys
-config.js
 
 # Node modules
 node_modules/
@@ -12,6 +8,14 @@ node_modules/
 *.log
 npm-debug.log*
 
-# OS Files
+# OS files
 .DS_Store
 Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Build files
+dist/
+build/

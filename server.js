@@ -10,27 +10,59 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+// CORS configuration
+const allowedOrigins = [
+    'https://your-app-name.onrender.com', // เปลี่ยนเป็น URL ของคุณ
+    'http://localhost:3000',
+    'http://localhost:5500'
+];
+
+app.use(cors({
+    origin: function(origin, callback) {
+        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true
+}));
 app.use(express.json());
 app.use(express.static('.')); // Serve static files
 
-// Rate limiting
+// Rate limiting - เข้มงวดขึ้น
 const requestCounts = new Map();
-const RATE_LIMIT = 10; // 10 requests
+const RATE_LIMIT = 5; // 5 requests
 const RATE_WINDOW = 60000; // per minute
+const DAILY_LIMIT = 100; // 100 requests per day
+const dailyCounts = new Map();
 
 function checkRateLimit(ip) {
     const now = Date.now();
+    
+    // Check per-minute limit
     const userRequests = requestCounts.get(ip) || [];
     const recentRequests = userRequests.filter(time => now - time < RATE_WINDOW);
     
     if (recentRequests.length >= RATE_LIMIT) {
-        return false;
+        return { allowed: false, reason: 'minute' };
     }
     
+    // Check daily limit
+    const today = new Date().toDateString();
+    const dailyKey = `${ip}-${today}`;
+    const dailyCount = dailyCounts.get(dailyKey) || 0;
+    
+    if (dailyCount >= DAILY_LIMIT) {
+        return { allowed: false, reason: 'daily' };
+    }
+    
+    // Update counts
     recentRequests.push(now);
     requestCounts.set(ip, recentRequests);
-    return true;
+    dailyCounts.set(dailyKey, dailyCount + 1);
+    
+    return { allowed: true };
 }
 
 // Proxy endpoint สำหรับ Gemini AI
@@ -38,10 +70,12 @@ app.post('/api/chat', async (req, res) => {
     const clientIp = req.ip;
     
     // Check rate limit
-    if (!checkRateLimit(clientIp)) {
-        return res.status(429).json({ 
-            error: 'Too many requests. Please try again later.' 
-        });
+    const rateCheck = checkRateLimit(clientIp);
+    if (!rateCheck.allowed) {
+        const message = rateCheck.reason === 'daily' 
+            ? 'Daily limit exceeded. Try again tomorrow.'
+            : 'Too many requests. Please wait a minute.';
+        return res.status(429).json({ error: message });
     }
     
     try {
