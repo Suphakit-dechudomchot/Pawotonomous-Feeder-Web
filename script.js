@@ -145,6 +145,23 @@ function listenToDeviceStatus() {
         const status = snapshot.val() || {};
         const isOnline = computeOnlineFromStatus(status);
         updateDeviceStatusUI(isOnline);
+        
+        // แสดงสถานะการทำงาน
+        if (status.isBusy && status.currentState) {
+            const stateText = {
+                'playing_audio': '🔊 กำลังเล่นเสียง',
+                'blowing': '💨 กำลังเป่าลม',
+                'feeding': '🍽️ กำลังให้อาหาร',
+                'checking_movement': '👀 กำลังตรวจจับการเคลื่อนไหว'
+            };
+            const statusText = stateText[status.currentState] || '⚙️ กำลังทำงาน';
+            
+            // แสดงใน UI
+            if (DOMElements.deviceStatusText) {
+                DOMElements.deviceStatusText.textContent = statusText;
+            }
+        }
+        
         if ('foodLevel' in status) updateFoodLevelDisplay(status.foodLevel); else updateFoodLevelDisplay(null);
         if (DOMElements.lastMovementDisplay) {
             const lm = status.lastMovementDetected || status.lastMovement || null;

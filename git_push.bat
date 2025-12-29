@@ -5,7 +5,7 @@ echo ========================================
 echo.
 
 git add .
-git commit -m "feat: Add 15 audio sounds support and update documentation"
+git commit -m "ตรวจสอบสถานะการทำงานและป้องกันการทับซ้อนกับมื้ออาหาร"
 git push origin main
 
 echo.
