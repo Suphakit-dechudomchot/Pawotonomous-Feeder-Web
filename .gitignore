@@ -19,3 +19,9 @@ Thumbs.db
 # Build files
 dist/
 build/
+
+# Temporary files
+audio_renamed/
+SD_Card_Files/
+*.pyc
+__pycache__/
