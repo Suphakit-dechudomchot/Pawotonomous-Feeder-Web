@@ -132,10 +132,16 @@ class AIChatbot {
         const div = document.createElement('div');
         div.className = `chat-message ${sender}`;
         
+        // ปรับปรุงการจัดฟอร์แมตข้อความให้ดีขึ้น
         let formattedText = text
-            .replace(/\n/g, '<br>')
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>');
+            .replace(/\n/g, '<br>') // เว้นบรรทัด
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // ตัวหนา
+            .replace(/^\s*[\-\*]\s*(.*)/gm, '<li>$1</li>'); // เปลี่ยน - หรือ * เป็น List item
+
+        // ถ้ามี <li> ให้ครอบด้วย <ul>
+        if (formattedText.includes('<li>')) {
+            formattedText = formattedText.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+        }
         
         div.innerHTML = `<div class="message-content">${formattedText}</div>`;
         container.appendChild(div);
