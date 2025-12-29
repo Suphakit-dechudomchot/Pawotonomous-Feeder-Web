@@ -18,6 +18,11 @@ export function setupNotificationListener(db) {
         if (latest && latest.id !== state.lastNotificationId) {
             state.lastNotificationId = latest.id;
             showNewNotificationToast(latest.message);
+            
+            // แสดง Alert ถ้าเป็น warning ที่เกี่ยวกับเครื่องไม่ว่าง
+            if (latest.type === 'warning' && latest.message.includes('เครื่องกำลังทำงานอยู่')) {
+                showCustomAlert('เครื่องไม่ว่าง', latest.message, 'warning');
+            }
         }
         // schedule cleanup
         setTimeout(() => cleanupOldNotifications(db), 10000);
